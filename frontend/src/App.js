@@ -5,11 +5,15 @@ import SignUp from './components/SignUp';
 import Home from './components/Home';
 import AboutUs from './components/About';
 import News from './components/News';
-import MeterReadings, { MeterCounter } from './components/MeterCounter'; 
+import MeterCounter from './components/MeterCounter'; 
 import PaymentInfo from './components/Payment';
 import Feedback from './components/Feedback';
 import Services from './components/Service';
 import SidebarLayout from './components/SideBarLayout';
+import MeterCounterDetail from './components/MeterCounterDetails';
+import MeterCounterImport from './components/MeterCounterImport';
+import Profile from './components/Profile';
+import Apartment from './components/Apartment';
 
 // Protected Route Component
 const PrivateRoute = ({ children }) => {
@@ -25,7 +29,6 @@ const MainLayout = ({ children }) => {
     </SidebarLayout>
   );
 };
-
 function App() {
   return (
     <Router>
@@ -33,8 +36,47 @@ function App() {
         {/* Public Routes */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-
         {/* Protected Routes with Sidebar Layout */}
+        <Route 
+       path="/Profile" 
+     element={
+       <PrivateRoute>
+         <SidebarLayout>
+             <Profile/>
+           </SidebarLayout>
+         </PrivateRoute>
+        } 
+       />
+        <Route 
+       path="/Profile/Apartment" 
+     element={
+       <PrivateRoute>
+         <SidebarLayout>
+             <Apartment/>
+           </SidebarLayout>
+         </PrivateRoute>
+        } 
+       />
+        <Route 
+       path="/metercounter/details" 
+     element={
+       <PrivateRoute>
+         <SidebarLayout>
+             <MeterCounterDetail/>
+           </SidebarLayout>
+         </PrivateRoute>
+        } 
+       />
+       <Route 
+        path="/metercounter/import" 
+        element={
+          <PrivateRoute>
+              <SidebarLayout>
+              <MeterCounterImport/>
+              </SidebarLayout>
+           </PrivateRoute>
+          } 
+       />
         <Route 
           path="/" 
           element={
