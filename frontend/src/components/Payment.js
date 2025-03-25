@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
 const locations = {
   "54 - 22": { id: "16100183", address: "СХД 18 хороо 54 - 22", payment: 45206.25, hotWater: 3, coldWater: 5, other: 12000 },
@@ -9,6 +10,8 @@ const locations = {
 export function Payment() {
   const [selectedLocation, setSelectedLocation] = useState("54 - 22");
   const data = locations[selectedLocation];
+  const navigate = useNavigate();
+  
 
   return (
     <div className="p-6 w-full">
@@ -24,7 +27,7 @@ export function Payment() {
             {location}
           </button>
         ))}
-        <button className="border px-4 py-2 rounded-md">+</button>
+        <button onClick={() => navigate('/Profile/Apartment')} className="border px-4 py-2 rounded-md">+</button>
       </div>
       
       <div className="flex justify-between items-center border-b pb-2 mb-4">

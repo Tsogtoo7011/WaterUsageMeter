@@ -1,11 +1,17 @@
-import React from 'react';
+import React from "react";
 
 function Home() {
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-      <div className="bg-white p-8 rounded-xl shadow-md w-96 text-center">
-        <h1 className="text-3xl font-bold mb-4 text-gray-800">Welcome Home</h1>
-        <p className="text-gray-600 mb-6">You've successfully logged in!</p>      
+    <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Greeting Card */}
+        <div className="bg-blue-100 p-6 rounded-xl shadow-md w-96 text-left flex items-center">
+          <div>
+            <h2 className="text-x2 font-bold text-blue-900">Өдрийн мэнд 👋</h2>
+            <p className="text-gray-700 mt-2">
+            </p>
+          </div>
+        </div>       
       </div>
     </div>
   );

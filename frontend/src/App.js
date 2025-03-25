@@ -9,7 +9,7 @@ import MeterCounter from './components/MeterCounter';
 import PaymentInfo from './components/Payment';
 import Feedback from './components/Feedback';
 import Services from './components/Service';
-import SidebarLayout from './components/SideBarLayout';
+import SidebarLayout from './Layout/SideBarLayout';
 import MeterCounterDetail from './components/MeterCounterDetails';
 import MeterCounterImport from './components/MeterCounterImport';
 import Profile from './components/Profile';
