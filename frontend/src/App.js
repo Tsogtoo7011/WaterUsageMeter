@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import SignIn from './components/SignIn';
 import SignUp from './components/SignUp';
 import Home from './components/Home';
@@ -24,11 +24,14 @@ const PrivateRoute = ({ children }) => {
 // Layout Wrapper for all authenticated routes
 const MainLayout = ({ children }) => {
   return (
-    <SidebarLayout>
-      {children}
-    </SidebarLayout>
+    <PrivateRoute>
+      <SidebarLayout>
+        {children}
+      </SidebarLayout>
+    </PrivateRoute>
   );
 };
+
 function App() {
   return (
     <Router>
@@ -36,117 +39,19 @@ function App() {
         {/* Public Routes */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+
         {/* Protected Routes with Sidebar Layout */}
-        <Route 
-       path="/Profile" 
-     element={
-       <PrivateRoute>
-         <SidebarLayout>
-             <Profile/>
-           </SidebarLayout>
-         </PrivateRoute>
-        } 
-       />
-        <Route 
-       path="/Profile/Apartment" 
-     element={
-       <PrivateRoute>
-         <SidebarLayout>
-             <Apartment/>
-           </SidebarLayout>
-         </PrivateRoute>
-        } 
-       />
-        <Route 
-       path="/metercounter/details" 
-     element={
-       <PrivateRoute>
-         <SidebarLayout>
-             <MeterCounterDetail/>
-           </SidebarLayout>
-         </PrivateRoute>
-        } 
-       />
-       <Route 
-        path="/metercounter/import" 
-        element={
-          <PrivateRoute>
-              <SidebarLayout>
-              <MeterCounterImport/>
-              </SidebarLayout>
-           </PrivateRoute>
-          } 
-       />
-        <Route 
-          path="/" 
-          element={
-            <PrivateRoute>
-               <SidebarLayout>
-               <Home />
-               </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/about-us" 
-          element={
-            <PrivateRoute>
-              <SidebarLayout>
-              <AboutUs />
-             </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/news" 
-          element={
-            <PrivateRoute>
-              <SidebarLayout>
-                <News />
-              </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/metercounter" 
-          element={
-            <PrivateRoute>
-              <SidebarLayout>
-                <MeterCounter />
-              </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/payment-info" 
-          element={
-            <PrivateRoute>
-              <SidebarLayout>
-                <PaymentInfo />
-              </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/feedback" 
-          element={
-            <PrivateRoute>
-              <SidebarLayout>
-                <Feedback />
-              </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/services" 
-          element={
-            <PrivateRoute>
-              <SidebarLayout>
-                <Services />
-              </SidebarLayout>
-            </PrivateRoute>
-          } 
-        />
+        <Route path="/" element={<MainLayout><Home /></MainLayout>} />
+        <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
+        <Route path="/profile/apartment" element={<MainLayout><Apartment /></MainLayout>} />
+        <Route path="/metercounter/details" element={<MainLayout><MeterCounterDetail /></MainLayout>} />
+        <Route path="/metercounter/import" element={<MainLayout><MeterCounterImport /></MainLayout>} />
+        <Route path="/about-us" element={<MainLayout><AboutUs /></MainLayout>} />
+        <Route path="/news" element={<MainLayout><News /></MainLayout>} />
+        <Route path="/metercounter" element={<MainLayout><MeterCounter /></MainLayout>} />
+        <Route path="/payment-info" element={<MainLayout><PaymentInfo /></MainLayout>} />
+        <Route path="/feedback" element={<MainLayout><Feedback /></MainLayout>} />
+        <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
 
         {/* Redirects */}
         <Route path="/home" element={<Navigate to="/" replace />} />
