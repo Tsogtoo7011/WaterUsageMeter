@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 const { 
-  signup, 
   verifyEmail, 
   resendVerificationEmail 
 } = require('../controllers/authController');
