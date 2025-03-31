@@ -1,6 +1,6 @@
 // middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const { handleError } = require('../utils/errorHandler.js');
+const { handleError } = require('../utils/errorHandler');
 
 exports.authenticate = async (req, res, next) => {
   try {
@@ -11,5 +11,17 @@ exports.authenticate = async (req, res, next) => {
     next();
   } catch (error) {
     handleError(res, error, 'Authentication');
+  }
+};
+
+// This middleware requires the user to be verified
+exports.requireVerified = async (req, res, next) => {
+  try {
+    if (!req.user.isVerified) {
+      return res.status(403).json({ message: 'Энэ үйлдлийг гүйцэтгэхийн тулд имэйл хаягаа баталгаажуулна уу' });
+    }
+    next();
+  } catch (error) {
+    handleError(res, error, 'Verification Check');
   }
 };
