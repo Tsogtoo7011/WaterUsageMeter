@@ -7,7 +7,8 @@ function SignIn() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
+    isAdmin: false
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +43,8 @@ function SignIn() {
     try {
       const response = await axios.post('http://localhost:5000/api/auth/signin', {
         username: formData.username,
-        password: formData.password
+        password: formData.password,
+        isAdmin: formData.isAdmin
       });
 
       // Handle "Remember Me" functionality
@@ -54,7 +56,13 @@ function SignIn() {
 
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/home');
+      
+      // Redirect based on admin rights
+      if (response.data.user.AdminRight === 1) {
+        navigate('/admin/dashboard');
+      } else {
+        let errorMessage = 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна';
+      }
     } catch (err) {
       let errorMessage = 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна';
       if (err.response) {
@@ -75,21 +83,23 @@ function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
-      {/* Left side with background image */}
+    <div className="min-h-screen flex relative">
+      {/* Background image for entire left side */}
       <div 
-        className="w-1/2 p-8 flex flex-col justify-between"
+        className="absolute top-0 left-0 w-1/2 h-full"
         style={{
           backgroundImage: `url(${backgroundImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          position: 'relative'
         }}
       >
         {/* Darker overlay for better text visibility */}
         <div className="absolute inset-0 bg-black opacity-40"></div>
-        
-        <div className="relative z-10 space-y-6">
+      </div>
+      
+      {/* Left side content */}
+      <div className="w-1/2 p-8 flex flex-col justify-between relative z-10">
+        <div className="space-y-6">
           <h2 className="text-2xl font-bold text-white">Усны хэрэглээний бүртгэлийн систем</h2>
           <div className="space-y-4">
             <div className="flex items-center space-x-3 group hover:cursor-pointer">
@@ -156,7 +166,7 @@ function SignIn() {
         </div>
         
         {/* Larger bottom icons in single line */}
-        <div className="relative z-10 flex justify-between mt-8">
+        <div className="flex justify-between mt-8">
           <div className="bg-white p-6 rounded-lg shadow-md text-center w-1/3 mx-2 hover:shadow-lg transition-shadow duration-200">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-blue-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -182,6 +192,21 @@ function SignIn() {
       <div className="w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">Нэвтрэх</h1>
+          
+          {/* Admin User Toggle Switch */}
+          <div className="mb-6 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">Админ эрхээр нэвтрэх</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                name="isAdmin"
+                checked={formData.isAdmin}
+                onChange={handleChange}
+                className="sr-only peer" 
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
           
           {error && (
             <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
