@@ -1,27 +1,27 @@
-// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 const { handleError } = require('../utils/errorHandler');
 
 exports.authenticate = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Нэвтрэх шаардлагатай' });
+    // Get token from different possible sources
+    const token = 
+      req.cookies.authToken || 
+      (req.headers.authorization && req.headers.authorization.startsWith('Bearer') 
+        ? req.headers.authorization.split(' ')[1] 
+        : null) ||
+      req.query.token; // Also check query parameters
+    
+    if (!token) {
+      return res.status(401).json({ message: 'Нэвтрэх шаардлагатай' });
+    }
     
     req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
   } catch (error) {
-    handleError(res, error, 'Authentication');
-  }
-};
-
-// This middleware requires the user to be verified
-exports.requireVerified = async (req, res, next) => {
-  try {
-    if (!req.user.isVerified) {
-      return res.status(403).json({ message: 'Энэ үйлдлийг гүйцэтгэхийн тулд имэйл хаягаа баталгаажуулна уу' });
+    // If token verification fails
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Хүчингүй эсвэл хугацаа дууссан токен' });
     }
-    next();
-  } catch (error) {
-    handleError(res, error, 'Verification Check');
+    handleError(res, error, 'Authentication');
   }
 };

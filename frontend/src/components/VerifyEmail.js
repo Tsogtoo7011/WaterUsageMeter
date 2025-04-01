@@ -1,45 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Container, Row, Col, Card, Spinner, Alert } from 'react-bootstrap';
 
-const VerifyEmail = () => {
-  const [verifying, setVerifying] = useState(true);
-  const [success, setSuccess] = useState(false);
-  const [message, setMessage] = useState('Имэйл хаягийг баталгаажуулж байна...');
+function VerifyEmail() {
+  const [status, setStatus] = useState('verifying');
+  const [message, setMessage] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const verifyEmail = async () => {
-      const params = new URLSearchParams(location.search);
-      const token = params.get('token');
-
-      if (!token) {
-        setVerifying(false);
-        setMessage('Баталгаажуулах токен олдсонгүй');
-        return;
-      }
-
       try {
-        const response = await axios.get(`/api/auth/verify-email?token=${token}`);
         
-        // Store the new token that comes back after verification
-        if (response.data.token) {
-          localStorage.setItem('userToken', response.data.token);
+        const searchParams = new URLSearchParams(location.search);
+        const token = searchParams.get('token');
+        
+        console.log('Token from URL:', token);
+        
+        if (!token) {
+          console.log('No token found in URL');
+          setStatus('error');
+          setMessage('Баталгаажуулах токен олдсонгүй. Холбоосыг дахин шалгана уу.');
+          return;
         }
         
-        setVerifying(false);
-        setSuccess(true);
-        setMessage(response.data.message || 'Имэйл хаяг амжилттай баталгаажлаа');
+        // Make API request to verify the email
+        const response = await axios.get(`http://localhost:5000/api/auth/verify-email?token=${token}`);
         
-        // Redirect to login page after 3 seconds
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+        if (response.data.success) {
+          setStatus('success');
+          setMessage(response.data.message);
+          
+          // Store the new token
+          localStorage.setItem('token', response.data.token);
+          
+          // Redirect to dashboard after 3 seconds
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 3000);
+        } else {
+          setStatus('error');
+          setMessage(response.data.message || 'Баталгаажуулахад алдаа гарлаа.');
+        }
       } catch (error) {
-        setVerifying(false);
-        setMessage(error.response?.data?.message || 'Баталгаажуулах үед алдаа гарлаа');
+        console.error('Verification error:', error);
+        setStatus('error');
+        setMessage(error.response?.data?.message || 'Баталгаажуулахад алдаа гарлаа. Дахин оролдоно уу.');
       }
     };
 
@@ -47,31 +53,50 @@ const VerifyEmail = () => {
   }, [location, navigate]);
 
   return (
-    <Container className="mt-5">
-      <Row className="justify-content-center">
-        <Col md={6}>
-          <Card>
-            <Card.Header>Имэйл баталгаажуулах</Card.Header>
-            <Card.Body className="text-center">
-              {verifying ? (
-                <div>
-                  <Spinner animation="border" role="status" />
-                  <p className="mt-3">Уншиж байна...</p>
-                </div>
-              ) : (
-                <>
-                  <Alert variant={success ? "success" : "danger"}>
-                    {message}
-                  </Alert>
-                  {success && <p>Нэвтрэх хуудас руу шилжүүлж байна...</p>}
-                </>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">
+          Имэйл баталгаажуулалт
+        </h1>
+        
+        {status === 'verifying' && (
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-600">Таны имэйл хаягийг баталгаажуулж байна...</p>
+          </div>
+        )}
+        
+        {status === 'success' && (
+          <div className="flex flex-col items-center">
+            <div className="rounded-full h-12 w-12 bg-green-100 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-green-600 font-medium mb-2">{message}</p>
+            <p className="text-gray-600">Та удахгүй шилжих болно...</p>
+          </div>
+        )}
+        
+        {status === 'error' && (
+          <div className="flex flex-col items-center">
+            <div className="rounded-full h-12 w-12 bg-red-100 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <p className="text-red-600 font-medium mb-4">{message}</p>
+            <button
+              onClick={() => navigate('/signup')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Бүртгэлийн хуудас руу буцах
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
-};
+}
 
 export default VerifyEmail;

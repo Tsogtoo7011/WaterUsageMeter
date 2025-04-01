@@ -104,7 +104,7 @@ function SignUp() {
       });
       
       localStorage.setItem('token', response.data.token);
-      navigate('/home');
+      navigate('/VerifyEmail');
     } catch (err) {
       setServerError(err.response?.data?.message || 'Бүртгэл амжилтгүй боллоо. Дахин оролдоно уу.');
       console.error(err);

@@ -14,6 +14,7 @@ import MeterCounterDetail from './components/MeterCounterDetails';
 import MeterCounterImport from './components/MeterCounterImport';
 import Profile from './components/Profile';
 import Apartment from './components/Apartment';
+import VerifyEmail from './components/VerifyEmail';
 
 // Protected Route Component
 const PrivateRoute = ({ children }) => {
@@ -39,6 +40,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/VerifyEmail" element={<VerifyEmail/>} />
 
         {/* Protected Routes with Sidebar Layout */}
         <Route path="/" element={<MainLayout><Home /></MainLayout>} />
