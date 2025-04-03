@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import signupImage from '../figures/images/apartment.jpg'; 
+import signupImage from '../../figures/images/apartment.jpg'; 
 
 function SignUp() {
   const [formData, setFormData] = useState({

@@ -1,5 +1,5 @@
 import React from 'react';
-import watermeterImage from '../figures/images/watermeter.png';
+import watermeterImage from '../../figures/images/watermeter.png';
 
 export function About() {
   return (

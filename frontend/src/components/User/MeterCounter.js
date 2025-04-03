@@ -115,13 +115,13 @@ export function MeterCounter() {
         <p className="text-sm text-gray-600 mt-2">Та усны заалтаа сар бүрийн 1 - 20 ны хооронд өгнө үү.</p>
         <div className="flex justify-center mt-4 space-x-4">
           <button 
-            onClick={() => navigate('/metercounter/details')}
+            onClick={() => navigate('/user/metercounter/details')}
             className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition"
           >
             Дэлгэрэнгүй
           </button>
           <button 
-            onClick={() => navigate('/metercounter/import')}
+            onClick={() => navigate('/user/metercounter/import')}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
           >
             Заалт өгөх

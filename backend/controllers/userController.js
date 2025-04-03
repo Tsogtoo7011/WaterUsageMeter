@@ -5,19 +5,17 @@
   const { handleError } = require('../utils/errorHandler');
   const sendEmail = require('../utils/emailService');
 
-  // Helper function to generate verification token
   const generateVerificationToken = () => {
     return crypto.randomBytes(32).toString('hex');
   };
 
-  // Helper function to send verification email
   const sendVerificationEmail = async (email, token, firstname) => {
 
     const encodedToken = encodeURIComponent(token);
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    const verificationUrl = `${frontendUrl}/verify-email?token=${encodedToken}`;
+    const verificationUrl = `${frontendUrl}/user/verify-email?token=${encodedToken}`;
     
     console.log(`Sending verification email to ${email} with URL: ${verificationUrl}`);
     
@@ -39,7 +37,6 @@
     try {
       const { username, email, password, firstname, lastname, phonenumber } = req.body;
 
-      // Check if username or email already exists
       const [existingUser] = await pool.execute('SELECT * FROM UserAdmin WHERE Username = ?', [username]);
       if (existingUser.length > 0) {
         return res.status(400).json({ message: 'Хэрэглэгчийн нэр бүртгэлтэй байна' });
@@ -50,10 +47,9 @@
         return res.status(400).json({ message: 'Имэйл хаяг бүртгэлтэй байна' });
       }
 
-      // Generate verification token and set expiry
       const verificationToken = generateVerificationToken();
       const tokenExpiry = new Date();
-      tokenExpiry.setHours(tokenExpiry.getHours() + 24); // Token valid for 24 hours
+      tokenExpiry.setHours(tokenExpiry.getHours() + 24);
 
       // Hash password
       const salt = await bcrypt.genSalt(10);
@@ -244,20 +240,19 @@
   exports.signin = async (req, res) => {
     try {
       const { username, password } = req.body;
-
+  
       const [users] = await pool.execute('SELECT * FROM UserAdmin WHERE Username = ?', [username]);
       if (users.length === 0) {
         return res.status(400).json({ message: 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна' });
       }
-
+  
       const user = users[0];
       const isPasswordValid = await bcrypt.compare(password, user.Password);
       
       if (!isPasswordValid) {
         return res.status(400).json({ message: 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна' });
       }
-
-      // Check if user is verified
+  
       const isVerified = user.IsVerified === 1;
       
       if (!isVerified) {
@@ -267,26 +262,30 @@
           email: user.Email
         });
       }
-
-      // Create JWT
+  
+      // Create token with admin rights information
       const token = jwt.sign(
-        { id: user.UserId, username: user.Username, isVerified }, 
+        { 
+          id: user.UserId, 
+          username: user.Username, 
+          isVerified,
+          isAdmin: user.AdminRight === 1 
+        }, 
         process.env.JWT_SECRET, 
         { expiresIn: '24h' }
       );
       
-      // Set the token in an HttpOnly cookie
+      // Set cookie
       res.cookie('authToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: process.env.NODE_ENV === 'production', 
+        maxAge: 24 * 60 * 60 * 1000, 
         sameSite: 'strict'
       });
-      
       const { Password, VerificationToken, TokenExpiry, ...userData } = user;
       res.json({ 
         user: userData, 
-        token: token, // Also send token in response for clients that don't use cookies
+        token: token, 
         message: 'Амжилттай нэвтэрлээ' 
       });
     } catch (error) { 

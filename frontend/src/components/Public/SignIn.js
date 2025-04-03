@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import backgroundImage from '../figures/images/apartment.jpg';
+import backgroundImage from '../../figures/images/apartment.jpg';
 
 function SignIn() {
   const [formData, setFormData] = useState({
@@ -59,9 +59,9 @@ function SignIn() {
       
       // Redirect based on admin rights
       if (response.data.user.AdminRight === 1) {
-        navigate('/admin/dashboard');
+        navigate('/admin/');
       } else {
-        let errorMessage = 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна';
+        navigate('/user/');
       }
     } catch (err) {
       let errorMessage = 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна';

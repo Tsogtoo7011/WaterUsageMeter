@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home as HomeIcon,
   UserCircle,
@@ -13,7 +13,9 @@ import {
   X,
   Search,
   Bell,
-  Droplet, // Using Droplet (water drop) icon for the logo
+  Droplet,
+  Users,
+  Settings,
 } from 'lucide-react';
 
 const SidebarLayout = ({ children }) => {
@@ -22,33 +24,66 @@ const SidebarLayout = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const searchRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine if current route is admin or user route
+  useEffect(() => {
+    setIsAdmin(location.pathname.startsWith('/admin'));
+  }, [location.pathname]);
+
+  // Generate base path depending on admin or user status
+  const basePath = isAdmin ? '/admin' : '/user';
 
   // Route definitions for search functionality
-  const routes = [
-    { path: '/', label: 'Нүүр хуудас', component: 'Home' },
-    { path: '/profile', label: 'Профайл', component: 'Profile' },
-    { path: '/profile/apartment', label: 'Орон сууц', component: 'Apartment' },
-    { path: '/metercounter/details', label: 'Тоолуурын дэлгэрэнгүй', component: 'MeterCounterDetail' },
-    { path: '/metercounter/import', label: 'Тоолуур импортлох', component: 'MeterCounterImport' },
-    { path: '/about-us', label: 'Бидний тухай', component: 'AboutUs' },
-    { path: '/news', label: 'Мэдээ мэдээлэл', component: 'News' },
-    { path: '/metercounter', label: 'Тоолуурын заалт', component: 'MeterCounter' },
-    { path: '/payment-info', label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
-    { path: '/feedback', label: 'Санал хүсэлт', component: 'Feedback' },
-    { path: '/services', label: 'Үйлчилгээ', component: 'Services' }
+  const routes = isAdmin ? [
+    { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'AdminHome' },
+    { path: `${basePath}/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
+    { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'AdminMeterCounter' },
+    { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'AdminFeedback' },
+    { path: `${basePath}/service`, label: 'Үйлчилгээ', component: 'AdminService' },
+    { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'AdminNews' }
+  ] : [
+    { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'Home' },
+    { path: `${basePath}/profile`, label: 'Профайл', component: 'Profile' },
+    { path: `${basePath}/profile/apartment`, label: 'Орон сууц', component: 'Apartment' },
+    { path: `${basePath}/metercounter/details`, label: 'Тоолуурын дэлгэрэнгүй', component: 'MeterCounterDetail' },
+    { path: `${basePath}/metercounter/import`, label: 'Тоолуур импортлох', component: 'MeterCounterImport' },
+    { path: `${basePath}/about-us`, label: 'Бидний тухай', component: 'AboutUs' },
+    { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
+    { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
+    { path: `${basePath}/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
+    { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
+    { path: `${basePath}/services`, label: 'Үйлчилгээ', component: 'Services' }
   ];
 
-  const menuItems = [
-    { icon: HomeIcon, label: 'Нүүр хуудас', path: '/' },
-    { icon: UserCircle, label: 'Бидний тухай', path: '/about-us' },
-    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: '/news' },
-    { icon: Clock, label: 'Тоолуурын заалт', path: '/metercounter' },
-    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: '/payment-info' },
-    { icon: MessageCircle, label: 'Санал хүсэлт', path: '/feedback' },
-    { icon: HelpCircle, label: 'Үйлчилгээ', path: '/services' }
+  // Admin menu items
+  const adminMenuItems = [
+    { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
+    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment` },
+    { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
+    { icon: MessageCircle, label: 'Санал хүсэлт', path: `${basePath}/feedback` },
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/service` },
+    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `${basePath}/news` },
+    { icon: Users, label: 'Хэрэглэгчид', path: `${basePath}/users` },
+    { icon: Settings, label: 'Тохиргоо', path: `${basePath}/settings` }
   ];
+
+  // User menu items
+  const userMenuItems = [
+    { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
+    { icon: UserCircle, label: 'Бидний тухай', path: `${basePath}/about-us` },
+    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `${basePath}/news` },
+    { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
+    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment-info` },
+    { icon: MessageCircle, label: 'Санал хүсэлт', path: `${basePath}/feedback` },
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/services` }
+  ];
+
+  // Select which menu items to use based on route
+  const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
   // Handle search input changes
   const handleSearchChange = (e) => {
@@ -85,7 +120,7 @@ const SidebarLayout = ({ children }) => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('token');
     localStorage.removeItem('userData');
     navigate('/signin');
   };
@@ -116,7 +151,9 @@ const SidebarLayout = ({ children }) => {
           {/* Logo - Now clickable to toggle sidebar */}
           <div className="p-4 mb-6 flex items-center justify-center cursor-pointer" onClick={toggleSidebar}>
             {isSidebarOpen ? (
-              <h2 className="text-xl font-bold text-blue-600 whitespace-nowrap">Диплом</h2>
+              <h2 className="text-xl font-bold text-blue-600 whitespace-nowrap">
+                {isAdmin ? 'Админ' : 'Диплом'}
+              </h2>
             ) : (
               <div className="flex items-center justify-center">
                 <Droplet className="w-8 h-8 text-blue-600" />
@@ -177,7 +214,9 @@ const SidebarLayout = ({ children }) => {
           <div className="p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center cursor-pointer" onClick={toggleMobileSidebar}>
               <Droplet className="w-6 h-6 text-blue-600 mr-2" />
-              <h2 className="text-xl font-bold text-blue-600">Диплом</h2>
+              <h2 className="text-xl font-bold text-blue-600">
+                {isAdmin ? 'Админ' : 'Диплом'}
+              </h2>
             </div>
             <button 
               onClick={toggleMobileSidebar}
@@ -277,11 +316,16 @@ const SidebarLayout = ({ children }) => {
               </button>
               
               {/* Profile */}
-              <button onClick={() => navigate('/profile')} className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-200">
+              <button 
+                onClick={() => navigate(isAdmin ? `${basePath}/settings` : `${basePath}/profile`)} 
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
+              >
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center transition-colors duration-200">
                   <UserCircle className="h-5 w-5 text-blue-600" />
                 </div>
-                <span className="font-medium hidden sm:inline">Профайл</span>
+                <span className="font-medium hidden sm:inline">
+                  {isAdmin ? 'Тохиргоо' : 'Профайл'}
+                </span>
               </button>
             </div>
           </div>

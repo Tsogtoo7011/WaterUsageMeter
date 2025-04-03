@@ -1,20 +1,27 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import SignIn from './components/SignIn';
-import SignUp from './components/SignUp';
-import Home from './components/Home';
-import AboutUs from './components/About';
-import News from './components/News';
-import MeterCounter from './components/MeterCounter'; 
-import PaymentInfo from './components/Payment';
-import Feedback from './components/Feedback';
-import Services from './components/Service';
+import SignIn from './components/Public/SignIn';
+import SignUp from './components/Public/SignUp';
+import VerifyEmail from './components/Public/VerifyEmail';
+import AdminFeedback from './components/Admin/AdminFeedback';
+import AdminHome from './components/Admin/AdminHome';
+import AdminMeterCounter from './components/Admin/AdminMeterCounter';
+import AdminNews from './components/Admin/AdminNews';
+import AdminPayment from './components/Admin/AdminPayment';
+import AdminService from './components/Admin/AdminService';
+import Home from './components/User/Home';
+import AboutUs from './components/User/About';
+import News from './components/User/News';
+import MeterCounter from './components/User/MeterCounter'; 
+import PaymentInfo from './components/User/Payment';
+import Feedback from './components/User/Feedback';
+import Services from './components/User/Service';
 import SidebarLayout from './Layout/SideBarLayout';
-import MeterCounterDetail from './components/MeterCounterDetails';
-import MeterCounterImport from './components/MeterCounterImport';
-import Profile from './components/Profile';
-import Apartment from './components/Apartment';
-import VerifyEmail from './components/VerifyEmail';
+import MeterCounterDetail from './components/User/MeterCounterDetails';
+import MeterCounterImport from './components/User/MeterCounterImport';
+import Profile from './components/User/Profile';
+import Apartment from './components/User/Apartment';
+
 
 // Protected Route Component
 const PrivateRoute = ({ children }) => {
@@ -40,20 +47,28 @@ function App() {
         {/* Public Routes */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/VerifyEmail" element={<VerifyEmail/>} />
+        <Route path="/verify-email" element={<VerifyEmail/>} />
 
-        {/* Protected Routes with Sidebar Layout */}
-        <Route path="/" element={<MainLayout><Home /></MainLayout>} />
-        <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
-        <Route path="/profile/apartment" element={<MainLayout><Apartment /></MainLayout>} />
-        <Route path="/metercounter/details" element={<MainLayout><MeterCounterDetail /></MainLayout>} />
-        <Route path="/metercounter/import" element={<MainLayout><MeterCounterImport /></MainLayout>} />
-        <Route path="/about-us" element={<MainLayout><AboutUs /></MainLayout>} />
-        <Route path="/news" element={<MainLayout><News /></MainLayout>} />
-        <Route path="/metercounter" element={<MainLayout><MeterCounter /></MainLayout>} />
-        <Route path="/payment-info" element={<MainLayout><PaymentInfo /></MainLayout>} />
-        <Route path="/feedback" element={<MainLayout><Feedback /></MainLayout>} />
-        <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
+        {/* Admin Routes */}
+        <Route path="/admin/" element={<MainLayout><AdminHome /></MainLayout>} />
+        <Route path="/admin/payment" element={<MainLayout><AdminPayment/></MainLayout>} />
+        <Route path="/admin/metercounter" element={<MainLayout><AdminMeterCounter/></MainLayout>} />
+        <Route path="/admin/feedback" element={<MainLayout><AdminFeedback/></MainLayout>} />
+        <Route path="/admin/service" element={<MainLayout><AdminService/></MainLayout>} />
+        <Route path="/admin/news" element={<MainLayout><AdminNews/></MainLayout>} />
+        
+        {/* User Routes */}
+        <Route path="/user/" element={<MainLayout><Home /></MainLayout>} />
+        <Route path="/user/profile" element={<MainLayout><Profile /></MainLayout>} />
+        <Route path="/user/profile/apartment" element={<MainLayout><Apartment /></MainLayout>} />
+        <Route path="/user/metercounter/details" element={<MainLayout><MeterCounterDetail /></MainLayout>} />
+        <Route path="/user/metercounter/import" element={<MainLayout><MeterCounterImport /></MainLayout>} />
+        <Route path="/user/about-us" element={<MainLayout><AboutUs /></MainLayout>} />
+        <Route path="/user/news" element={<MainLayout><News /></MainLayout>} />
+        <Route path="/user/metercounter" element={<MainLayout><MeterCounter /></MainLayout>} />
+        <Route path="/user/payment-info" element={<MainLayout><PaymentInfo /></MainLayout>} />
+        <Route path="/user/feedback" element={<MainLayout><Feedback /></MainLayout>} />
+        <Route path="/user/services" element={<MainLayout><Services /></MainLayout>} />
 
         {/* Redirects */}
         <Route path="/home" element={<Navigate to="/" replace />} />
