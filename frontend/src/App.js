@@ -9,6 +9,7 @@ import AdminMeterCounter from './components/Admin/AdminMeterCounter';
 import AdminNews from './components/Admin/AdminNews';
 import AdminPayment from './components/Admin/AdminPayment';
 import AdminService from './components/Admin/AdminService';
+import AdminProfile from './components/Admin/AdminProfile';
 import Home from './components/User/Home';
 import AboutUs from './components/User/About';
 import News from './components/User/News';
@@ -56,6 +57,7 @@ function App() {
         <Route path="/admin/feedback" element={<MainLayout><AdminFeedback/></MainLayout>} />
         <Route path="/admin/service" element={<MainLayout><AdminService/></MainLayout>} />
         <Route path="/admin/news" element={<MainLayout><AdminNews/></MainLayout>} />
+        <Route path="/admin/profile" element={<MainLayout><AdminProfile/></MainLayout>} />
         
         {/* User Routes */}
         <Route path="/user/" element={<MainLayout><Home /></MainLayout>} />

@@ -41,7 +41,8 @@ const SidebarLayout = ({ children }) => {
     { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'AdminMeterCounter' },
     { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'AdminFeedback' },
     { path: `${basePath}/service`, label: 'Үйлчилгээ', component: 'AdminService' },
-    { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'AdminNews' }
+    { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'AdminNews' },
+    { path: `${basePath}/profile`, label: 'Профайл', component: 'AdminProfile' }
   ] : [
     { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'Home' },
     { path: `${basePath}/profile`, label: 'Профайл', component: 'Profile' },
@@ -62,9 +63,7 @@ const SidebarLayout = ({ children }) => {
     { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
     { icon: MessageCircle, label: 'Санал хүсэлт', path: `${basePath}/feedback` },
     { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/service` },
-    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `${basePath}/news` },
-    { icon: Users, label: 'Хэрэглэгчид', path: `${basePath}/users` },
-    { icon: Settings, label: 'Тохиргоо', path: `${basePath}/settings` }
+    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `${basePath}/news` }
   ];
 
   const userMenuItems = [
@@ -124,7 +123,6 @@ const SidebarLayout = ({ children }) => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
-  // Navigate to route and clear search
   const navigateToRoute = (path) => {
     navigate(path);
     setSearchQuery('');
@@ -134,7 +132,6 @@ const SidebarLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Desktop Sidebar */}
       <div 
         className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 shadow-sm fixed h-full transition-all duration-300 ease-in-out z-20`}
       >
@@ -158,6 +155,7 @@ const SidebarLayout = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                end={item.path === `${basePath}/`} // This ensures the home route only matches exactly
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
@@ -222,6 +220,7 @@ const SidebarLayout = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                end={item.path === `${basePath}/`} // Same fix for mobile menu
                 onClick={toggleMobileSidebar}
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
@@ -298,7 +297,7 @@ const SidebarLayout = ({ children }) => {
             {/* Empty div to push profile section to the right on mobile */}
             <div className="flex-1 md:hidden"></div>
 
-            {/* Notification and Profile */}
+            {/* Notification, Settings, and Profile */}
             <div className="flex items-center space-x-4">
               {/* Notification */}
               <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
@@ -306,23 +305,28 @@ const SidebarLayout = ({ children }) => {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               
-              {/* Profile */}
               <button 
-                onClick={() => navigate(isAdmin ? `${basePath}/settings` : `${basePath}/profile`)} 
+                onClick={() => navigate(`${basePath}/settings`)} 
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+              </button>
+              
+              <button 
+                onClick={() => navigate(isAdmin ? `${basePath}/profile` : `${basePath}/profile`)} 
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
               >
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center transition-colors duration-200">
                   <UserCircle className="h-5 w-5 text-blue-600" />
                 </div>
                 <span className="font-medium hidden sm:inline">
-                  {isAdmin ? 'Тохиргоо' : 'Профайл'}
+                  Профайл
                 </span>
               </button>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto p-0 bg-gray-50 border-x-0 border-t-0 border-b-0 border-r border-gray-200">
           {children}
         </main>

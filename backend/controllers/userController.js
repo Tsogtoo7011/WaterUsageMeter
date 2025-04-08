@@ -241,20 +241,22 @@
     try {
       const { username, password } = req.body;
   
+      // Find user by username
       const [users] = await pool.execute('SELECT * FROM UserAdmin WHERE Username = ?', [username]);
       if (users.length === 0) {
         return res.status(400).json({ message: 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна' });
       }
   
       const user = users[0];
-      const isPasswordValid = await bcrypt.compare(password, user.Password);
       
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(password, user.Password);
       if (!isPasswordValid) {
         return res.status(400).json({ message: 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна' });
       }
   
+      // Check if email is verified
       const isVerified = user.IsVerified === 1;
-      
       if (!isVerified) {
         return res.status(401).json({ 
           message: 'Таны имэйл хаяг баталгаажаагүй байна. Баталгаажуулах имэйлийг шалгана уу.',
@@ -263,26 +265,33 @@
         });
       }
   
-      // Create token with admin rights information
+      // Determine admin status from database only
+      const isAdmin = user.AdminRight === 1;
+  
+      // Create JWT token with user information
       const token = jwt.sign(
         { 
           id: user.UserId, 
           username: user.Username, 
           isVerified,
-          isAdmin: user.AdminRight === 1 
+          isAdmin // Based on database value only
         }, 
         process.env.JWT_SECRET, 
         { expiresIn: '24h' }
       );
       
-      // Set cookie
+      // Set secure HTTP-only cookie
       res.cookie('authToken', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', 
         maxAge: 24 * 60 * 60 * 1000, 
         sameSite: 'strict'
       });
+      
+      // Remove sensitive data before sending response
       const { Password, VerificationToken, TokenExpiry, ...userData } = user;
+      
+      // Send response
       res.json({ 
         user: userData, 
         token: token, 
