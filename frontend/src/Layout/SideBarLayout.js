@@ -29,15 +29,12 @@ const SidebarLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Determine if current route is admin or user route
   useEffect(() => {
     setIsAdmin(location.pathname.startsWith('/admin'));
   }, [location.pathname]);
 
-  // Generate base path depending on admin or user status
   const basePath = isAdmin ? '/admin' : '/user';
 
-  // Route definitions for search functionality
   const routes = isAdmin ? [
     { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'AdminHome' },
     { path: `${basePath}/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
@@ -59,7 +56,6 @@ const SidebarLayout = ({ children }) => {
     { path: `${basePath}/services`, label: 'Үйлчилгээ', component: 'Services' }
   ];
 
-  // Admin menu items
   const adminMenuItems = [
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
     { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment` },
@@ -71,7 +67,6 @@ const SidebarLayout = ({ children }) => {
     { icon: Settings, label: 'Тохиргоо', path: `${basePath}/settings` }
   ];
 
-  // User menu items
   const userMenuItems = [
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
     { icon: UserCircle, label: 'Бидний тухай', path: `${basePath}/about-us` },
@@ -82,10 +77,8 @@ const SidebarLayout = ({ children }) => {
     { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/services` }
   ];
 
-  // Select which menu items to use based on route
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
-  // Handle search input changes
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
@@ -95,7 +88,6 @@ const SidebarLayout = ({ children }) => {
       return;
     }
 
-    // Filter routes based on search query
     const filteredRoutes = routes.filter(route => 
       route.label.toLowerCase().includes(query.toLowerCase()) ||
       route.component.toLowerCase().includes(query.toLowerCase()) ||
@@ -105,7 +97,6 @@ const SidebarLayout = ({ children }) => {
     setSearchResults(filteredRoutes);
   };
 
-  // Handle clicking outside of search results
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -122,7 +113,7 @@ const SidebarLayout = ({ children }) => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
-    navigate('/signin');
+    navigate('/');
   };
 
   const toggleSidebar = () => {

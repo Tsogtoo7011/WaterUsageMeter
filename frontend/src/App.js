@@ -45,7 +45,7 @@ function App() {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route path="/signin" element={<SignIn />} />
+        <Route path="/" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/verify-email" element={<VerifyEmail/>} />
 
@@ -71,8 +71,6 @@ function App() {
         <Route path="/user/services" element={<MainLayout><Services /></MainLayout>} />
 
         {/* Redirects */}
-        <Route path="/home" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
