@@ -29,12 +29,14 @@ const SidebarLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Determine if the user is in admin context based on URL path
   useEffect(() => {
     setIsAdmin(location.pathname.startsWith('/admin'));
   }, [location.pathname]);
 
   const basePath = isAdmin ? '/admin' : '/user';
 
+  // Add shared routes to both admin and user routes
   const routes = isAdmin ? [
     { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'AdminHome' },
     { path: `${basePath}/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
@@ -42,10 +44,11 @@ const SidebarLayout = ({ children }) => {
     { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'AdminFeedback' },
     { path: `${basePath}/service`, label: 'Үйлчилгээ', component: 'AdminService' },
     { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'AdminNews' },
-    { path: `${basePath}/profile`, label: 'Профайл', component: 'AdminProfile' }
+    // Shared routes
+    { path: `/profile`, label: 'Профайл (Shared)', component: 'Profile' },
+    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' }
   ] : [
     { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'Home' },
-    { path: `${basePath}/profile`, label: 'Профайл', component: 'Profile' },
     { path: `${basePath}/profile/apartment`, label: 'Орон сууц', component: 'Apartment' },
     { path: `${basePath}/metercounter/details`, label: 'Тоолуурын дэлгэрэнгүй', component: 'MeterCounterDetail' },
     { path: `${basePath}/metercounter/import`, label: 'Тоолуур импортлох', component: 'MeterCounterImport' },
@@ -54,7 +57,10 @@ const SidebarLayout = ({ children }) => {
     { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
     { path: `${basePath}/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
     { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
-    { path: `${basePath}/services`, label: 'Үйлчилгээ', component: 'Services' }
+    { path: `${basePath}/services`, label: 'Үйлчилгээ', component: 'Services' },
+    // Shared routes
+    { path: `/profile`, label: 'Профайл (Shared)', component: 'Profile' },
+    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' }
   ];
 
   const adminMenuItems = [
@@ -128,6 +134,17 @@ const SidebarLayout = ({ children }) => {
     setSearchQuery('');
     setSearchResults([]);
     setIsSearchFocused(false);
+  };
+
+  // Modified function to handle profile navigation using shared route
+  const navigateToProfile = () => {
+    // We can use the shared route for profile
+    navigate('/profile');
+  };
+
+  // New function to handle settings navigation using shared route
+  const navigateToSettings = () => {
+    navigate('/settings');
   };
 
   return (
@@ -305,15 +322,17 @@ const SidebarLayout = ({ children }) => {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               
+              {/* Settings - Now using the shared route */}
               <button 
-                onClick={() => navigate(`${basePath}/settings`)} 
+                onClick={navigateToSettings} 
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
               >
                 <Settings className="w-5 h-5 text-gray-600" />
               </button>
               
+              {/* Profile - Now using the shared route */}
               <button 
-                onClick={() => navigate(isAdmin ? `${basePath}/profile` : `${basePath}/profile`)} 
+                onClick={navigateToProfile} 
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
               >
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center transition-colors duration-200">

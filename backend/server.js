@@ -31,11 +31,11 @@ const signupLimiter = rateLimit({
 });
 
 // CSRF protection
-const csrfProtection = csrf({ 
-  cookie: { 
-    httpOnly: true, 
-    sameSite: 'strict' 
-  } 
+const csrfProtection = csrf({
+  cookie: {
+    httpOnly: true,
+    sameSite: 'strict'
+  }
 });
 
 // Middleware
@@ -47,15 +47,16 @@ app.use(express.json());
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-// Routes with rate limits
+// Apply rate limits to specific endpoints
+// Note: These must come before mounting the routers
 app.use('/api/auth/signin', authLimiter);
 app.use('/api/auth/signup', signupLimiter);
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
 
-// CSRF protected routes
-app.use('/api/user', csrfProtection);
-app.use('/api/apartments', csrfProtection);
+// Auth routes (no CSRF needed for login/signup, but needed for other sensitive operations)
+app.use('/api/auth', authRoutes);
+
+// User routes with CSRF protection
+app.use('/api/user', csrfProtection, userRoutes);
 
 // CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
@@ -69,10 +70,21 @@ app.get('/', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // Handle CSRF errors specifically
+  if (err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({ 
+      message: 'CSRF токен хүчингүй байна. Хуудсыг дахин ачааллана уу.' 
+    });
+  }
+  
   console.error(err.stack);
-  res.status(500).send('Something broke!');
+  res.status(500).json({ 
+    message: 'Алдаа гарлаа, дараа дахин оролдоно уу' 
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+module.exports = app;

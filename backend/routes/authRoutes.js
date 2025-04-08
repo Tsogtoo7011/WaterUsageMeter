@@ -1,13 +1,19 @@
-// routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
+const authController = require('../controllers/authController');
+const verificationController = require('../controllers/verificationController');
+const passwordController = require('../controllers/passwordController');
 const validator = require('../middleware/validationMiddleware');
 
-// Auth routes
-router.post('/signup', validator.validateSignup, userController.signup);
-router.post('/signin', validator.validateSignin, userController.signin);
-router.get('/verify-email', userController.verifyEmail);
-router.post('/resend-verification', userController.resendVerification);
+// Authentication routes
+router.post('/signup', validator.validateSignup, authController.signup);
+router.post('/signin', validator.validateSignin, authController.signin);
 
+// Email verification routes
+router.get('/verify-email', verificationController.verifyEmail);
+router.post('/resend-verification', verificationController.resendVerification);
+
+// Password reset routes
+router.post('/forgot-password', passwordController.forgotPassword);
+router.post('/reset-password', passwordController.resetPassword);
 module.exports = router;

@@ -10,7 +10,8 @@ export function Profile() {
     Email: "",
     Firstname: "",
     Lastname: "",
-    Phonenumber: ""
+    Phonenumber: "",
+    AdminRight: 0 
   });
   const [loading, setLoading] = useState(true);
 
@@ -22,17 +23,31 @@ export function Profile() {
           throw new Error("No authentication token found");
         }
 
+        // Get user data from localStorage first
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
-          setUserData(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          setUserData(prev => ({
+            ...prev,
+            ...parsedUser,
+            AdminRight: parsedUser.AdminRight ?? prev.AdminRight // Preserve existing AdminRight
+          }));
+          setLoading(false);
         }
 
+        // Then update from API
         const response = await axios.get("http://localhost:5000/api/user/profile", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
-        setUserData(response.data);
-        localStorage.setItem('user', JSON.stringify(response.data));
+
+        if (response.data) {
+          setUserData(prev => ({
+            ...prev,
+            ...response.data,
+            AdminRight: response.data.AdminRight ?? prev.AdminRight // Preserve existing AdminRight
+          }));
+          localStorage.setItem('user', JSON.stringify(response.data));
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
       } finally {
@@ -90,12 +105,14 @@ export function Profile() {
             🔑 Нууцлал
           </button>
         </div>
-        <button 
-          onClick={() => navigate('/user/Profile/Apartment')} 
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-        >
-          Орон сууц солих
-        </button>
+        {userData.AdminRight === 0 && (
+          <button 
+            onClick={() => navigate('/user/Profile/Apartment')} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+          >
+            Орон сууц нэмэх
+          </button>
+        )}
       </div>
 
       {activeTab === "profile" && (

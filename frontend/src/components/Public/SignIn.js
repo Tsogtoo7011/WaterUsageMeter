@@ -44,7 +44,6 @@ function SignIn() {
         password: formData.password
       });
 
-      // Handle "Remember Me" functionality
       if (formData.rememberMe) {
         localStorage.setItem('rememberedUsername', formData.username);
       } else {
@@ -54,7 +53,6 @@ function SignIn() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
-      // Redirect based on admin rights returned from server
       if (response.data.user.AdminRight === 1) {
         navigate('/admin/');
       } else {
@@ -81,7 +79,7 @@ function SignIn() {
 
   return (
     <div className="min-h-screen flex relative">
-      {/* Background image for entire left side */}
+      {/* Background image*/}
       <div 
         className="absolute top-0 left-0 w-1/2 h-full"
         style={{
@@ -90,7 +88,7 @@ function SignIn() {
           backgroundPosition: 'center',
         }}
       >
-        {/* Darker overlay for better text visibility */}
+        {/* Darker overlay */}
         <div className="absolute inset-0 bg-black opacity-40"></div>
       </div>
       
