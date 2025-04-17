@@ -18,6 +18,7 @@ function SignUp() {
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -87,6 +88,7 @@ function SignUp() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
+    setSuccessMessage('');
     
     if (!validateForm()) return;
     
@@ -103,8 +105,28 @@ function SignUp() {
         adminRight: 0
       });
       
+      // Store token if needed
       localStorage.setItem('token', response.data.token);
-      navigate('/VerifyEmail');
+      
+      // Display success message
+      setSuccessMessage('Бүртгэл амжилттай үүслээ! Нэвтрэх хуудас руу чиглүүлж байна...');
+      
+      // Reset form
+      setFormData({
+        username: '',
+        password: '',
+        confirmPassword: '',
+        firstname: '',
+        lastname: '',
+        phonenumber: '',
+        email: ''
+      });
+      
+      // Navigate to login page after delay
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+      
     } catch (err) {
       setServerError(err.response?.data?.message || 'Бүртгэл амжилтгүй боллоо. Дахин оролдоно уу.');
       console.error(err);
@@ -136,6 +158,12 @@ function SignUp() {
             {serverError && (
               <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
                 {serverError}
+              </div>
+            )}
+            
+            {successMessage && (
+              <div className="mb-6 p-4 bg-green-50 text-green-700 rounded-lg border border-green-200">
+                {successMessage}
               </div>
             )}
             

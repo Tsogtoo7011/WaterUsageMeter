@@ -38,35 +38,56 @@ function SignIn() {
     setIsSubmitting(true);
     setError('');
 
+    // Validate inputs before submission
+    if (!formData.username.trim() || !formData.password.trim()) {
+      setError('Хэрэглэгчийн нэр болон нууц үгээ оруулна уу');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await axios.post('http://localhost:5000/api/auth/signin', {
-        username: formData.username,
-        password: formData.password
+        username: formData.username.trim(),
+        password: formData.password.trim()
+      }, {
+        withCredentials: true  // This is important for sending/receiving cookies
       });
 
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberedUsername', formData.username);
-      } else {
-        localStorage.removeItem('rememberedUsername');
-      }
+      if (response.data) {
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberedUsername', formData.username);
+        } else {
+          localStorage.removeItem('rememberedUsername');
+        }
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      if (response.data.user.AdminRight === 1) {
-        navigate('/admin/');
-      } else {
-        navigate('/user/');
+        // Store only accessToken since the refreshToken is handled by cookies
+        localStorage.setItem('token', response.data.accessToken);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Check user role and navigate
+        if (response.data.user.AdminRight === 1) {
+          navigate('/admin/');
+        } else {
+          navigate('/user/');
+        }
       }
     } catch (err) {
       let errorMessage = 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна';
+      
       if (err.response) {
-        errorMessage = err.response.data?.message || errorMessage;
+        if (err.response.status === 429) {
+          errorMessage = 'Хэт олон оролдлого хийгдсэн. Түр хүлээгээд дахин оролдоно уу.';
+        } else if (err.response.status === 400) {
+          errorMessage = err.response.data?.message || 'Хүсэлт буруу байна. Оруулсан мэдээллээ шалгана уу.';
+        } else {
+          errorMessage = err.response.data?.message || errorMessage;
+        }
       } else if (err.request) {
         errorMessage = 'Серверээс хариу ирсэнгүй. Дахин оролдоно уу';
       } else {
         errorMessage = err.message;
       }
+      
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);

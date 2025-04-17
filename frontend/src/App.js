@@ -1,27 +1,26 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import SignIn from './components/Public/SignIn';
-import SignUp from './components/Public/SignUp';
-import VerifyEmail from './components/Public/VerifyEmail';
-import Settings from './components/Public/Settings';
-import AdminFeedback from './components/Admin/AdminFeedback';
-import AdminHome from './components/Admin/AdminHome';
-import AdminMeterCounter from './components/Admin/AdminMeterCounter';
-import AdminNews from './components/Admin/AdminNews';
-import AdminPayment from './components/Admin/AdminPayment';
-import AdminService from './components/Admin/AdminService';
-import Home from './components/User/Home';
-import AboutUs from './components/User/About';
-import News from './components/User/News';
-import MeterCounter from './components/User/MeterCounter';
-import PaymentInfo from './components/User/Payment';
-import Feedback from './components/User/Feedback';
-import Services from './components/User/Service';
+import SignIn from './pages/Public/SignIn';
+import SignUp from './pages/Public/SignUp';
+import VerifyEmail from './pages/Public/VerifyEmail';
+import Settings from './pages/Public/Settings';
+import AdminFeedback from './pages/Admin/AdminFeedback';
+import AdminMeterCounter from './pages/Admin/AdminMeterCounter';
+import AdminNews from './pages/Admin/AdminNews';
+import AdminPayment from './pages/Admin/AdminPayment';
+import AdminService from './pages/Admin/AdminService';
+import AboutUs from './pages/User/About';
+import News from './pages/User/News';
+import MeterCounter from './pages/User/MeterCounter';
+import PaymentInfo from './pages/User/Payment';
+import Feedback from './pages/User/Feedback';
+import Services from './pages/User/Service';
 import SidebarLayout from './Layout/SideBarLayout';
-import MeterCounterDetail from './components/User/MeterCounterDetails';
-import MeterCounterImport from './components/User/MeterCounterImport';
-import Profile from './components/Public/Profile';
-import Apartment from './components/User/Apartment';
+import MeterCounterDetail from './pages/User/MeterCounterDetails';
+import MeterCounterImport from './pages/User/MeterCounterImport';
+import Profile from './pages/Public/Profile';
+import Apartment from './pages/User/Apartment';
+import Home from './pages/Public/Home';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -58,7 +57,6 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<SignIn />} />
-        <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/verify-email" element={<VerifyEmail/>} />
         
@@ -74,8 +72,13 @@ function App() {
           </SharedLayout>
         } />
 
+        <Route path="/Home" element={
+          <SharedLayout>
+            <Home />
+          </SharedLayout>
+        } />
+
         {/* Admin Routes */}
-        <Route path="/admin/" element={<MainLayout><AdminHome /></MainLayout>} />
         <Route path="/admin/payment" element={<MainLayout><AdminPayment/></MainLayout>} />
         <Route path="/admin/metercounter" element={<MainLayout><AdminMeterCounter/></MainLayout>} />
         <Route path="/admin/feedback" element={<MainLayout><AdminFeedback/></MainLayout>} />
@@ -83,7 +86,6 @@ function App() {
         <Route path="/admin/news" element={<MainLayout><AdminNews/></MainLayout>} />
         
         {/* User Routes */}
-        <Route path="/user/" element={<MainLayout><Home /></MainLayout>} />
         <Route path="/user/profile/apartment" element={<MainLayout><Apartment /></MainLayout>} />
         <Route path="/user/metercounter/details" element={<MainLayout><MeterCounterDetail /></MainLayout>} />
         <Route path="/user/metercounter/import" element={<MainLayout><MeterCounterImport /></MainLayout>} />
@@ -96,7 +98,7 @@ function App() {
         
         <Route path="*" element={
           <PrivateRoute>
-            <Navigate to="/user/" replace />
+            <Navigate to="/home" replace />
           </PrivateRoute>
         } />
       </Routes>

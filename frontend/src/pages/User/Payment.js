@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
+import VerificationReminder from '../../components/verificationReminder';
 
 const locations = {
   "54 - 22": { id: "16100183", address: "СХД 18 хороо 54 - 22", payment: 45206.25, hotWater: 3, coldWater: 5, other: 12000 },
@@ -9,18 +10,36 @@ const locations = {
 
 export function Payment() {
   const [selectedLocation, setSelectedLocation] = useState("54 - 22");
+  const [user, setUser] = useState(null);
   const data = locations[selectedLocation];
   const navigate = useNavigate();
   
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
+  const handleVerificationSuccess = () => {
+    setUser(prev => ({
+      ...prev,
+      IsVerified: true
+    }));
+  };
+  
   return (
     <div className="p-6 w-full">
       <h1 className="text-xl font-bold mb-4">Төлбөрийн мэдээлэл</h1>
       
+      {user && !user.IsVerified && (
+        <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
+      )}
+      
       <div className="flex items-center space-x-2 mb-4">
         {Object.keys(locations).map((location) => (
-          <button 
-            key={location} 
+          <button
+            key={location}
             className={`border px-4 py-2 rounded-md ${selectedLocation === location ? "bg-blue-600 text-white" : ""}`}
             onClick={() => setSelectedLocation(location)}
           >

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
+import VerificationReminder from '../../components/verificationReminder';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,10 +27,26 @@ ChartJS.register(
 export function MeterCounter() {
   const navigate = useNavigate();
   const [selectedMeter, setSelectedMeter] = useState('54-22');
+  const [user, setUser] = useState(null);
+  
   const meterData = {
     '54-22': { hot: 3, cold: 5, bathroom: [503, 402], kitchen: [503, 402], toilet: [503], cost: 15000 },
     '54-8': { hot: 2, cold: 4, bathroom: [450, 390], kitchen: [460, 400], toilet: [480], cost: 12000 },
     '54-7': { hot: 4, cold: 6, bathroom: [520, 410], kitchen: [530, 420], toilet: [510], cost: 18000 },
+  };
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleVerificationSuccess = () => {
+    setUser(prev => ({
+      ...prev,
+      IsVerified: true
+    }));
   };
 
   const { hot, cold, bathroom, kitchen, toilet, cost } = meterData[selectedMeter];
@@ -57,6 +74,12 @@ export function MeterCounter() {
 
   return (
     <div className="p-6 bg-white min-h-screen flex flex-col items-center">
+      {user && !user.IsVerified && (
+        <div className="w-full max-w-3xl mb-6">
+          <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
+        </div>
+      )}
+      
       <h1 className="text-3xl font-bold mb-6">Усны тоолуур</h1>
       
       <div className="flex space-x-4 mb-4">

@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -58,6 +59,8 @@ app.use('/api/auth', authRoutes);
 // User routes with CSRF protection
 app.use('/api/user', csrfProtection, userRoutes);
 
+app.use('/api/feedback', feedbackRoutes);
+
 // CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
@@ -72,14 +75,14 @@ app.get('/', (req, res) => {
 app.use((err, req, res, next) => {
   // Handle CSRF errors specifically
   if (err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ 
-      message: 'CSRF токен хүчингүй байна. Хуудсыг дахин ачааллана уу.' 
+    return res.status(403).json({
+      message: 'CSRF токен хүчингүй байна. Хуудсыг дахин ачааллана уу.'
     });
   }
   
   console.error(err.stack);
-  res.status(500).json({ 
-    message: 'Алдаа гарлаа, дараа дахин оролдоно уу' 
+  res.status(500).json({
+    message: 'Алдаа гарлаа, дараа дахин оролдоно уу'
   });
 });
 

@@ -1,27 +1,46 @@
 const jwt = require('jsonwebtoken');
-const { handleError } = require('../utils/errorHandler');
 
-exports.authenticate = async (req, res, next) => {
+exports.authenticate = (req, res, next) => {
   try {
-    // Get token from different possible sources
-    const token = 
-      req.cookies.authToken || 
-      (req.headers.authorization && req.headers.authorization.startsWith('Bearer') 
-        ? req.headers.authorization.split(' ')[1] 
-        : null) ||
-      req.query.token; // Also check query parameters
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.accessToken;
     
     if (!token) {
-      return res.status(401).json({ message: 'Нэвтрэх шаардлагатай' });
+      return res.status(401).json({
+        message: 'Нэвтрэх эрх байхгүй байна'
+      });
     }
     
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    req.userData = {
+      userId: decodedToken.id,
+      username: decodedToken.username,
+      isVerified: decodedToken.isVerified,
+      isAdmin: decodedToken.isAdmin
+    };
+    
     next();
   } catch (error) {
-    // If token verification fails
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Хүчингүй эсвэл хугацаа дууссан токен' });
-    }
-    handleError(res, error, 'Authentication');
+    return res.status(401).json({
+      message: 'Нэвтрэх эрх байхгүй байна'
+    });
   }
+};
+
+exports.adminOnly = (req, res, next) => {
+  if (!req.userData.isAdmin) {
+    return res.status(403).json({
+      message: 'Админ эрх байхгүй байна'
+    });
+  }
+  next();
+};
+
+exports.verifiedOnly = (req, res, next) => {
+  if (!req.userData.isVerified) {
+    return res.status(403).json({
+      message: 'Имэйл хаягаа баталгаажуулна уу',
+      verified: false
+    });
+  }
+  next();
 };
