@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home as HomeIcon,
@@ -11,32 +11,25 @@ import {
   LogOut,
   Menu,
   X,
-  Search,
   Bell,
   Droplet,
-  Users,
   Settings,
 } from 'lucide-react';
+import SearchBar from '../components/searchBar'; 
 
 const SidebarLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const searchRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Determine if the user is in admin context based on URL path
   useEffect(() => {
     setIsAdmin(location.pathname.startsWith('/admin'));
   }, [location.pathname]);
 
   const basePath = isAdmin ? '/admin' : '/user';
 
-  // Add shared routes to both admin and user routes
   const routes = isAdmin ? [
     { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'AdminHome' },
     { path: `${basePath}/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
@@ -46,7 +39,8 @@ const SidebarLayout = ({ children }) => {
     { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'AdminNews' },
     // Shared routes
     { path: `/profile`, label: 'Профайл (Shared)', component: 'Profile' },
-    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' }
+    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' },
+    { path: `/Home`, label: 'Нүүр хуудас (Shared)', component: 'Home' }
   ] : [
     { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'Home' },
     { path: `${basePath}/profile/apartment`, label: 'Орон сууц', component: 'Apartment' },
@@ -57,10 +51,12 @@ const SidebarLayout = ({ children }) => {
     { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
     { path: `${basePath}/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
     { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
+    { path: `${basePath}/feedback/create`, label: 'Санал хүсэлт явуулах', component: 'FeedbackCreate' },
     { path: `${basePath}/services`, label: 'Үйлчилгээ', component: 'Services' },
     // Shared routes
     { path: `/profile`, label: 'Профайл (Shared)', component: 'Profile' },
-    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' }
+    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' },
+    { path: `/Home`, label: 'Нүүр хуудас (Shared)', component: 'Home' }
   ];
 
   const adminMenuItems = [
@@ -84,37 +80,6 @@ const SidebarLayout = ({ children }) => {
 
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-
-    if (query.trim() === '') {
-      setSearchResults([]);
-      return;
-    }
-
-    const filteredRoutes = routes.filter(route => 
-      route.label.toLowerCase().includes(query.toLowerCase()) ||
-      route.component.toLowerCase().includes(query.toLowerCase()) ||
-      route.path.toLowerCase().includes(query.toLowerCase())
-    );
-
-    setSearchResults(filteredRoutes);
-  };
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsSearchFocused(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
@@ -127,13 +92,6 @@ const SidebarLayout = ({ children }) => {
 
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
-  };
-
-  const navigateToRoute = (path) => {
-    navigate(path);
-    setSearchQuery('');
-    setSearchResults([]);
-    setIsSearchFocused(false);
   };
 
   // Modified function to handle profile navigation using shared route
@@ -280,36 +238,8 @@ const SidebarLayout = ({ children }) => {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Search Bar with Dropdown Results */}
-            <div ref={searchRef} className="hidden md:block relative max-w-md w-full mx-4">
-              <div className="relative">
-                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
-                <input 
-                  type="text" 
-                  placeholder="Хайх..." 
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onFocus={() => setIsSearchFocused(true)}
-                  className="pl-10 pr-4 py-2 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              {/* Search Results Dropdown */}
-              {isSearchFocused && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-sm max-h-64 overflow-y-auto z-50">
-                  {searchResults.map((route) => (
-                    <div 
-                      key={route.path}
-                      onClick={() => navigateToRoute(route.path)}
-                      className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                    >
-                      <div className="font-medium text-gray-800">{route.label}</div>
-                      <div className="text-sm text-gray-500">{route.path}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Improved SearchBar Component */}
+            <SearchBar routes={routes} isAdmin={isAdmin} />
 
             {/* Empty div to push profile section to the right on mobile */}
             <div className="flex-1 md:hidden"></div>

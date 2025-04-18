@@ -12,7 +12,6 @@ import AboutUs from './pages/User/About';
 import News from './pages/User/News';
 import MeterCounter from './pages/User/MeterCounter';
 import PaymentInfo from './pages/User/Payment';
-import Feedback from './pages/User/Feedback';
 import Services from './pages/User/Service';
 import SidebarLayout from './Layout/SideBarLayout';
 import MeterCounterDetail from './pages/User/MeterCounterDetails';
@@ -20,6 +19,9 @@ import MeterCounterImport from './pages/User/MeterCounterImport';
 import Profile from './pages/Public/Profile';
 import Apartment from './pages/User/Apartment';
 import Home from './pages/Public/Home';
+import Feedback from './pages/User/Feedback';
+import FeedbackCreate from './pages/User/FeedbackCreate';
+import FeedbackDetail from './pages/User/FeedbackDetail';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -57,24 +59,12 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        
-        <Route path="/settings" element={
-          <SharedLayout>
-            <Settings />
-          </SharedLayout>
-        } />
-        
-        <Route path="/profile" element={
-          <SharedLayout>
-            <Profile />
-          </SharedLayout>
-        } />
-
-        <Route path="/Home" element={
-          <SharedLayout>
-            <Home />
-          </SharedLayout>
-        } />
+        <Route path="/settings" element={<SharedLayout><Settings /> </SharedLayout>} />
+        <Route path="/profile" element={<SharedLayout> <Profile /> </SharedLayout> } />
+        <Route path="/Home" element={<SharedLayout>  <Home /> </SharedLayout>} />
+        <Route path="/feedback" element={<SharedLayout>  <Feedback/> </SharedLayout>} />
+        <Route path="/feedback/create" element={<SharedLayout>  <FeedbackCreate/> </SharedLayout>} />
+        <Route path="/feedback/:id" element={<SharedLayout>  <FeedbackDetail/> </SharedLayout>} />
 
         {/* Admin Routes */}
         <Route path="/admin/payment" element={<MainLayout><AdminPayment/></MainLayout>} />
@@ -92,6 +82,8 @@ function App() {
         <Route path="/user/metercounter" element={<MainLayout><MeterCounter /></MainLayout>} />
         <Route path="/user/payment-info" element={<MainLayout><PaymentInfo /></MainLayout>} />
         <Route path="/user/feedback" element={<MainLayout><Feedback /></MainLayout>} />
+        <Route path="/user/feedback/create" element={<MainLayout><FeedbackCreate/></MainLayout>} />
+        <Route path="/user/feedback/:id" element={<MainLayout><FeedbackDetail/></MainLayout>} />
         <Route path="/user/services" element={<MainLayout><Services /></MainLayout>} />
         
         <Route path="*" element={
