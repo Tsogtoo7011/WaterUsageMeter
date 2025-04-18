@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import SignIn from './pages/Public/SignIn';
 import SignUp from './pages/Public/SignUp';
 import Settings from './pages/Public/Settings';
-import AdminFeedback from './pages/Admin/AdminFeedback';
 import AdminMeterCounter from './pages/Admin/AdminMeterCounter';
 import AdminNews from './pages/Admin/AdminNews';
 import AdminPayment from './pages/Admin/AdminPayment';
@@ -69,7 +68,6 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin/payment" element={<MainLayout><AdminPayment/></MainLayout>} />
         <Route path="/admin/metercounter" element={<MainLayout><AdminMeterCounter/></MainLayout>} />
-        <Route path="/admin/feedback" element={<MainLayout><AdminFeedback/></MainLayout>} />
         <Route path="/admin/service" element={<MainLayout><AdminService/></MainLayout>} />
         <Route path="/admin/news" element={<MainLayout><AdminNews/></MainLayout>} />
         

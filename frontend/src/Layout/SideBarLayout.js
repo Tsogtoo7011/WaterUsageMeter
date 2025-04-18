@@ -28,6 +28,15 @@ const SidebarLayout = ({ children }) => {
     setIsAdmin(location.pathname.startsWith('/admin'));
   }, [location.pathname]);
 
+  // Remember sidebar state in localStorage
+  useEffect(() => {
+    // Load the saved sidebar state when component mounts
+    const savedSidebarState = localStorage.getItem('sidebarState');
+    if (savedSidebarState !== null) {
+      setIsSidebarOpen(savedSidebarState === 'true');
+    }
+  }, []);
+
   const basePath = isAdmin ? '/admin' : '/user';
 
   const routes = isAdmin ? [
@@ -87,20 +96,20 @@ const SidebarLayout = ({ children }) => {
   };
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    const newState = !isSidebarOpen;
+    setIsSidebarOpen(newState);
+    // Save the state to localStorage
+    localStorage.setItem('sidebarState', newState.toString());
   };
 
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
-  // Modified function to handle profile navigation using shared route
   const navigateToProfile = () => {
-    // We can use the shared route for profile
     navigate('/profile');
   };
 
-  // New function to handle settings navigation using shared route
   const navigateToSettings = () => {
     navigate('/settings');
   };
@@ -138,6 +147,7 @@ const SidebarLayout = ({ children }) => {
                       : 'hover:bg-gray-100 text-gray-700'
                   }`
                 }
+                // Important: Don't toggle the sidebar here!
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
                 {isSidebarOpen && (
@@ -195,8 +205,8 @@ const SidebarLayout = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === `${basePath}/`} // Same fix for mobile menu
-                onClick={toggleMobileSidebar}
+                end={item.path === `${basePath}/`}
+                onClick={toggleMobileSidebar} // This is fine for mobile as we want to close the mobile menu after clicking
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
@@ -243,24 +253,19 @@ const SidebarLayout = ({ children }) => {
 
             {/* Empty div to push profile section to the right on mobile */}
             <div className="flex-1 md:hidden"></div>
-
-            {/* Notification, Settings, and Profile */}
             <div className="flex items-center space-x-4">
-              {/* Notification */}
               <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
                 <Bell className="w-5 h-5 text-gray-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              
-              {/* Settings - Now using the shared route */}
+      
               <button 
                 onClick={navigateToSettings} 
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
               >
                 <Settings className="w-5 h-5 text-gray-600" />
               </button>
-              
-              {/* Profile - Now using the shared route */}
+            
               <button 
                 onClick={navigateToProfile} 
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
