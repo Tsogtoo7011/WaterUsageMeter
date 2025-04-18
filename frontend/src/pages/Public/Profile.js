@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import api from "../../utils/api"; 
+import VerificationReminder from "../../components/verificationReminder"; 
 
 export function Profile() {
   const navigate = useNavigate();
@@ -15,8 +16,7 @@ export function Profile() {
     IsVerified: false
   });
   const [loading, setLoading] = useState(true);
-  const [verificationStatus, setVerificationStatus] = useState(null);
-
+  
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -79,19 +79,17 @@ export function Profile() {
     }
   };
 
-  const requestEmailVerification = async () => {
-    try {
-      setVerificationStatus('pending');
-      
-      const response = await api.post("/auth/verify-email-request", {});
-      
-      setVerificationStatus('sent');
-      alert(response.data.message || "Баталгаажуулах имэйл илгээгдлээ. Та имэйлээ шалгана уу.");
-    } catch (error) {
-      console.error("Error requesting email verification:", error);
-      setVerificationStatus('error');
-      alert(error.response?.data?.message || "Баталгаажуулах имэйл илгээхэд алдаа гарлаа.");
-    }
+  const handleVerifySuccess = () => {
+    setUserData(prev => ({
+      ...prev,
+      IsVerified: true
+    }));
+    
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    localStorage.setItem('user', JSON.stringify({
+      ...storedUser,
+      IsVerified: true
+    }));
   };
 
   if (loading) {
@@ -123,20 +121,32 @@ export function Profile() {
             Орон сууц нэмэх
           </button>
         )}
-      </div>
+      </div> 
+      
+      {!userData.IsVerified && <VerificationReminder user={userData} onVerify={handleVerifySuccess} />}
 
       {activeTab === "profile" && (
         <>
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-600">Хэрэглэгчийн нэр</label>
-              <input 
-                type="text" 
-                name="Username"
-                value={userData.Username || ""} 
-                disabled
-                className="w-full border p-2 rounded-md bg-gray-100" 
-              />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  name="Username"
+                  value={userData.Username || ""} 
+                  disabled
+                  className="w-full border p-2 rounded-md bg-gray-100" 
+                />
+                {userData.IsVerified && (
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-600 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Баталгаажсан
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-gray-600">Овог</label>
@@ -187,48 +197,6 @@ export function Profile() {
               </button>
             </div>
           </form>
-
-          {/* Email Verification Status Section */}
-          {!userData.IsVerified && (
-            <div className="mt-8 p-4 bg-yellow-50 border border-yellow-300 rounded-md">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">Таны имэйл хаяг баталгаажаагүй байна</span>
-                </div>
-                
-                <button 
-                  onClick={requestEmailVerification}
-                  disabled={verificationStatus === 'pending'}
-                  className={`px-4 py-2 rounded-md text-white ${
-                    verificationStatus === 'pending' ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  {verificationStatus === 'pending' ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Илгээж байна...
-                    </span>
-                  ) : verificationStatus === 'sent' ? (
-                    "Дахин илгээх"
-                  ) : (
-                    "Баталгаажуулах"
-                  )}
-                </button>
-              </div>
-              
-              {verificationStatus === 'sent' && (
-                <div className="mt-3 text-sm text-gray-600">
-                  <p>Таны имэйл хаяг руу баталгаажуулах холбоос илгээгдлээ. Имэйлээ шалгаад, холбоос дээр дарна уу.</p>
-                </div>
-              )}
-            </div>
-          )}
         </>
       )}
 

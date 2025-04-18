@@ -60,7 +60,7 @@ function SignUp() {
     } else if (formData.password.length < 6) {
       newErrors.password = 'Нууц үг хамгийн багадаа 6 тэмдэгтээс бүрдэнэ';
     } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/.test(formData.password)) {
-      newErrors.password = 'Нууц үг доод тал нь 6 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой';
+      newErrors.password = 'Нууц үг доод тал нь 8 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой';
     }
     
     if (formData.password !== formData.confirmPassword) {

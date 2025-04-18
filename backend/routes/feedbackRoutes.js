@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const feedbackController = require('../controllers/feedback.controller');
+const feedbackController = require('../controllers/feedbackController');
 const authMiddleware = require('../middleware/authMiddleware');
 const verificationMiddleware = require('../middleware/verificationMiddleware');
 
-router.use(authMiddleware);
+router.use(authMiddleware.authenticate);
 
 router.post('/', verificationMiddleware, feedbackController.createFeedback);
 

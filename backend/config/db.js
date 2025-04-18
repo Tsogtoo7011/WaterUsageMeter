@@ -8,7 +8,19 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'waterusage',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
+
+(async () => {
+  try {
+    const connection = await pool.getConnection();
+    console.log('Database connection established successfully');
+    connection.release();
+  } catch (error) {
+    console.error('Error connecting to database:', error);
+  }
+})();
 
 module.exports = pool;

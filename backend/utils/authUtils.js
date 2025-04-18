@@ -6,6 +6,7 @@ exports.generateVerificationToken = () => {
 };
 
 exports.sendVerificationEmail = async (email, token, firstname) => {
+
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
@@ -17,7 +18,9 @@ exports.sendVerificationEmail = async (email, token, firstname) => {
       }
     });
 
-    const verificationLink = `${process.env.BACKEND_URL}/api/auth/verify-email?token=${token}`;
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const baseUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+    const verificationLink = `${baseUrl}/api/verification/verify-email?token=${token}`;
     
     const mailOptions = {
       from: process.env.EMAIL_FROM,
@@ -30,7 +33,7 @@ exports.sendVerificationEmail = async (email, token, firstname) => {
           <p><a href="${verificationLink}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;">Имэйл баталгаажуулах</a></p>
           <p>Эсвэл доорх холбоосыг хуулж, вэб хөтчид тавьж ашиглана уу:</p>
           <p>${verificationLink}</p>
-          <p><strong>Анхааруулга:</strong> Энэ холбоос зөвхөн 3 минутын хугацаанд хүчинтэй.</p>
+          <p><strong>Анхааруулга:</strong> Энэ холбоос зөвхөн 30 минутын хугацаанд хүчинтэй.</p>
           <p>Хэрэв та бүртгүүлэх хүсэлт гаргаагүй бол энэ имэйлийг үл тоомсорлоно уу.</p>
           <p>Баярлалаа,<br>Танай Баг</p>
         </div>

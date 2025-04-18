@@ -4,18 +4,21 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
+
 const authRoutes = require('./routes/authRoutes');
+const verificationRoutes = require('./routes/verificationRoutes');
+const passwordRoutes = require('./routes/passwordRoutes');
 const userRoutes = require('./routes/userRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Rate limiters
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login requests per window
+  windowMs: 15 * 60 * 1000, 
+  max: 10, 
   message: {
     message: 'Хэт олон удаа нэвтрэх оролдлого хийсэн байна. 15 минутын дараа дахин оролдоно уу.'
   },
@@ -24,14 +27,29 @@ const authLimiter = rateLimit({
 });
 
 const signupLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Limit each IP to 3 signup requests per hour
+  windowMs: 60 * 60 * 1000, 
+  max: 10, 
   message: {
     message: 'Хэт олон удаа бүртгүүлэх оролдлого хийсэн байна. 1 цагийн дараа дахин оролдоно уу.'
   }
 });
 
-// CSRF protection
+const verificationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, 
+  max: 10, 
+  message: {
+    message: 'Хэт олон удаа баталгаажуулах оролдлого хийсэн байна. 5 минутын дараа дахин оролдоно уу.'
+  }
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, 
+  max: 10, 
+  message: {
+    message: 'Хэт олон удаа нууц үг шинэчлэх оролдлого хийсэн байна. 1 цагийн дараа дахин оролдоно уу.'
+  }
+});
+
 const csrfProtection = csrf({
   cookie: {
     httpOnly: true,
@@ -39,41 +57,36 @@ const csrfProtection = csrf({
   }
 });
 
-// Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true // Allow cookies to be sent with request
+  credentials: true 
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-// Apply rate limits to specific endpoints
-// Note: These must come before mounting the routers
 app.use('/api/auth/signin', authLimiter);
 app.use('/api/auth/signup', signupLimiter);
+app.use('/api/password/forgot', passwordResetLimiter);
+app.use('/api/password/reset', passwordResetLimiter);
 
-// Auth routes (no CSRF needed for login/signup, but needed for other sensitive operations)
 app.use('/api/auth', authRoutes);
+app.use('/api/verification', verificationRoutes);
+app.use('/api/password', passwordRoutes);
 
-// User routes with CSRF protection
 app.use('/api/user', csrfProtection, userRoutes);
-
 app.use('/api/feedback', feedbackRoutes);
 
-// CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-// Home route
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
-  // Handle CSRF errors specifically
   if (err.code === 'EBADCSRFTOKEN') {
     return res.status(403).json({
       message: 'CSRF токен хүчингүй байна. Хуудсыг дахин ачааллана уу.'

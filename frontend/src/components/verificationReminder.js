@@ -1,36 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-function verificationReminder({ user, onVerify }) {
+function VerificationReminder({ user, onVerify }) {
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
+  
+  useEffect(() => {
+    // Check for both possible cases - Email or email in the user object
+    if (user) {
+      if (user.Email) {
+        setEmail(user.Email);
+      } else if (user.email) {
+        setEmail(user.email);
+      }
+    }
+  }, [user]);
 
   const handleSendVerification = async () => {
     try {
-      setStatus('sending');
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (!email) {
         setStatus('error');
-        setMessage('Бүртгэлийн мэдээлэл олдсонгүй. Дахин нэвтрэх шаардлагатай.');
+        setMessage('Имэйл хаяг шаардлагатай');
         return;
       }
+
+      setStatus('sending');
+      console.log('Sending verification request for email:', email);
       
       const response = await axios.post(
-        'http://localhost:5000/api/auth/verify-email-request',
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/verification/resend`,
+        { email },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true 
+        }
       );
+      
+      console.log('Verification response:', response.data);
       
       setStatus('sent');
       setMessage(response.data.message || 'Баталгаажуулах имэйл илгээгдлээ. Та имэйлээ шалгана уу.');
+      
+      if (response.data.success) {
+        onVerify && onVerify();
+      }
     } catch (error) {
       console.error('Email verification request error:', error);
+      console.error('Error details:', error.response?.data);
+      
       setStatus('error');
-      setMessage(
-        error.response?.data?.message || 
-        'Имэйл баталгаажуулах хүсэлт илгээхэд алдаа гарлаа. Дахин оролдоно уу.'
-      );
+      
+      if (error.response?.status === 429) {
+        setMessage('Дахин оролдохоос өмнө 5 минут хүлээнэ үү');
+      } else {
+        setMessage(
+          error.response?.data?.message ||
+          'Имэйл баталгаажуулах хүсэлт илгээхэд алдаа гарлаа. Дахин оролдоно уу.'
+        );
+      }
     }
   };
 
@@ -93,4 +123,4 @@ function verificationReminder({ user, onVerify }) {
   );
 }
 
-export default verificationReminder;
+export default VerificationReminder;

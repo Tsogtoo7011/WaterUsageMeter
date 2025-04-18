@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import SignIn from './pages/Public/SignIn';
 import SignUp from './pages/Public/SignUp';
-import VerifyEmail from './pages/Public/VerifyEmail';
 import Settings from './pages/Public/Settings';
 import AdminFeedback from './pages/Admin/AdminFeedback';
 import AdminMeterCounter from './pages/Admin/AdminMeterCounter';
@@ -58,7 +57,6 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/verify-email" element={<VerifyEmail/>} />
         
         <Route path="/settings" element={
           <SharedLayout>
