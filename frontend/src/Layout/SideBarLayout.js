@@ -45,11 +45,11 @@ const SidebarLayout = ({ children }) => {
           }
         } else {
           // If no user data in localStorage, redirect to login
-          navigate('/signin');
+          navigate('/');
         }
       } catch (error) {
         console.error("Error checking admin status:", error);
-        navigate('/signin');
+        navigate('/');
       }
     };
     
@@ -122,7 +122,11 @@ const SidebarLayout = ({ children }) => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/signin');
+    setUser(null);
+    // Use replace: true to prevent back navigation to protected routes
+    navigate('/', { replace: true });
+    // Force a page reload to reset all application state
+    window.location.reload();
   };
 
   const toggleSidebar = () => {

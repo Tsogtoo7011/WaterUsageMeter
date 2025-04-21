@@ -13,6 +13,7 @@ const News = () => {
   const [selectedNews, setSelectedNews] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [formMode, setFormMode] = useState('create'); // 'create' or 'edit'
+  const [csrfToken, setCsrfToken] = useState(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -27,15 +28,38 @@ const News = () => {
   
   const newsPerPage = 6;
   
-  // Fetch news on component mount
+  // Fetch news and CSRF token on component mount
   useEffect(() => {
+    fetchCsrfToken();
     fetchNews();
+    
     // Check if user is logged in
     const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+    const token = localStorage.getItem('token');
+    
+    if (userData && token) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser({ ...parsedUser, token });
+        console.log("User loaded:", parsedUser);
+      } catch (err) {
+        console.error("Error parsing user data:", err);
+      }
     }
   }, []);
+  
+  // Fetch CSRF token
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/csrf-token`, { withCredentials: true });
+      setCsrfToken(response.data.csrfToken);
+      axios.defaults.headers.common['X-CSRF-Token'] = response.data.csrfToken;
+      console.log("CSRF token obtained");
+    } catch (err) {
+      console.error('Error fetching CSRF token:', err);
+      setError('Failed to fetch CSRF token. Please reload the page.');
+    }
+  };
   
   const fetchNews = async () => {
     try {
@@ -50,9 +74,15 @@ const News = () => {
     }
   };
   
+  // Check if user is admin - This should align with what the JWT token has
+  const isUserAdmin = () => {
+    // Check if user has the isAdmin property (from JWT)
+    return user && (user.isAdmin === true || user.AdminRight === 1);
+  };
+  
   const handleOpenModal = (mode, newsItem = null) => {
     // Check if user is admin
-    if (mode !== 'view' && (!user || !user.isAdmin)) {
+    if (mode !== 'view' && !isUserAdmin()) {
       alert('You must be an admin to perform this action');
       return;
     }
@@ -120,37 +150,66 @@ const News = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Authentication error. Please login again.');
+      navigate('/login');
+      return;
+    }
+    
+    if (!csrfToken) {
+      alert('CSRF token is missing. Please reload the page.');
+      fetchCsrfToken();
+      return;
+    }
+    
     try {
       const formPayload = new FormData();
       formPayload.append('title', formData.title);
       formPayload.append('description', formData.description);
-      formPayload.append('userId', user.id);
       
       if (formData.coverImage) {
         formPayload.append('coverImage', formData.coverImage);
       }
       
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
+          'X-CSRF-Token': csrfToken
+        },
+        withCredentials: true // Important for CSRF cookie
+      };
+      
       if (formMode === 'create') {
-        await axios.post(`${API_URL}/news`, formPayload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${user.token}`
-          }
-        });
+        const response = await axios.post(`${API_URL}/news`, formPayload, config);
+        console.log('Create response:', response.data);
       } else if (formMode === 'edit') {
-        await axios.put(`${API_URL}/news/${selectedNews.NewsId}`, formPayload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${user.token}`
-          }
-        });
+        const response = await axios.put(`${API_URL}/news/${selectedNews.NewsId}`, formPayload, config);
+        console.log('Update response:', response.data);
       }
       
       handleCloseModal();
       fetchNews();
     } catch (err) {
       console.error('Error submitting form:', err);
-      alert('Failed to save news');
+      
+      // Check if it's a CSRF error
+      if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
+        alert('CSRF token is invalid. Please reload the page.');
+        fetchCsrfToken();
+        return;
+      }
+      
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to save news';
+      alert(errorMessage);
+      
+      // If unauthorized, redirect to login
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
     }
   };
   
@@ -159,16 +218,47 @@ const News = () => {
       return;
     }
     
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Authentication error. Please login again.');
+      navigate('/login');
+      return;
+    }
+    
+    if (!csrfToken) {
+      alert('CSRF token is missing. Please reload the page.');
+      fetchCsrfToken();
+      return;
+    }
+    
     try {
       await axios.delete(`${API_URL}/news/${newsId}`, {
         headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'X-CSRF-Token': csrfToken
+        },
+        withCredentials: true // Important for CSRF cookie
       });
       fetchNews();
     } catch (err) {
       console.error('Error deleting news:', err);
-      alert('Failed to delete news');
+      
+      // Check if it's a CSRF error
+      if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
+        alert('CSRF token is invalid. Please reload the page.');
+        fetchCsrfToken();
+        return;
+      }
+      
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to delete news';
+      alert(errorMessage);
+      
+      // If unauthorized, redirect to login
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
     }
   };
   
@@ -205,6 +295,12 @@ const News = () => {
       <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-6" role="alert">
         <strong className="font-bold">Error!</strong>
         <span className="block sm:inline"> {error}</span>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-2 bg-red-200 hover:bg-red-300 px-4 py-2 rounded"
+        >
+          Reload Page
+        </button>
       </div>
     );
   }
@@ -213,7 +309,7 @@ const News = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">News</h1>
-        {user && user.isAdmin && (
+        {isUserAdmin() && (
           <button
             onClick={() => handleOpenModal('create')}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
@@ -240,7 +336,7 @@ const News = () => {
                   e.target.src = 'https://via.placeholder.com/400x200?text=No+Image';
                 }}
               />
-              {user && user.isAdmin && (
+              {isUserAdmin() && (
                 <div className="absolute top-2 right-2 flex gap-2">
                   <button
                     onClick={(e) => {

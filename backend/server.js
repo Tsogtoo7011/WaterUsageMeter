@@ -3,16 +3,15 @@ const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const csrf = require('csurf');
-
-const db = require('./config/db');
+const path = require('path');
+const { csrfProtection, handleCsrfError } = require('./middleware/csrfMiddleware');
 
 const authRoutes = require('./routes/authRoutes');
 const verificationRoutes = require('./routes/verificationRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
 const userRoutes = require('./routes/userRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
-const newsRoutes = require('./routes/newsRoutes'); // Add the news routes
+const newsRoutes = require('./routes/newsRoutes'); 
 
 require('dotenv').config();
 
@@ -62,13 +61,6 @@ const contentCreationLimiter = rateLimit({
   }
 });
 
-const csrfProtection = csrf({
-  cookie: {
-    httpOnly: true,
-    sameSite: 'strict'
-  }
-});
-
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true 
@@ -78,22 +70,25 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-console.log('Connected to MySQL database');
+// Database connection setup would go here
 
+// Apply rate limiters to specific endpoints
 app.use('/api/auth/signin', authLimiter);
 app.use('/api/auth/signup', signupLimiter);
 app.use('/api/verification', verificationLimiter);
 app.use('/api/password/forgot', passwordResetLimiter);
 app.use('/api/password/reset', passwordResetLimiter);
-app.use('/api/news', contentCreationLimiter); 
+app.use('/api/news', contentCreationLimiter); // Apply rate limiting to news endpoints
 
+// Set up routes - CSRF protection is now defined in the route files
 app.use('/api/auth', authRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/password', passwordRoutes);
-app.use('/api/user', csrfProtection, userRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/feedback', feedbackRoutes);
-app.use('/api/news', csrfProtection, newsRoutes); // Apply CSRF protection to news routes
+app.use('/api/news', newsRoutes);
 
+// CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
@@ -102,13 +97,11 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
+// CSRF error handler
+app.use(handleCsrfError);
+
+// General error handler
 app.use((err, req, res, next) => {
-  if (err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({
-      message: 'CSRF токен хүчингүй байна. Хуудсыг дахин ачааллана уу.'
-    });
-  }
-  
   if (err.name === 'MulterError') {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
@@ -117,6 +110,14 @@ app.use((err, req, res, next) => {
     }
     return res.status(400).json({
       message: `Файл байршуулахад алдаа гарлаа: ${err.message}`
+    });
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../client/build')));
+    
+    app.get('*', (req, res) => {
+      res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
     });
   }
   

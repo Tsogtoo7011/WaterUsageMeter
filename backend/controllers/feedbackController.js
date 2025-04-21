@@ -6,14 +6,14 @@ exports.createFeedback = async (req, res) => {
     const { feedbackType, description } = req.body;
     const userId = req.userData.userId;
     
-    if (!feedbackType || !description) {
+    if (!feedbackType || !description || !description.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Санал хүсэлтийн төрөл болон тайлбар оруулна уу.'
       });
     }
     
-    const type = parseInt(feedbackType);
+    const type = parseInt(feedbackType, 10);
     
     if (![1, 2, 3].includes(type)) {
       return res.status(400).json({
@@ -24,7 +24,7 @@ exports.createFeedback = async (req, res) => {
     
     const [result] = await pool.execute(
       'INSERT INTO feedback (UserAdminUserId, Type, Description, Status) VALUES (?, ?, ?, 0)',
-      [userId, type, description]
+      [userId, type, description.trim()]
     );
     
     return res.status(201).json({
@@ -133,13 +133,20 @@ exports.getFeedbackById = async (req, res) => {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
     
+    if (!feedbackId || isNaN(Number(feedbackId))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу ID форматтай байна.'
+      });
+    }
+    
     // Check if user is admin
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
     );
     
-    const isAdmin = adminCheck.length > 0 && adminCheck[0].AdminRight === 1;
+    const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
     
     let query = '';
     let params = [];
@@ -163,7 +170,7 @@ exports.getFeedbackById = async (req, res) => {
       `;
       params = [feedbackId];
     } else {
-      
+      // Regular users can only see their own feedback
       query = `
         SELECT 
           ApplicationId,
@@ -213,13 +220,20 @@ exports.getAdminFeedbackById = async (req, res) => {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
     
+    if (!feedbackId || isNaN(Number(feedbackId))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу ID форматтай байна.'
+      });
+    }
+    
     // Check admin rights
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
     );
     
-    if (adminCheck.length === 0 || adminCheck[0].AdminRight !== 1) {
+    if (adminCheck.length === 0 || Number(adminCheck[0].AdminRight) !== 1) {
       return res.status(403).json({
         success: false,
         message: 'Энэ үйлдлийг хийх эрх хүрэлцэхгүй байна.'
@@ -274,11 +288,12 @@ exports.updateFeedback = async (req, res) => {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
     
-    console.log('Update request received:', {
-      feedbackId,
-      userId,
-      body: req.body
-    });
+    if (!feedbackId || isNaN(Number(feedbackId))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу ID форматтай байна.'
+      });
+    }
     
     // First check if the feedback exists
     const [checkFeedback] = await pool.execute(
@@ -299,15 +314,13 @@ exports.updateFeedback = async (req, res) => {
       UserAdminUserId: Number(checkFeedback[0].UserAdminUserId)
     };
     
-    console.log('Feedback found:', feedback);
-    
     // Check if user is admin
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
     );
     
-    const isAdmin = adminCheck.length > 0 && adminCheck[0].AdminRight === 1;
+    const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
     
     // Admin can update status and admin_response
     if (isAdmin) {
@@ -316,13 +329,20 @@ exports.updateFeedback = async (req, res) => {
       const params = [];
       
       if (status !== undefined) {
+        const statusNum = parseInt(status, 10);
+        if (isNaN(statusNum) || ![0, 1, 2].includes(statusNum)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Статус буруу байна.'
+          });
+        }
         updates.push('Status = ?');
-        params.push(parseInt(status));
+        params.push(statusNum);
       }
       
       if (adminResponse !== undefined) {
         updates.push('admin_response = ?');
-        params.push(adminResponse);
+        params.push(adminResponse.trim());
       }
       
       if (updates.length === 0) {
@@ -363,18 +383,16 @@ exports.updateFeedback = async (req, res) => {
       
       const { feedbackType, description } = req.body;
       
-      console.log('User update data:', { feedbackType, description });
-      
-      if (!feedbackType || !description) {
+      if (!feedbackType || !description || !description.trim()) {
         return res.status(400).json({
           success: false,
           message: 'Санал хүсэлтийн төрөл болон тайлбар оруулна уу.'
         });
       }
       
-      const type = parseInt(feedbackType);
+      const type = parseInt(feedbackType, 10);
       
-      if (![1, 2, 3].includes(type)) {
+      if (isNaN(type) || ![1, 2, 3].includes(type)) {
         return res.status(400).json({
           success: false,
           message: 'Санал хүсэлтийн төрөл буруу байна.'
@@ -383,10 +401,8 @@ exports.updateFeedback = async (req, res) => {
       
       await pool.execute(
         'UPDATE feedback SET Type = ?, Description = ?, updated_at = NOW() WHERE ApplicationId = ?',
-        [type, description, feedbackId]
+        [type, description.trim(), feedbackId]
       );
-      
-      console.log('Update successful');
       
       return res.status(200).json({
         success: true,
@@ -395,7 +411,6 @@ exports.updateFeedback = async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Update error:', error);
     handleError(res, error, 'Update feedback');
   }
 };
@@ -404,6 +419,13 @@ exports.deleteFeedback = async (req, res) => {
   try {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
+    
+    if (!feedbackId || isNaN(Number(feedbackId))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу ID форматтай байна.'
+      });
+    }
     
     // First check if the feedback exists
     const [checkFeedback] = await pool.execute(
@@ -430,7 +452,7 @@ exports.deleteFeedback = async (req, res) => {
       [userId]
     );
     
-    const isAdmin = adminCheck.length > 0 && adminCheck[0].AdminRight === 1;
+    const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
     
     // Admin can delete any feedback
     if (isAdmin) {

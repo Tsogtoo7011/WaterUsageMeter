@@ -68,8 +68,9 @@ export function FeedbackDetails() {
       
       try {
         setLoading(true);
-        // Use the regular feedback endpoint - the controller will handle permissions
-        const { data } = await api.get(`/feedback/${id}`);
+        // Use the correct endpoint based on user role
+        const endpoint = isAdmin ? `/feedback/admin/${id}` : `/feedback/${id}`;
+        const { data } = await api.get(endpoint);
         
         if (data.success) {
           setFeedback(data.feedback);
@@ -89,7 +90,7 @@ export function FeedbackDetails() {
     if (user) {
       fetchFeedbackDetails();
     }
-  }, [user, id]);
+  }, [user, id, isAdmin]);
 
   const handleEditFeedback = () => {
     navigate(`/user/feedback/edit/${id}`);
@@ -121,7 +122,7 @@ export function FeedbackDetails() {
     }
     
     try {
-      const { data } = await api.put(`/feedback/${id}`, {
+      const { data } = await api.put(`/feedback/admin/${id}`, {
         status,
         adminResponse
       });
@@ -160,7 +161,7 @@ export function FeedbackDetails() {
   };
   
   const getStatusBadgeColor = (status) => {
-    switch (status) {
+    switch (parseInt(status)) {
       case 0: return 'bg-yellow-100 text-yellow-800';
       case 1: return 'bg-blue-100 text-blue-800';
       case 2: return 'bg-green-100 text-green-800';
@@ -174,7 +175,7 @@ export function FeedbackDetails() {
     if (isAdmin) return false;
     
     // Regular users can only modify their own pending feedback
-    return feedback.Status === 0 && user.UserAdminId === feedback.UserAdminUserId;
+    return parseInt(feedback.Status) === 0 && user.UserAdminId === feedback.UserAdminUserId;
   };
 
   return (
@@ -240,15 +241,6 @@ export function FeedbackDetails() {
                   </div>
                 )}
               </div>
-              
-              {/* Debug information to see if the condition works - Remove in production */}
-              {/* <div className="mt-2 text-xs text-gray-500">
-                Debug: isAdmin={isAdmin ? 'true' : 'false'}, 
-                Status={feedback.Status}, 
-                UserID={user?.UserAdminId}, 
-                FeedbackUserID={feedback.UserAdminUserId},
-                Can Modify={canModifyFeedback() ? 'true' : 'false'}
-              </div> */}
               
               {canModifyFeedback() && (
                 <div className="flex justify-end mt-4 space-x-2">

@@ -24,7 +24,7 @@ import SidebarLayout from './Layout/SideBarLayout';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/signin" replace />;
+  return token ? children : <Navigate to="/" replace />;
 };
 
 const checkIsAdmin = () => {
@@ -46,7 +46,7 @@ const AdminRoute = ({ children }) => {
   const isAdmin = checkIsAdmin();
   
   if (!token) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (!isAdmin) {
@@ -61,7 +61,7 @@ const UserRoute = ({ children }) => {
   const isAdmin = checkIsAdmin();
   
   if (!token) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (isAdmin) {
@@ -75,7 +75,7 @@ const SharedLayout = ({ children }) => {
   const token = localStorage.getItem('token');
   
   if (!token) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/" replace />;
   }
   
   return <SidebarLayout>{children}</SidebarLayout>;
@@ -102,7 +102,6 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignIn />} />
-        <Route path="/signin" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignIn />} />
         <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />} />
         
         {/* Shared Routes - accessible by both admin and user */}
@@ -131,7 +130,6 @@ function App() {
         <Route path="/user/payment-info" element={<UserRoute><PaymentInfo /></UserRoute>} />
         <Route path="/user/services" element={<UserRoute><Services /></UserRoute>} />
         
-        {/* Default redirect for authenticated users */}
         <Route path="*" element={
           <PrivateRoute>
             <Navigate to="/home" replace />

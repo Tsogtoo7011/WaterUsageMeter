@@ -1,3 +1,4 @@
+// controllers/newsController.js
 const db = require('../config/db');
 const path = require('path');
 const fs = require('fs');
@@ -40,9 +41,11 @@ exports.getNewsById = async (req, res) => {
       return res.status(404).json({ error: 'News not found' });
     }
     
-    // Convert BLOB to base64 for frontend display
+    // Convert BLOB to base64 for frontend display if it exists
     const news = results[0];
-    news.CoverImageData = news.CoverImageData.toString('base64');
+    if (news.CoverImageData) {
+      news.CoverImageData = news.CoverImageData.toString('base64');
+    }
     
     res.status(200).json(news);
   } catch (err) {
@@ -55,10 +58,16 @@ exports.getNewsById = async (req, res) => {
 exports.createNews = async (req, res) => {
   try {
     const { title, description } = req.body;
-    const userId = req.user.id; // Get from auth middleware
+    
+    // Validate user is admin - Using userData from auth middleware
+    if (!req.userData || !req.userData.userId) {
+      return res.status(401).json({ message: 'Нэвтрэх эрх байхгүй байна' });
+    }
+    
+    const userId = req.userData.userId; // Get from auth middleware
     
     if (!req.file) {
-      return res.status(400).json({ error: 'Cover image is required' });
+      return res.status(400).json({ message: 'Cover image is required' });
     }
     
     const coverImageType = path.extname(req.file.originalname).substring(1);
@@ -80,7 +89,7 @@ exports.createNews = async (req, res) => {
     });
   } catch (err) {
     console.error('Error creating news:', err);
-    res.status(500).json({ error: 'Failed to create news' });
+    res.status(500).json({ message: 'Failed to create news: ' + err.message });
   }
 };
 
@@ -89,6 +98,19 @@ exports.updateNews = async (req, res) => {
   try {
     const newsId = req.params.id;
     const { title, description } = req.body;
+    
+    // Validate user is admin - Using userData from auth middleware
+    if (!req.userData || !req.userData.userId) {
+      return res.status(401).json({ message: 'Нэвтрэх эрх байхгүй байна' });
+    }
+    
+    // Check if news exists
+    const checkQuery = 'SELECT * FROM News WHERE NewsId = ?';
+    const [checkResults] = await db.query(checkQuery, [newsId]);
+    
+    if (checkResults.length === 0) {
+      return res.status(404).json({ message: 'News not found' });
+    }
     
     let query, queryParams;
     
@@ -118,13 +140,13 @@ exports.updateNews = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (results.affectedRows === 0) {
-      return res.status(404).json({ error: 'News not found' });
+      return res.status(404).json({ message: 'News not found or not updated' });
     }
     
     res.status(200).json({ message: 'News updated successfully' });
   } catch (err) {
     console.error('Error updating news:', err);
-    res.status(500).json({ error: 'Failed to update news' });
+    res.status(500).json({ message: 'Failed to update news: ' + err.message });
   }
 };
 
@@ -133,18 +155,23 @@ exports.deleteNews = async (req, res) => {
   try {
     const newsId = req.params.id;
     
+    // Validate user is admin - Using userData from auth middleware
+    if (!req.userData || !req.userData.userId) {
+      return res.status(401).json({ message: 'Нэвтрэх эрх байхгүй байна' });
+    }
+    
     const query = 'DELETE FROM News WHERE NewsId = ?';
     
     const [results] = await db.query(query, [newsId]);
     
     if (results.affectedRows === 0) {
-      return res.status(404).json({ error: 'News not found' });
+      return res.status(404).json({ message: 'News not found' });
     }
     
     res.status(200).json({ message: 'News deleted successfully' });
   } catch (err) {
     console.error('Error deleting news:', err);
-    res.status(500).json({ error: 'Failed to delete news' });
+    res.status(500).json({ message: 'Failed to delete news: ' + err.message });
   }
 };
 
@@ -158,15 +185,19 @@ exports.getNewsImage = async (req, res) => {
     const [results] = await db.query(query, [newsId]);
     
     if (results.length === 0) {
-      return res.status(404).json({ error: 'News not found' });
+      return res.status(404).json({ message: 'News not found' });
     }
     
     const { CoverImageType, CoverImageData } = results[0];
+    
+    if (!CoverImageData) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
     
     res.set('Content-Type', `image/${CoverImageType}`);
     res.send(CoverImageData);
   } catch (err) {
     console.error('Error fetching news image:', err);
-    res.status(500).json({ error: 'Failed to fetch news image' });
+    res.status(500).json({ message: 'Failed to fetch news image' });
   }
 };

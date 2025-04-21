@@ -32,6 +32,18 @@ export function FeedbackCreate() {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           setUser(JSON.parse(storedUser));
+        } else {
+          // If user data is not in localStorage, fetch from API
+          try {
+            const { data } = await api.get('/users/profile');
+            if (data.success && data.user) {
+              setUser(data.user);
+              localStorage.setItem('user', JSON.stringify(data.user));
+            }
+          } catch (err) {
+            console.error('Error fetching user data:', err);
+            navigate('/');
+          }
         }
       } catch (err) {
         console.error('Error fetching user data:', err);
@@ -42,7 +54,6 @@ export function FeedbackCreate() {
   }, [navigate]);
 
   useEffect(() => {
-
     setCharacterCount(formData.description.length);
   }, [formData.description]);
 
@@ -86,6 +97,7 @@ export function FeedbackCreate() {
       return;
     }
     
+    // Check if user is verified
     if (!user?.IsVerified) {
       setSubmitError('Та имэйл хаягаа баталгаажуулсны дараа санал хүсэлт илгээх боломжтой.');
       return;
@@ -106,7 +118,7 @@ export function FeedbackCreate() {
       });
       
       setTimeout(() => {
-        navigate('/feedback');
+        navigate('/user/feedback');
       }, 2000);
       
     } catch (error) {
@@ -122,7 +134,7 @@ export function FeedbackCreate() {
   };
 
   const handleBackToList = () => {
-    navigate('/feedback');
+    navigate('/user/feedback');
   };
 
   return (
@@ -159,37 +171,37 @@ export function FeedbackCreate() {
                 Хэлбэр <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label className={`flex items-center p-3 border ${formData.feedbackType === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
+                <label className={`flex items-center p-3 border ${parseInt(formData.feedbackType) === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
                   <input
                     type="radio"
                     className="h-5 w-5 text-blue-600 focus:ring-blue-500"
                     name="feedbackType"
                     value="1"
-                    checked={formData.feedbackType === 1}
+                    checked={parseInt(formData.feedbackType) === 1}
                     onChange={() => setFormData(prev => ({ ...prev, feedbackType: 1 }))}
                   />
                   <span className="ml-3 text-gray-800">Санал</span>
                 </label>
                 
-                <label className={`flex items-center p-3 border ${formData.feedbackType === 2 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
+                <label className={`flex items-center p-3 border ${parseInt(formData.feedbackType) === 2 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
                   <input
                     type="radio"
                     className="h-5 w-5 text-blue-600 focus:ring-blue-500"
                     name="feedbackType"
                     value="2"
-                    checked={formData.feedbackType === 2}
+                    checked={parseInt(formData.feedbackType) === 2}
                     onChange={() => setFormData(prev => ({ ...prev, feedbackType: 2 }))}
                   />
                   <span className="ml-3 text-gray-800">Хүсэлт</span>
                 </label>
                 
-                <label className={`flex items-center p-3 border ${formData.feedbackType === 3 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
+                <label className={`flex items-center p-3 border ${parseInt(formData.feedbackType) === 3 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
                   <input
                     type="radio"
                     className="h-5 w-5 text-blue-600 focus:ring-blue-500"
                     name="feedbackType"
                     value="3"
-                    checked={formData.feedbackType === 3}
+                    checked={parseInt(formData.feedbackType) === 3}
                     onChange={() => setFormData(prev => ({ ...prev, feedbackType: 3 }))}
                   />
                   <span className="ml-3 text-gray-800">Гомдол</span>
@@ -212,7 +224,6 @@ export function FeedbackCreate() {
                 placeholder="Таны санал хүсэлт, гомдол, өргөдлийг дэлгэрэнгүй бичнэ үү..."
                 value={formData.description}
                 onChange={handleChange}
-                disabled={!user?.IsVerified}
                 maxLength={2000}
               ></textarea>
               {errors.description && <p className="mt-1 text-sm text-red-400">Дэлгэрэнгүй мэдээлэл заавал шаардлагатай</p>}

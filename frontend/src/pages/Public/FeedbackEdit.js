@@ -22,10 +22,12 @@ function FeedbackEdit() {
         
         if (data.success) {
           setFeedback(data.feedback);
-          setFeedbackType(data.feedback.Type?.toString() || '');
+          // Ensure the type is properly converted to string
+          setFeedbackType(String(data.feedback.Type));
           setDescription(data.feedback.Description || '');
 
-          if (data.feedback && Number(data.feedback.Status) !== 0) {
+          // Redirect if feedback is not in pending state
+          if (data.feedback && data.feedback.Status !== 0) {
             setError('Энэ санал хүсэлтийг засах боломжгүй байна');
             setTimeout(() => {
               navigate(`/user/feedback/${id}`);
@@ -36,8 +38,14 @@ function FeedbackEdit() {
         }
       } catch (err) {
         console.error('Error fetching feedback details:', err);
-        console.error('Response data:', err.response?.data);
         setError(err.response?.data?.message || 'Санал хүсэлтийн мэдээллийг авахад алдаа гарлаа');
+        
+        // If 404 or unauthorized, redirect to feedback list
+        if (err.response?.status === 404 || err.response?.status === 403) {
+          setTimeout(() => {
+            navigate('/user/feedback');
+          }, 2000);
+        }
       } finally {
         setLoading(false);
       }
@@ -58,12 +66,11 @@ function FeedbackEdit() {
     
     try {
       setSubmitting(true);
-      
-      console.log('Sending to API:', { feedbackType, description });
+      setError('');
       
       const { data } = await api.put(`/feedback/${id}`, {
         feedbackType,
-        description
+        description: description.trim()
       });
       
       if (data.success) {
@@ -73,12 +80,14 @@ function FeedbackEdit() {
       }
     } catch (err) {
       console.error('Error updating feedback:', err);
-      console.error('Response data:', err.response?.data);
       setError(err.response?.data?.message || 'Санал хүсэлтийг шинэчлэхэд алдаа гарлаа');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const isPending = feedback && feedback.Status === 0;
+  const canEdit = isPending;
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
@@ -115,6 +124,7 @@ function FeedbackEdit() {
                 onChange={(e) => setFeedbackType(e.target.value)}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 required
+                disabled={!canEdit}
               >
                 <option value="" disabled>Төрлөө сонгоно уу</option>
                 <option value="1">Санал</option>
@@ -135,15 +145,16 @@ function FeedbackEdit() {
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Санал хүсэлтийн дэлгэрэнгүй мэдээллийг бичнэ үү"
                 required
+                disabled={!canEdit}
               />
             </div>
 
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={submitting || (feedback && Number(feedback.Status) !== 0)}
+                disabled={submitting || !canEdit}
                 className={`py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  (submitting || (feedback && Number(feedback.Status) !== 0)) ? 'opacity-70 cursor-not-allowed' : ''
+                  (submitting || !canEdit) ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >
                 {submitting ? 'Хадгалж байна...' : 'Хадгалах'}

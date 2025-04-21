@@ -34,12 +34,16 @@ exports.adminOnly = (req, res, next) => {
   }
   next();
 };
-
 exports.verifiedOnly = (req, res, next) => {
-  if (!req.userData.isVerified) {
-    return res.status(403).json({
-      message: 'Имэйл хаягаа баталгаажуулна уу',
-      verified: false
+  console.log("Verification check:", {
+    userData: req.userData,
+    isVerified: req.userData?.verified, 
+    email: req.userData?.email
+  });
+  
+  if (!req.userData || req.userData.verified !== 1) { 
+    return res.status(403).json({ 
+      message: 'Та имэйл хаягаа баталгаажуулсны дараа санал хүсэлт илгээх боломжтой.' 
     });
   }
   next();
