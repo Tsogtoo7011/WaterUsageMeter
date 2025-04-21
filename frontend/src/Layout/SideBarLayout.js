@@ -21,12 +21,46 @@ const SidebarLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Load user data from localStorage and check admin rights
   useEffect(() => {
-    setIsAdmin(location.pathname.startsWith('/admin'));
-  }, [location.pathname]);
+    const checkAdminStatus = () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          
+          // Check admin rights based on AdminRight property
+          const adminStatus = parsedUser?.AdminRight === 1;
+          setIsAdmin(adminStatus);
+          
+          // Redirect if accessing wrong section
+          const isAdminRoute = location.pathname.includes('/admin/');
+          if (!adminStatus && isAdminRoute) {
+            navigate('/home');
+          }
+        } else {
+          // If no user data in localStorage, redirect to login
+          navigate('/signin');
+        }
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+        navigate('/signin');
+      }
+    };
+    
+    checkAdminStatus();
+    
+    // Set up an interval to periodically check admin status
+    // This helps if user data changes in another tab/window
+    const intervalId = setInterval(checkAdminStatus, 60000); // Check every minute
+    
+    return () => clearInterval(intervalId);
+  }, [navigate, location.pathname]);
 
   useEffect(() => {
     const savedSidebarState = localStorage.getItem('sidebarState');
@@ -35,62 +69,60 @@ const SidebarLayout = ({ children }) => {
     }
   }, []);
 
-  const basePath = isAdmin ? '/admin' : '/user';
-
+  // Define routes properly separated by role
   const routes = isAdmin ? [
-    { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'AdminHome' },
-    { path: `${basePath}/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
-    { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'AdminMeterCounter' },
-    { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'AdminFeedback' },
-    { path: `${basePath}/service`, label: 'Үйлчилгээ', component: 'AdminService' },
-    { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'AdminNews' },
-    // Shared routes
-    { path: `/profile`, label: 'Профайл (Shared)', component: 'Profile' },
-    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' },
-    { path: `/Home`, label: 'Нүүр хуудас (Shared)', component: 'Home' }
+    { path: `/home`, label: 'Нүүр хуудас', component: 'Home' },
+    { path: `/admin/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
+    { path: `/admin/metercounter`, label: 'Тоолуурын заалт', component: 'AdminMeterCounter' },
+    { path: `/admin/feedback`, label: 'Санал хүсэлт', component: 'AdminFeedback' },
+    { path: `/admin/service`, label: 'Үйлчилгээ', component: 'AdminService' },
+    { path: `/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
+    { path: `/profile`, label: 'Профайл', component: 'Profile' },
+    { path: `/settings`, label: 'Тохиргоо', component: 'Settings' },
+    { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' }
   ] : [
-    { path: `${basePath}/`, label: 'Нүүр хуудас', component: 'Home' },
-    { path: `${basePath}/profile/apartment`, label: 'Орон сууц', component: 'Apartment' },
-    { path: `${basePath}/metercounter/details`, label: 'Тоолуурын дэлгэрэнгүй', component: 'MeterCounterDetail' },
-    { path: `${basePath}/metercounter/import`, label: 'Тоолуур импортлох', component: 'MeterCounterImport' },
-    { path: `${basePath}/about-us`, label: 'Бидний тухай', component: 'AboutUs' },
-    { path: `${basePath}/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
-    { path: `${basePath}/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
-    { path: `${basePath}/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
-    { path: `${basePath}/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
-    { path: `${basePath}/feedback/create`, label: 'Санал хүсэлт явуулах', component: 'FeedbackCreate' },
-    { path: `${basePath}/services`, label: 'Үйлчилгээ', component: 'Services' },
-    // Shared routes
-    { path: `/profile`, label: 'Профайл (Shared)', component: 'Profile' },
-    { path: `/settings`, label: 'Тохиргоо (Shared)', component: 'Settings' },
-    { path: `/Home`, label: 'Нүүр хуудас (Shared)', component: 'Home' }
+    { path: `/home`, label: 'Нүүр хуудас', component: 'Home' },
+    { path: `/user/profile/apartment`, label: 'Орон сууц', component: 'Apartment' },
+    { path: `/user/metercounter/details`, label: 'Тоолуурын дэлгэрэнгүй', component: 'MeterCounterDetail' },
+    { path: `/user/metercounter/import`, label: 'Тоолуур импортлох', component: 'MeterCounterImport' },
+    { path: `/user/about-us`, label: 'Бидний тухай', component: 'AboutUs' },
+    { path: `/user/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
+    { path: `/user/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
+    { path: `/user/services`, label: 'Үйлчилгээ', component: 'Services' },
+    { path: `/profile`, label: 'Профайл', component: 'Profile' },
+    { path: `/settings`, label: 'Тохиргоо', component: 'Settings' },
+    { path: `/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
+    { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
+    { path: `/feedback/create`, label: 'Санал хүсэлт явуулах', component: 'FeedbackCreate' },
   ];
 
+  // Fix menu items to use exact paths
   const adminMenuItems = [
-    { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
-    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment` },
-    { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
+    { icon: HomeIcon, label: 'Нүүр хуудас', path: `/home` },
+    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `/admin/payment` },
+    { icon: Clock, label: 'Тоолуурын заалт', path: `/admin/metercounter` },
     { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
-    { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/service` },
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/admin/service` },
     { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` }
   ];
 
   const userMenuItems = [
-    { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
-    { icon: UserCircle, label: 'Бидний тухай', path: `${basePath}/about-us` },
+    { icon: HomeIcon, label: 'Нүүр хуудас', path: `/home` },
+    { icon: UserCircle, label: 'Бидний тухай', path: `/user/about-us` },
     { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` },
-    { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
-    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment-info` },
+    { icon: Clock, label: 'Тоолуурын заалт', path: `/user/metercounter` },
+    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `/user/payment-info` },
     { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
-    { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/services` }
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/user/services` }
   ];
 
+  // Use the menuItems based on admin status
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('userData');
-    navigate('/');
+    localStorage.removeItem('user');
+    navigate('/signin');
   };
 
   const toggleSidebar = () => {
@@ -136,7 +168,7 @@ const SidebarLayout = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === `${basePath}/`} // This ensures the home route only matches exactly
+                end={item.path === `/home`} // Exact match for home route
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
@@ -144,7 +176,6 @@ const SidebarLayout = ({ children }) => {
                       : 'hover:bg-gray-100 text-gray-700'
                   }`
                 }
-                // Important: Don't toggle the sidebar here!
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
                 {isSidebarOpen && (
@@ -202,8 +233,8 @@ const SidebarLayout = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === `${basePath}/`}
-                onClick={toggleMobileSidebar} // This is fine for mobile as we want to close the mobile menu after clicking
+                end={item.path === `/home`}
+                onClick={toggleMobileSidebar}
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 

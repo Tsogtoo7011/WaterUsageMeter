@@ -5,11 +5,14 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const csrf = require('csurf');
 
+const db = require('./config/db');
+
 const authRoutes = require('./routes/authRoutes');
 const verificationRoutes = require('./routes/verificationRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
 const userRoutes = require('./routes/userRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const newsRoutes = require('./routes/newsRoutes'); // Add the news routes
 
 require('dotenv').config();
 
@@ -50,6 +53,15 @@ const passwordResetLimiter = rateLimit({
   }
 });
 
+// Rate limiter for news creation/editing
+const contentCreationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 requests per windowMs
+  message: {
+    message: 'Хэт олон удаа контент үүсгэх оролдлого хийсэн байна. 15 минутын дараа дахин оролдоно уу.'
+  }
+});
+
 const csrfProtection = csrf({
   cookie: {
     httpOnly: true,
@@ -66,17 +78,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(cookieParser());
 
+console.log('Connected to MySQL database');
+
 app.use('/api/auth/signin', authLimiter);
 app.use('/api/auth/signup', signupLimiter);
+app.use('/api/verification', verificationLimiter);
 app.use('/api/password/forgot', passwordResetLimiter);
 app.use('/api/password/reset', passwordResetLimiter);
+app.use('/api/news', contentCreationLimiter); 
 
 app.use('/api/auth', authRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/password', passwordRoutes);
-
 app.use('/api/user', csrfProtection, userRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/news', csrfProtection, newsRoutes); // Apply CSRF protection to news routes
 
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
@@ -90,6 +106,17 @@ app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
     return res.status(403).json({
       message: 'CSRF токен хүчингүй байна. Хуудсыг дахин ачааллана уу.'
+    });
+  }
+  
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        message: 'Файлын хэмжээ хэтэрсэн байна. Хамгийн ихдээ 5MB байх ёстой.'
+      });
+    }
+    return res.status(400).json({
+      message: `Файл байршуулахад алдаа гарлаа: ${err.message}`
     });
   }
   
