@@ -28,9 +28,7 @@ const SidebarLayout = ({ children }) => {
     setIsAdmin(location.pathname.startsWith('/admin'));
   }, [location.pathname]);
 
-  // Remember sidebar state in localStorage
   useEffect(() => {
-    // Load the saved sidebar state when component mounts
     const savedSidebarState = localStorage.getItem('sidebarState');
     if (savedSidebarState !== null) {
       setIsSidebarOpen(savedSidebarState === 'true');
@@ -72,18 +70,18 @@ const SidebarLayout = ({ children }) => {
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
     { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment` },
     { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
-    { icon: MessageCircle, label: 'Санал хүсэлт', path: `${basePath}/feedback` },
+    { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
     { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/service` },
-    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `${basePath}/news` }
+    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` }
   ];
 
   const userMenuItems = [
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `${basePath}/` },
     { icon: UserCircle, label: 'Бидний тухай', path: `${basePath}/about-us` },
-    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `${basePath}/news` },
+    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` },
     { icon: Clock, label: 'Тоолуурын заалт', path: `${basePath}/metercounter` },
     { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `${basePath}/payment-info` },
-    { icon: MessageCircle, label: 'Санал хүсэлт', path: `${basePath}/feedback` },
+    { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
     { icon: HelpCircle, label: 'Үйлчилгээ', path: `${basePath}/services` }
   ];
 
@@ -98,7 +96,6 @@ const SidebarLayout = ({ children }) => {
   const toggleSidebar = () => {
     const newState = !isSidebarOpen;
     setIsSidebarOpen(newState);
-    // Save the state to localStorage
     localStorage.setItem('sidebarState', newState.toString());
   };
 
