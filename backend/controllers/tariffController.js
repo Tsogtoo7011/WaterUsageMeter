@@ -18,7 +18,6 @@ exports.getTariff = async (req, res) => {
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
-    // Get the tariff - using prepared statement and limit for efficiency
     const [tariff] = await pool.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff FROM Tarif LIMIT 1'
     );
@@ -33,35 +32,11 @@ exports.getTariff = async (req, res) => {
   }
 };
 
-// Update tariff
 exports.updateTariff = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     await connection.beginTransaction();
-    
-    // Check if user is verified and is admin
-    const [users] = await connection.execute(
-      'SELECT IsVerified, Role FROM UserAdmin WHERE UserId = ?',
-      [req.userData.userId]
-    );
-    
-    if (!users.length) {
-      await connection.rollback();
-      return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
-    }
-    
-    // Optional: Check if user is admin
-    if (users[0].Role !== 'admin') {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Энэ үйлдлийг гүйцэтгэх эрх хүрэлцэхгүй байна' });
-    }
-    
     const { ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff } = req.body;
     
     // Validate input

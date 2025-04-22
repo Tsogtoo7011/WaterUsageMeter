@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const tariffController = require('../controllers/tariffController');
-const { authenticateUser } = require('../middleware/auth');
+const authMiddleware = require('../middleware/authMiddleware');
 
-router.use(authenticateUser);
+router.use(authMiddleware.authenticate);
+
 router.get('/', tariffController.getTariff);
-router.put('/', tariffController.updateTariff);
+router.put('/', authMiddleware.adminOnly, tariffController.updateTariff);
 
 module.exports = router;
