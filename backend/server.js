@@ -70,17 +70,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-// Database connection setup would go here
 
-// Apply rate limiters to specific endpoints
 app.use('/api/auth/signin', authLimiter);
 app.use('/api/auth/signup', signupLimiter);
 app.use('/api/verification', verificationLimiter);
 app.use('/api/password/forgot', passwordResetLimiter);
 app.use('/api/password/reset', passwordResetLimiter);
-app.use('/api/news', contentCreationLimiter); // Apply rate limiting to news endpoints
+app.use('/api/news', contentCreationLimiter); 
 
-// Set up routes - CSRF protection is now defined in the route files
 app.use('/api/auth', authRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/password', passwordRoutes);

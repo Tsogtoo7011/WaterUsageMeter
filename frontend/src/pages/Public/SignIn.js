@@ -22,6 +22,9 @@ function SignIn() {
         rememberMe: true
       }));
     }
+    
+    // Clear any previous auth errors if the page is reloaded
+    setError('');
   }, []);
 
   const handleChange = (e) => {
@@ -64,11 +67,14 @@ function SignIn() {
         localStorage.setItem('token', response.data.accessToken);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        // Check user role and navigate
+        // Dispatch a custom event to notify app of authentication change
+        window.dispatchEvent(new Event('authChange'));
+        
+        // Navigate based on user role
         if (response.data.user.AdminRight === 1) {
-          navigate('/admin/');
+          navigate('/home', { replace: true });
         } else {
-          navigate('/user/');
+          navigate('/home', { replace: true });
         }
       }
     } catch (err) {

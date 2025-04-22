@@ -25,26 +25,20 @@ const SidebarLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load user data from localStorage and check admin rights
   useEffect(() => {
     const checkAdminStatus = () => {
       try {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-          
-          // Check admin rights based on AdminRight property
+          setUser(parsedUser);  
           const adminStatus = parsedUser?.AdminRight === 1;
           setIsAdmin(adminStatus);
-          
-          // Redirect if accessing wrong section
           const isAdminRoute = location.pathname.includes('/admin/');
           if (!adminStatus && isAdminRoute) {
             navigate('/home');
           }
         } else {
-          // If no user data in localStorage, redirect to login
           navigate('/');
         }
       } catch (error) {
@@ -54,10 +48,7 @@ const SidebarLayout = ({ children }) => {
     };
     
     checkAdminStatus();
-    
-    // Set up an interval to periodically check admin status
-    // This helps if user data changes in another tab/window
-    const intervalId = setInterval(checkAdminStatus, 60000); // Check every minute
+    const intervalId = setInterval(checkAdminStatus, 60000); 
     
     return () => clearInterval(intervalId);
   }, [navigate, location.pathname]);
@@ -69,7 +60,6 @@ const SidebarLayout = ({ children }) => {
     }
   }, []);
 
-  // Define routes properly separated by role
   const routes = isAdmin ? [
     { path: `/home`, label: 'Нүүр хуудас', component: 'Home' },
     { path: `/admin/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
@@ -96,14 +86,14 @@ const SidebarLayout = ({ children }) => {
     { path: `/feedback/create`, label: 'Санал хүсэлт явуулах', component: 'FeedbackCreate' },
   ];
 
-  // Fix menu items to use exact paths
   const adminMenuItems = [
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `/home` },
-    { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `/admin/payment` },
-    { icon: Clock, label: 'Тоолуурын заалт', path: `/admin/metercounter` },
+    { icon: CreditCard, label: 'Тайлан', path: `/admin/report` },
+    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` },
+    { icon: Clock, label: 'Төлбөрийн тариф', path: `/admin/tarif` },
     { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
-    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/admin/service` },
-    { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` }
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/service` },
+
   ];
 
   const userMenuItems = [
@@ -113,19 +103,16 @@ const SidebarLayout = ({ children }) => {
     { icon: Clock, label: 'Тоолуурын заалт', path: `/user/metercounter` },
     { icon: CreditCard, label: 'Төлбөрийн мэдээлэл', path: `/user/payment-info` },
     { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
-    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/user/services` }
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/service` }
   ];
 
-  // Use the menuItems based on admin status
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    // Use replace: true to prevent back navigation to protected routes
     navigate('/', { replace: true });
-    // Force a page reload to reset all application state
     window.location.reload();
   };
 
@@ -153,7 +140,7 @@ const SidebarLayout = ({ children }) => {
         className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 shadow-sm fixed h-full transition-all duration-300 ease-in-out z-20`}
       >
         <div className="flex flex-col h-full p-4">  
-          {/* Logo - Now clickable to toggle sidebar */}
+          {/* Logo */}
           <div className="p-4 mb-6 flex items-center justify-center cursor-pointer" onClick={toggleSidebar}>
             {isSidebarOpen ? (
               <h2 className="text-xl font-bold text-blue-600 whitespace-nowrap">
@@ -172,7 +159,7 @@ const SidebarLayout = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === `/home`} // Exact match for home route
+                end={item.path === `/home`} 
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
@@ -272,7 +259,7 @@ const SidebarLayout = ({ children }) => {
         {/* Top Navigation Bar */}
         <header className="bg-white border-b border-gray-200 h-16 flex items-center px-4 sticky top-0 z-10">
           <div className="flex items-center justify-between w-full">
-            {/* Mobile menu button - only shown on mobile */}
+            {/* Mobile menu button */}
             <button 
               onClick={toggleMobileSidebar}
               className="md:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors duration-200"
@@ -280,10 +267,8 @@ const SidebarLayout = ({ children }) => {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Improved SearchBar Component */}
+            {/* SearchBar */}
             <SearchBar routes={routes} isAdmin={isAdmin} />
-
-            {/* Empty div to push profile section to the right on mobile */}
             <div className="flex-1 md:hidden"></div>
             <div className="flex items-center space-x-4">
               <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
