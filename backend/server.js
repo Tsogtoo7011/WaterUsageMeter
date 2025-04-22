@@ -12,6 +12,7 @@ const passwordRoutes = require('./routes/passwordRoutes');
 const userRoutes = require('./routes/userRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const newsRoutes = require('./routes/newsRoutes'); 
+const tariffRoutes = require('./routes/tariffRoutes'); 
 
 require('dotenv').config();
 
@@ -84,6 +85,7 @@ app.use('/api/password', passwordRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/tariff', tariffRoutes);
 
 // CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {

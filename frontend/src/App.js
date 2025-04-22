@@ -1,10 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { 
-  SignIn, SignUp, Settings, Profile, News, Home, Feedback, FeedbackCreate, 
-  FeedbackDetail, FeedbackEdit, AdminTarif, AdminReport, AboutUs, MeterCounterDetail,
-  MeterCounterImport, Apartment, MeterCounter, PaymentInfo, Services 
-} from './pages';
+import SignIn from './pages/Public/SignIn';
+import SignUp from './pages/Public/SignUp';
+import Settings from './pages/Public/Settings';
+import Profile from './pages/Public/Profile';
+import News from './pages/Public/News';
+import Home from './pages/Public/Home';
+import Feedback from './pages/Public/Feedback';
+import FeedbackCreate from './pages/Public/FeedbackCreate';
+import FeedbackDetail from './pages/Public/FeedbackDetail';
+import FeedbackEdit from './pages/Public/FeedbackEdit';
+import Services from './pages/Public/Service';
+import AdminReport from './pages/Admin/AdminReport';
+import AdminTarif from './pages/Admin/AdminTariff';
+import AboutUs from './pages/User/About';
+import MeterCounterDetail from './pages/User/MeterCounterDetails';
+import MeterCounterImport from './pages/User/MeterCounterImport';
+import Apartment from './pages/User/Apartment';
+import MeterCounter from './pages/User/MeterCounter';
+import PaymentInfo from './pages/User/Payment';
 import SidebarLayout from './Layout/SideBarLayout';
 
 const PrivateRoute = ({ children }) => localStorage.getItem('token') ? children : <Navigate to="/" replace />;
