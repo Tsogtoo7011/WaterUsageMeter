@@ -1,18 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import Tesseract from 'tesseract.js';
 
 export function MeterCounterImport() {
   const navigate = useNavigate();
   const [coldValue, setColdValue] = useState('');
   const [hotValue, setHotValue] = useState('');
+  const [selectedLocations, setSelectedLocations] = useState(['Ванн', 'Гал тогоо', 'Нойл']);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [processedImage, setProcessedImage] = useState(null);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const coldFileInputRef = useRef(null);
   const hotFileInputRef = useRef(null);
   const canvasRef = useRef(null);
-  const imageRef = useRef(null);
   const [currentType, setCurrentType] = useState(null);
 
   const extractMeterReadings = async () => {
@@ -85,12 +88,64 @@ export function MeterCounterImport() {
     ref.current.click();
   };
 
-  const handleSubmit = () => {
-    if (coldValue && hotValue) {
-      console.log('Submitted values:', { coldValue, hotValue });
-      alert('Тоолуурын заалт амжилттай хадгалагдлаа!');
+  const handleSubmit = async () => {
+    if (!coldValue && !hotValue) {
+      setError('Оруулах тоолуурын заалтыг оруулна уу.');
+      return;
+    }
+
+    if (selectedLocations.length === 0) {
+      setError('Тоолуурын байршлыг сонгоно уу.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      setSuccess(null);
+      
+      const token = localStorage.getItem('token');
+      const payload = {
+        coldWater: coldValue ? parseFloat(coldValue) : undefined,
+        hotWater: hotValue ? parseFloat(hotValue) : undefined,
+        locations: selectedLocations
+      };
+      
+      const response = await axios.post('/api/water-meters/add', payload, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data.success) {
+        setSuccess(response.data.message || 'Тоолуурын заалт амжилттай хадгалагдлаа!');
+        
+        // Reset form after successful submission
+        setColdValue('');
+        setHotValue('');
+        setProcessedImage(null);
+        
+        // Navigate back after 2 seconds
+        setTimeout(() => {
+          navigate('/user/metercounter');
+        }, 2000);
+      } else {
+        setError(response.data.message || 'Хадгалахад алдаа гарлаа.');
+      }
+    } catch (error) {
+      console.error('Error submitting readings:', error);
+      setError(error.response?.data?.message || 'Серверт хүсэлт илгээхэд алдаа гарлаа.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLocationChange = (location) => {
+    if (selectedLocations.includes(location)) {
+      setSelectedLocations(selectedLocations.filter(loc => loc !== location));
     } else {
-      alert('Бүх тоолуурын заалтыг оруулна уу.');
+      setSelectedLocations([...selectedLocations, location]);
     }
   };
 
@@ -150,6 +205,13 @@ export function MeterCounterImport() {
               <span className="block sm:inline">{error}</span>
             </div>
           )}
+          
+          {/* Success Message */}
+          {success && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4" role="alert">
+              <span className="block sm:inline">{success}</span>
+            </div>
+          )}
 
           {/* Input Fields */}
           <div className="space-y-4">
@@ -202,18 +264,51 @@ export function MeterCounterImport() {
                 Зураг
               </button>
             </div>
+            
+            {/* Locations Checkbox */}
+            <div className="mt-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                Байршлууд:
+              </label>
+              <div className="space-y-2">
+                {['Ванн', 'Гал тогоо', 'Нойл'].map(location => (
+                  <div key={location} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={location}
+                      checked={selectedLocations.includes(location)}
+                      onChange={() => handleLocationChange(location)}
+                      className="mr-2"
+                    />
+                    <label htmlFor={location} className="text-gray-700">{location}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           
           {/* Submit Button */}
           <div className="mt-6 flex justify-center">
             <button
               onClick={handleSubmit}
-              className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center shadow-md"
+              disabled={isSubmitting}
+              className={`px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center shadow-md ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              Оруулах
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+                  Оруулж байна...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Оруулах
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -223,6 +318,7 @@ export function MeterCounterImport() {
       <div className="mt-6">
         <button
           onClick={() => navigate(-1)}
+          disabled={isSubmitting}
           className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition flex items-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
