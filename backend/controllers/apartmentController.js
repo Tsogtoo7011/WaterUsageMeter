@@ -1,10 +1,9 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 
-// Apartment management
 exports.getApartments = async (req, res) => {
   try {
-    // Check if user is verified
+
     const [users] = await pool.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -53,16 +52,15 @@ exports.searchApartments = async (req, res) => {
     if (users[0].IsVerified !== 1) {
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
-    
-    // Extract search parameters
+
     const { ApartmentCode, City, District, SubDistrict, AptName, BlckNmbr, UnitNmbr } = req.query;
     
-    // Build where conditions
+
     let whereConditions = [];
     let params = [];
     let hasSearchCriteria = false;
     
-    // Add conditions only for non-empty fields
+
     if (AptName && AptName.trim() !== '') {
       whereConditions.push('a.ApartmentName LIKE ?');
       params.push(`%${AptName}%`);
@@ -139,8 +137,7 @@ exports.addApartmentByCode = async (req, res) => {
   
   try {
     await connection.beginTransaction();
-    
-    // Check if user is verified
+
     const [users] = await connection.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -162,8 +159,7 @@ exports.addApartmentByCode = async (req, res) => {
       await connection.rollback();
       return res.status(400).json({ message: 'Байрны ID, код болон төрөл заавал шаардлагатай' });
     }
-    
-    // Check if apartment exists with that code
+
     const [apartment] = await connection.execute(
       'SELECT * FROM Apartment WHERE ApartmentId = ? AND ApartmentCode = ?',
       [apartmentId, apartmentCode]
@@ -173,8 +169,7 @@ exports.addApartmentByCode = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл кодын утга буруу байна' });
     }
-    
-    // Check if user already has this apartment
+
     const [existingAssociation] = await connection.execute(
       'SELECT * FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
       [apartmentId, req.userData.userId]
@@ -184,17 +179,14 @@ exports.addApartmentByCode = async (req, res) => {
       await connection.rollback();
       return res.status(409).json({ message: 'Энэ байр аль хэдийн таны бүртгэлд нэмэгдсэн байна' });
     }
-    
-    // Convert UserRole string to numeric value for database
+
     const userRole = apartmentType === 'эзэмшигч' ? 0 : 1;
-    
-    // Insert into ApartmentUserAdmin junction table
+
     await connection.execute(
       'INSERT INTO ApartmentUserAdmin (ApartmentId, UserId, UserRole) VALUES (?, ?, ?)',
       [apartmentId, req.userData.userId, userRole]
     );
-    
-    // Get the added apartment details
+ 
     const [addedApartment] = await connection.execute(
       `SELECT a.ApartmentId, aua.UserRole, a.ApartmentCode as ApartmentCode, a.CityName as City, 
               a.DistrictName as District, a.SubDistrictName as SubDistrict, a.ApartmentName as AptName, 
@@ -206,8 +198,7 @@ exports.addApartmentByCode = async (req, res) => {
     );
     
     await connection.commit();
-    
-    // Format to match frontend expectations
+
     const formattedApartment = {
       ...addedApartment[0],
       ApartmentType: addedApartment[0].UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
@@ -227,8 +218,7 @@ exports.createApartment = async (req, res) => {
   
   try {
     await connection.beginTransaction();
-    
-    // Check if user is verified
+
     const [users] = await connection.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -243,8 +233,7 @@ exports.createApartment = async (req, res) => {
       await connection.rollback();
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
-    
-    // Validate required fields
+
     const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr'];
     
     for (const field of requiredFields) {
@@ -253,8 +242,7 @@ exports.createApartment = async (req, res) => {
         return res.status(400).json({ message: `${field} талбар заавал шаардлагатай` });
       }
     }
-    
-    // Ensure numeric fields are actually numbers
+
     const apartmentCode = parseInt(req.body.ApartmentCode);
     const blockNumber = parseInt(req.body.BlckNmbr);
     
@@ -262,11 +250,9 @@ exports.createApartment = async (req, res) => {
       await connection.rollback();
       return res.status(400).json({ message: 'ApartmentCode болон BlckNmbr тоо байх ёстой' });
     }
-    
-    // Convert UserRole string to numeric value for database
+
     const userRole = req.body.ApartmentType === 'эзэмшигч' ? 0 : 1;
-    
-    // Insert into Apartment table
+
     const [apartmentResult] = await connection.execute(
       `INSERT INTO Apartment (ApartmentCode, CityName, DistrictName, SubDistrictName, 
            ApartmentName, BlockNumber, UnitNumber)
@@ -278,20 +264,18 @@ exports.createApartment = async (req, res) => {
         req.body.SubDistrict,
         req.body.AptName,
         blockNumber,
-        req.body.UnitNmbr || '' // Handling the UnitNumber field
+        req.body.UnitNmbr || '' 
       ]
     );
     
     const apartmentId = apartmentResult.insertId;
-    
-    // Insert into ApartmentUserAdmin junction table
+
     await connection.execute(
       `INSERT INTO ApartmentUserAdmin (ApartmentId, UserId, UserRole)
        VALUES (?, ?, ?)`,
       [apartmentId, req.userData.userId, userRole]
     );
-    
-    // Get the newly created apartment
+
     const [newApartment] = await connection.execute(
       `SELECT a.ApartmentId, aua.UserRole, a.ApartmentCode as ApartmentCode, a.CityName as City, 
               a.DistrictName as District, a.SubDistrictName as SubDistrict, a.ApartmentName as AptName, 
@@ -303,8 +287,7 @@ exports.createApartment = async (req, res) => {
     );
     
     await connection.commit();
-    
-    // Format to match frontend expectations
+
     const formattedApartment = {
       ...newApartment[0],
       ApartmentType: newApartment[0].UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
@@ -325,8 +308,7 @@ exports.deleteApartment = async (req, res) => {
   
   try {
     await connection.beginTransaction();
-    
-    // Check if user is verified first
+
     const [users] = await connection.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -341,8 +323,7 @@ exports.deleteApartment = async (req, res) => {
       await connection.rollback();
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
-    
-    // Check if the apartment exists and belongs to the user
+
     const [apartments] = await connection.execute(
       `SELECT a.ApartmentId FROM Apartment a
        JOIN ApartmentUserAdmin aua ON a.ApartmentId = aua.ApartmentId
@@ -354,20 +335,17 @@ exports.deleteApartment = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
-    
-    // Delete from ApartmentUserAdmin first (foreign key constraint)
+
     await connection.execute(
       'DELETE FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
       [apartmentId, req.userData.userId]
     );
-    
-    // Check if there are any more users associated with this apartment
+
     const [remainingUsers] = await connection.execute(
       'SELECT COUNT(*) AS count FROM ApartmentUserAdmin WHERE ApartmentId = ?',
       [apartmentId]
     );
-    
-    // If no more users are associated, delete the apartment
+
     if (remainingUsers[0].count === 0) {
       await connection.execute(
         'DELETE FROM Apartment WHERE ApartmentId = ?',
@@ -391,8 +369,7 @@ exports.updateApartment = async (req, res) => {
   
   try {
     await connection.beginTransaction();
-    
-    // Check if user is verified
+
     const [users] = await connection.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -407,8 +384,7 @@ exports.updateApartment = async (req, res) => {
       await connection.rollback();
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
-    
-    // Check if the apartment exists and belongs to the user
+
     const [apartments] = await connection.execute(
       `SELECT a.ApartmentId FROM Apartment a
        JOIN ApartmentUserAdmin aua ON a.ApartmentId = aua.ApartmentId
@@ -420,8 +396,7 @@ exports.updateApartment = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
-    
-    // Validate required fields
+
     const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr'];
     
     for (const field of requiredFields) {
@@ -431,7 +406,6 @@ exports.updateApartment = async (req, res) => {
       }
     }
     
-    // Ensure numeric fields are actually numbers
     const apartmentCode = parseInt(req.body.ApartmentCode);
     const blockNumber = parseInt(req.body.BlckNmbr);
     
@@ -440,10 +414,8 @@ exports.updateApartment = async (req, res) => {
       return res.status(400).json({ message: 'ApartmentCode болон BlckNmbr тоо байх ёстой' });
     }
     
-    // Convert UserRole string to numeric value for database
     const userRole = req.body.ApartmentType === 'эзэмшигч' ? 0 : 1;
-    
-    // Update apartment information
+
     await connection.execute(
       `UPDATE Apartment 
        SET ApartmentCode = ?, CityName = ?, DistrictName = ?, SubDistrictName = ?, 
@@ -460,15 +432,13 @@ exports.updateApartment = async (req, res) => {
         apartmentId
       ]
     );
-    
-    // Update ApartmentUserAdmin information
+
     await connection.execute(
       `UPDATE ApartmentUserAdmin SET UserRole = ?
        WHERE ApartmentId = ? AND UserId = ?`,
       [userRole, apartmentId, req.userData.userId]
     );
-    
-    // Get the updated apartment
+
     const [updatedApartment] = await connection.execute(
       `SELECT a.ApartmentId, aua.UserRole, a.ApartmentCode as ApartmentCode, a.CityName as City, 
               a.DistrictName as District, a.SubDistrictName as SubDistrict, a.ApartmentName as AptName, 
@@ -480,8 +450,7 @@ exports.updateApartment = async (req, res) => {
     );
     
     await connection.commit();
-    
-    // Format to match frontend expectations
+
     const formattedApartment = {
       ...updatedApartment[0],
       ApartmentType: updatedApartment[0].UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
@@ -496,10 +465,9 @@ exports.updateApartment = async (req, res) => {
   }
 };
 
-// Get a single apartment by ID
 exports.getApartmentById = async (req, res) => {
   try {
-    // Check if user is verified first
+
     const [users] = await pool.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -514,8 +482,7 @@ exports.getApartmentById = async (req, res) => {
     }
     
     const apartmentId = req.params.id;
-    
-    // Check if the apartment exists and belongs to the user
+
     const [apartments] = await pool.execute(
       `SELECT a.ApartmentId, aua.UserRole, a.ApartmentCode as ApartmentCode, a.CityName as City, 
               a.DistrictName as District, a.SubDistrictName as SubDistrict, a.ApartmentName as AptName, 
@@ -529,8 +496,7 @@ exports.getApartmentById = async (req, res) => {
     if (!apartments.length) {
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
-    
-    // Format to match frontend expectations
+
     const formattedApartment = {
       ...apartments[0],
       ApartmentType: apartments[0].UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
@@ -542,7 +508,6 @@ exports.getApartmentById = async (req, res) => {
   }
 };
 
-// Share apartment with another user
 exports.shareApartment = async (req, res) => {
   const { apartmentId, email, apartmentType } = req.body;
   const connection = await pool.getConnection();
@@ -550,7 +515,6 @@ exports.shareApartment = async (req, res) => {
   try {
     await connection.beginTransaction();
     
-    // Check if user is verified
     const [users] = await connection.execute(
       'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -566,7 +530,6 @@ exports.shareApartment = async (req, res) => {
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
-    // Check if apartment exists and belongs to the current user
     const [apartments] = await connection.execute(
       `SELECT a.ApartmentId FROM Apartment a
        JOIN ApartmentUserAdmin aua ON a.ApartmentId = aua.ApartmentId
@@ -578,8 +541,7 @@ exports.shareApartment = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
-    
-    // Find user by email
+
     const [targetUsers] = await connection.execute(
       'SELECT UserId FROM UserAdmin WHERE Email = ?',
       [email]
@@ -596,8 +558,7 @@ exports.shareApartment = async (req, res) => {
       await connection.rollback();
       return res.status(400).json({ message: 'Өөрийн хэрэглэгчтэй хуваалцах боломжгүй' });
     }
-    
-    // Check if already shared
+
     const [existing] = await connection.execute(
       'SELECT * FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
       [apartmentId, targetUserId]
@@ -607,8 +568,7 @@ exports.shareApartment = async (req, res) => {
       await connection.rollback();
       return res.status(409).json({ message: 'Энэ байр аль хэдийн энэ хэрэглэгчтэй хуваалцсан байна' });
     }
-    
-    // Share with user by adding to junction table
+
     const numericUserRole = apartmentType === 'эзэмшигч' ? 0 : 1;
     
     await connection.execute(

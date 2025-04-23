@@ -1,36 +1,65 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 
-// Helper function to get user's apartment ID and validate ownership
-async function getUserApartmentId(userId) {
+// Helper function to get user's apartments
+async function getUserApartments(userId) {
   const [apartments] = await pool.execute(
-    'SELECT ApartmentId FROM Apartment WHERE UserAdminUserId = ?',
+    'SELECT aua.ApartmentId FROM ApartmentUserAdmin aua WHERE aua.UserId = ?',
     [userId]
   );
   
   if (apartments.length === 0) {
-    return null;
+    return [];
   }
   
-  return apartments[0].ApartmentId;
+  return apartments.map(apt => apt.ApartmentId);
 }
 
-// Get all water meters for a user's apartment
+// Get water meter data for the current user
 exports.getUserWaterMeters = async (req, res) => {
   try {
     const userId = req.userData.userId;
+    const requestedApartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
     
-    // Get the user's apartment
-    const apartmentId = await getUserApartmentId(userId);
+    // Get list of user's apartments
+    const apartmentIds = await getUserApartments(userId);
     
-    if (!apartmentId) {
-      return res.status(404).json({
-        success: false,
-        message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.'
+    if (apartmentIds.length === 0) {
+      // Return 200 with empty data and clear status flag
+      return res.status(200).json({
+        success: true,
+        message: 'No apartments found for this user',
+        waterMeters: [],
+        summary: {
+          hot: 0,
+          cold: 0,
+          total: 0,
+          locationBreakdown: {}
+        },
+        chartData: {
+          labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],
+          hot: Array(12).fill(0),
+          cold: Array(12).fill(0),
+          total: Array(12).fill(0)
+        },
+        hasReadings: false,
+        apartments: [],
+        selectedApartmentId: null,
+        hasApartments: false // Added flag to explicitly indicate no apartments
       });
     }
     
-    // Get all water meters for this apartment
+    // If apartment ID is specifically requested and valid, use it
+    // Otherwise, use the first one as default
+    let selectedApartmentId;
+    
+    if (requestedApartmentId && apartmentIds.includes(requestedApartmentId)) {
+      selectedApartmentId = requestedApartmentId;
+    } else {
+      selectedApartmentId = apartmentIds[0];
+    }
+    
+    // Get the current month's readings for selected apartment
     const [waterMeters] = await pool.execute(
       `SELECT 
         WaterMeterId,
@@ -40,52 +69,50 @@ exports.getUserWaterMeters = async (req, res) => {
         WaterMeterDate
       FROM WaterMeter
       WHERE ApartmentApartmentId = ?
-      ORDER BY WaterMeterDate DESC`,
-      [apartmentId]
+      AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
+      AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())
+      ORDER BY Location, Type`,
+      [selectedApartmentId]
     );
     
-    // Format the data
+    // Format the output
     const formattedMeters = waterMeters.map(meter => ({
-      ...meter,
-      Type: Number(meter.Type),
-      Indication: Number(meter.Indication),
-      WaterMeterId: Number(meter.WaterMeterId)
+      id: Number(meter.WaterMeterId),
+      type: Number(meter.Type),
+      typeText: meter.Type === 1 ? 'Халуун ус' : 'Хүйтэн ус',
+      location: meter.Location,
+      indication: Number(meter.Indication),
+      date: meter.WaterMeterDate
     }));
     
-    // Get aggregated data by location and type
-    const [hotWaterTotal] = await pool.execute(
-      `SELECT SUM(Indication) as total
-       FROM WaterMeter
-       WHERE ApartmentApartmentId = ? AND Type = 1
-       AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
-       AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())`,
-      [apartmentId]
-    );
+    // Calculate totals
+    let totalHot = 0;
+    let totalCold = 0;
     
-    const [coldWaterTotal] = await pool.execute(
-      `SELECT SUM(Indication) as total
-       FROM WaterMeter
-       WHERE ApartmentApartmentId = ? AND Type = 0
-       AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
-       AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())`,
-      [apartmentId]
-    );
+    formattedMeters.forEach(meter => {
+      if (meter.type === 1) {
+        totalHot += meter.indication;
+      } else {
+        totalCold += meter.indication;
+      }
+    });
     
-    // Get location data
+    // Get location breakdown
     const [locationData] = await pool.execute(
       `SELECT 
         Location,
         Type,
-        Indication
-       FROM WaterMeter
-       WHERE ApartmentApartmentId = ?
-       AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
-       AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())
-       ORDER BY Location, Type`,
-      [apartmentId]
+        SUM(Indication) as total
+      FROM WaterMeter
+      WHERE ApartmentApartmentId = ?
+      AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE()) 
+      AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())
+      GROUP BY Location, Type
+      ORDER BY Location, Type`,
+      [selectedApartmentId]
     );
     
-    // Create data structure similar to what frontend expects
+    // Create data structure for location breakdown
     const locationBreakdown = {
       'Ванн': { hot: 0, cold: 0 },
       'Гал тогоо': { hot: 0, cold: 0 },
@@ -97,51 +124,74 @@ exports.getUserWaterMeters = async (req, res) => {
       const locKey = item.Location;
       const typeKey = item.Type === 1 ? 'hot' : 'cold';
       
-      if (locationBreakdown[locKey] && (typeKey === 'cold' || typeKey === 'hot' && locKey !== 'Нойл')) {
-        locationBreakdown[locKey][typeKey] = Number(item.Indication);
+      if (locationBreakdown[locKey] && (typeKey === 'cold' || (typeKey === 'hot' && locKey !== 'Нойл'))) {
+        locationBreakdown[locKey][typeKey] = Number(item.total);
       }
     });
     
-    // Get historical data for charts
+    // Get historical data for chart
+    const year = new Date().getFullYear();
     const [historicalData] = await pool.execute(
       `SELECT 
         MONTH(WaterMeterDate) as month,
         Type,
         SUM(Indication) as total
-       FROM WaterMeter
-       WHERE ApartmentApartmentId = ?
-       AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())
-       GROUP BY MONTH(WaterMeterDate), Type
-       ORDER BY MONTH(WaterMeterDate)`,
-      [apartmentId]
+      FROM WaterMeter
+      WHERE ApartmentApartmentId = ?
+      AND YEAR(WaterMeterDate) = ?
+      GROUP BY MONTH(WaterMeterDate), Type
+      ORDER BY MONTH(WaterMeterDate), Type`,
+      [selectedApartmentId, year]
     );
     
     // Process historical data
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
     const chartData = {
+      labels: months,
       hot: Array(12).fill(0),
-      cold: Array(12).fill(0)
+      cold: Array(12).fill(0),
+      total: Array(12).fill(0)
     };
     
     historicalData.forEach(record => {
       const monthIndex = record.month - 1; // Convert to 0-based index
       const typeKey = record.Type === 1 ? 'hot' : 'cold';
-      chartData[typeKey][monthIndex] = Number(record.total);
+      const value = Number(record.total);
+      
+      chartData[typeKey][monthIndex] = value;
+      chartData.total[monthIndex] += value;
     });
+    
+    // Get list of apartment objects for selection
+    const [apartmentObjects] = await pool.execute(
+      `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
+       FROM Apartment a
+       WHERE a.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
+      apartmentIds
+    );
+    
+    const apartments = apartmentObjects.map(apt => ({
+      id: apt.ApartmentId,
+      name: apt.ApartmentName,
+      block: apt.BlockNumber,
+      unit: apt.UnitNumber,
+      displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
+    }));
     
     return res.status(200).json({
       success: true,
       waterMeters: formattedMeters,
       summary: {
-        hot: hotWaterTotal[0].total || 0,
-        cold: coldWaterTotal[0].total || 0,
+        hot: totalHot,
+        cold: totalCold,
+        total: totalHot + totalCold,
         locationBreakdown
       },
-      chartData: {
-        labels: months,
-        hot: chartData.hot,
-        cold: chartData.cold
-      }
+      chartData: chartData,
+      hasReadings: formattedMeters.length > 0,
+      apartments: apartments,
+      selectedApartmentId: selectedApartmentId,
+      hasApartments: true // Explicitly indicate user has apartments
     });
     
   } catch (error) {
@@ -149,22 +199,33 @@ exports.getUserWaterMeters = async (req, res) => {
   }
 };
 
-// Get water meter details
+// Get detailed water meter readings for a specific apartment
 exports.getWaterMeterDetails = async (req, res) => {
   try {
     const userId = req.userData.userId;
+    const apartmentId = req.query.apartmentId;
     
-    // Get the user's apartment
-    const apartmentId = await getUserApartmentId(userId);
+    // Get list of user's apartments
+    const apartmentIds = await getUserApartments(userId);
     
-    if (!apartmentId) {
-      return res.status(404).json({
-        success: false,
-        message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.'
+    if (apartmentIds.length === 0) {
+      // Return 200 with empty data and clear status flag
+      return res.status(200).json({
+        success: true,
+        message: 'No apartments found for this user',
+        waterMeters: {},
+        apartments: [],
+        selectedApartmentId: null,
+        hasApartments: false // Added flag
       });
     }
     
-    // Get water meter history with more details
+    // If apartment ID is not provided or not valid, use the first one
+    const validApartmentId = apartmentId && apartmentIds.includes(Number(apartmentId)) 
+      ? Number(apartmentId) 
+      : apartmentIds[0];
+    
+    // Get water meters for this apartment
     const [waterMeters] = await pool.execute(
       `SELECT 
         WaterMeterId,
@@ -174,30 +235,53 @@ exports.getWaterMeterDetails = async (req, res) => {
         WaterMeterDate
       FROM WaterMeter
       WHERE ApartmentApartmentId = ?
-      ORDER BY WaterMeterDate DESC
-      LIMIT 50`,
-      [apartmentId]
+      ORDER BY WaterMeterDate DESC, Location, Type`,
+      [validApartmentId]
     );
     
-    // Format the output to match expected format
-    const formattedMeters = waterMeters.map(meter => {
-      const typeText = meter.Type === 1 ? 'Халуун ус' : 'Хүйтэн ус';
+    // Group by month for better organization
+    const groupedByMonth = {};
+    
+    waterMeters.forEach(meter => {
       const date = new Date(meter.WaterMeterDate);
-      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       
-      return {
+      if (!groupedByMonth[monthKey]) {
+        groupedByMonth[monthKey] = [];
+      }
+      
+      groupedByMonth[monthKey].push({
         id: Number(meter.WaterMeterId),
-        number: `WM-${meter.Type === 1 ? 'HOT' : 'COLD'}-${meter.WaterMeterId}`,
-        lastReading: `${meter.Indication} м³`,
-        date: formattedDate,
+        type: Number(meter.Type),
+        typeText: meter.Type === 1 ? 'Халуун ус' : 'Хүйтэн ус',
         location: meter.Location,
-        type: typeText
-      };
+        indication: Number(meter.Indication),
+        date: meter.WaterMeterDate
+      });
     });
+    
+    // Get list of apartment objects for selection
+    const [apartmentObjects] = await pool.execute(
+      `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
+       FROM Apartment a
+       WHERE a.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
+      apartmentIds
+    );
+    
+    const apartments = apartmentObjects.map(apt => ({
+      id: apt.ApartmentId,
+      name: apt.ApartmentName,
+      block: apt.BlockNumber,
+      unit: apt.UnitNumber,
+      displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
+    }));
     
     return res.status(200).json({
       success: true,
-      waterMeters: formattedMeters
+      waterMeters: groupedByMonth,
+      apartments: apartments,
+      selectedApartmentId: validApartmentId,
+      hasApartments: true // Added flag
     });
     
   } catch (error) {
@@ -205,31 +289,59 @@ exports.getWaterMeterDetails = async (req, res) => {
   }
 };
 
-// Add new water meter readings
+// Add new water meter reading for a specific apartment
 exports.addMeterReading = async (req, res) => {
   try {
-    const { hotWater, coldWater, locations } = req.body;
     const userId = req.userData.userId;
+    const { apartmentId, readings } = req.body;
     
-    // Validate inputs
-    if ((hotWater === undefined && coldWater === undefined) || !locations || !locations.length) {
+    // Validate input format
+    if (!readings || !Array.isArray(readings) || readings.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Тоолуурын заалт болон байршил оруулна уу.'
+        message: 'Буруу өгөгдлийн формат. Усны тоолуурын заалтууд оруулна уу.'
       });
     }
-    
-    // Get the user's apartment
-    const apartmentId = await getUserApartmentId(userId);
     
     if (!apartmentId) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.'
+        message: 'Буруу өгөгдлийн формат. Орон сууцны ID оруулна уу.'
       });
     }
     
-    // Check if readings for this month already exist
+    // Get list of user's apartments
+    const apartmentIds = await getUserApartments(userId);
+    
+    if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
+      return res.status(403).json({
+        success: false,
+        message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.',
+        hasApartments: false // Added flag
+      });
+    }
+    
+    // Validate all readings
+    const validLocations = ['Гал тогоо', 'Нойл', 'Ванн'];
+    const validTypes = [0, 1]; // 0 = Cold, 1 = Hot
+    
+    // Check for invalid combinations (Нойл cannot have hot water)
+    const invalidReadings = readings.filter(r => 
+      !validLocations.includes(r.location) || 
+      !validTypes.includes(r.type) ||
+      (r.location === 'Нойл' && r.type === 1) ||
+      typeof r.indication !== 'number'
+    );
+    
+    if (invalidReadings.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу тоолуурын мэдээлэл. Нойл дээр зөвхөн хүйтэн ус байх ёстой.',
+        invalidReadings
+      });
+    }
+    
+    // Check if readings for current month already exist
     const [existingReadings] = await pool.execute(
       `SELECT COUNT(*) as count
        FROM WaterMeter
@@ -239,110 +351,117 @@ exports.addMeterReading = async (req, res) => {
       [apartmentId]
     );
     
+    // If readings exist, update them instead of adding new ones
     if (existingReadings[0].count > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Энэ сарын заалт аль хэдийн оруулсан байна.'
+      // Get existing meter IDs
+      const [existingMeters] = await pool.execute(
+        `SELECT 
+          WaterMeterId, 
+          Type, 
+          Location
+         FROM WaterMeter
+         WHERE ApartmentApartmentId = ?
+         AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
+         AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())`,
+        [apartmentId]
+      );
+      
+      // Create a lookup map for existing readings
+      const existingReadingsMap = {};
+      existingMeters.forEach(item => {
+        const key = `${item.Location}-${item.Type}`;
+        existingReadingsMap[key] = item.WaterMeterId;
+      });
+      
+      // Update each reading
+      const updatePromises = readings.map(reading => {
+        const key = `${reading.location}-${reading.type}`;
+        const waterMeterId = existingReadingsMap[key];
+        
+        if (!waterMeterId) {
+          return Promise.resolve(); // Skip if this reading doesn't exist
+        }
+        
+        return pool.execute(
+          'UPDATE WaterMeter SET Indication = ? WHERE WaterMeterId = ?',
+          [reading.indication, waterMeterId]
+        );
+      });
+      
+      await Promise.all(updatePromises);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Энэ сарын усны тоолуурын заалтууд амжилттай шинэчлэгдлээ.'
+      });
+    } else {
+      // Insert all new readings
+      const insertPromises = readings.map(reading => 
+        pool.execute(
+          'INSERT INTO WaterMeter (ApartmentApartmentId, Type, Location, Indication) VALUES (?, ?, ?, ?)',
+          [apartmentId, reading.type, reading.location, reading.indication]
+        )
+      );
+      
+      await Promise.all(insertPromises);
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Энэ сарын усны тоолуурын бүх заалт амжилттай хадгалагдлаа.'
       });
     }
-    
-    // Insert readings for each location
-    const promises = [];
-    
-    // Process hot water if provided
-    if (hotWater !== undefined) {
-      for (const location of locations) {
-        // Skip toilet for hot water
-        if (location === 'Нойл') continue;
-        
-        // Calculate distribution based on location
-        let indication;
-        if (location === 'Ванн') {
-          indication = Math.floor(hotWater * 0.6); // 60% of hot water is for bathroom
-        } else {
-          indication = Math.floor(hotWater * 0.4); // 40% of hot water is for kitchen
-        }
-        
-        promises.push(
-          pool.execute(
-            'INSERT INTO WaterMeter (ApartmentApartmentId, Type, Location, Indication) VALUES (?, 1, ?, ?)',
-            [apartmentId, location, indication]
-          )
-        );
-      }
-    }
-    
-    // Process cold water if provided
-    if (coldWater !== undefined) {
-      for (const location of locations) {
-        // Calculate distribution based on location
-        let indication;
-        if (location === 'Ванн') {
-          indication = Math.floor(coldWater * 0.4); // 40% of cold water is for bathroom
-        } else if (location === 'Гал тогоо') {
-          indication = Math.floor(coldWater * 0.4); // 40% of cold water is for kitchen
-        } else {
-          indication = Math.floor(coldWater * 0.2); // 20% of cold water is for toilet
-        }
-        
-        promises.push(
-          pool.execute(
-            'INSERT INTO WaterMeter (ApartmentApartmentId, Type, Location, Indication) VALUES (?, 0, ?, ?)',
-            [apartmentId, location, indication]
-          )
-        );
-      }
-    }
-    
-    await Promise.all(promises);
-    
-    return res.status(201).json({
-      success: true,
-      message: 'Тоолуурын заалт амжилттай хадгалагдлаа.'
-    });
     
   } catch (error) {
     handleError(res, error, 'Add meter reading');
   }
 };
 
+// Get specific water meter by ID
 exports.getWaterMeterById = async (req, res) => {
   try {
-    const waterMeterId = req.params.id;
     const userId = req.userData.userId;
+    const waterMeterId = req.params.id;
     
     if (!waterMeterId || isNaN(Number(waterMeterId))) {
       return res.status(400).json({
         success: false,
-        message: 'Буруу ID форматтай байна.'
+        message: 'Буруу тоолуурын ID.'
       });
     }
-
-    const apartmentId = await getUserApartmentId(userId);
     
-    if (!apartmentId) {
+    // Get user's apartments
+    const apartmentIds = await getUserApartments(userId);
+    
+    if (apartmentIds.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.'
+        message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.',
+        hasApartments: false // Added flag
       });
     }
     
+    // Get the water meter with validation that it belongs to one of user's apartments
     const [waterMeters] = await pool.execute(
       `SELECT 
-        WaterMeterId,
-        Type,
-        Location,
-        Indication,
-        WaterMeterDate
-      FROM WaterMeter
-      WHERE WaterMeterId = ? AND ApartmentApartmentId = ?`,
-      [waterMeterId, apartmentId]
+        wm.WaterMeterId,
+        wm.Type,
+        wm.Location,
+        wm.Indication,
+        wm.WaterMeterDate,
+        a.ApartmentName,
+        a.BlockNumber,
+        a.UnitNumber
+      FROM WaterMeter wm
+      JOIN Apartment a ON wm.ApartmentApartmentId = a.ApartmentId
+      WHERE wm.WaterMeterId = ?
+      AND wm.ApartmentApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
+      [waterMeterId, ...apartmentIds]
     );
     
     if (waterMeters.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Усны тоолуур олдсонгүй.'
+        message: 'Тоолуур олдсонгүй эсвэл таны эрх хүрэхгүй байна.'
       });
     }
     
@@ -353,9 +472,16 @@ exports.getWaterMeterById = async (req, res) => {
       waterMeter: {
         id: Number(meter.WaterMeterId),
         type: Number(meter.Type),
+        typeText: meter.Type === 1 ? 'Халуун ус' : 'Хүйтэн ус',
         location: meter.Location,
         indication: Number(meter.Indication),
-        date: meter.WaterMeterDate
+        date: meter.WaterMeterDate,
+        apartment: {
+          name: meter.ApartmentName,
+          block: meter.BlockNumber,
+          unit: meter.UnitNumber,
+          displayName: `${meter.ApartmentName}, Блок ${meter.BlockNumber}${meter.UnitNumber ? ', Тоот ' + meter.UnitNumber : ''}`
+        }
       }
     });
     

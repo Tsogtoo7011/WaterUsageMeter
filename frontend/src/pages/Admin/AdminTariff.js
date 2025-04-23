@@ -47,11 +47,9 @@ export default function TariffManagement() {
     }
   };
 
-  // Fixed input handler that allows for empty inputs while typing
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    // Allow empty string during editing
+
     setEditedTariff({
       ...editedTariff,
       [name]: value === '' ? '' : parseFloat(value)
@@ -60,8 +58,7 @@ export default function TariffManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Convert any empty strings to 0 before submitting
+
     const submitData = {
       ColdWaterTariff: editedTariff.ColdWaterTariff === '' ? 0 : parseFloat(editedTariff.ColdWaterTariff),
       HeatWaterTariff: editedTariff.HeatWaterTariff === '' ? 0 : parseFloat(editedTariff.HeatWaterTariff),

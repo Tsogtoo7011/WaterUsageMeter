@@ -58,7 +58,6 @@ exports.getUserFeedback = async (req, res) => {
       [userId]
     );
     
-    // Ensure all numeric fields are returned as numbers
     const formattedFeedbacks = feedbacks.map(feedback => ({
       ...feedback,
       Type: Number(feedback.Type),
@@ -109,7 +108,6 @@ exports.getAllFeedback = async (req, res) => {
       ORDER BY f.created_at DESC`
     );
     
-    // Ensure all numeric fields are returned as numbers
     const formattedFeedbacks = feedbacks.map(feedback => ({
       ...feedback,
       Type: Number(feedback.Type),
@@ -140,7 +138,6 @@ exports.getFeedbackById = async (req, res) => {
       });
     }
     
-    // Check if user is admin
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
@@ -152,7 +149,6 @@ exports.getFeedbackById = async (req, res) => {
     let params = [];
     
     if (isAdmin) {
-      // Admin can see all feedback details with username
       query = `
         SELECT 
           f.ApplicationId,
@@ -170,7 +166,7 @@ exports.getFeedbackById = async (req, res) => {
       `;
       params = [feedbackId];
     } else {
-      // Regular users can only see their own feedback
+
       query = `
         SELECT 
           ApplicationId,
@@ -195,8 +191,7 @@ exports.getFeedbackById = async (req, res) => {
         message: 'Санал хүсэлт олдсонгүй.'
       });
     }
-    
-    // Ensure all numeric fields are returned as numbers
+
     const formattedFeedback = {
       ...feedbacks[0],
       Type: Number(feedbacks[0].Type),
@@ -226,8 +221,7 @@ exports.getAdminFeedbackById = async (req, res) => {
         message: 'Буруу ID форматтай байна.'
       });
     }
-    
-    // Check admin rights
+
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
@@ -263,8 +257,7 @@ exports.getAdminFeedbackById = async (req, res) => {
         message: 'Санал хүсэлт олдсонгүй.'
       });
     }
-    
-    // Ensure all numeric fields are returned as numbers
+
     const formattedFeedback = {
       ...feedbacks[0],
       Type: Number(feedbacks[0].Type),
@@ -294,8 +287,7 @@ exports.updateFeedback = async (req, res) => {
         message: 'Буруу ID форматтай байна.'
       });
     }
-    
-    // First check if the feedback exists
+
     const [checkFeedback] = await pool.execute(
       `SELECT * FROM feedback WHERE ApplicationId = ?`,
       [feedbackId]
@@ -313,16 +305,14 @@ exports.updateFeedback = async (req, res) => {
       Status: Number(checkFeedback[0].Status),
       UserAdminUserId: Number(checkFeedback[0].UserAdminUserId)
     };
-    
-    // Check if user is admin
+
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
     );
     
     const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
-    
-    // Admin can update status and admin_response
+
     if (isAdmin) {
       const { status, adminResponse } = req.body;
       const updates = [];
@@ -365,7 +355,6 @@ exports.updateFeedback = async (req, res) => {
       });
     } 
     else {
-      // Regular user updates
       if (feedback.UserAdminUserId !== userId) {
         return res.status(403).json({
           success: false,
@@ -373,7 +362,6 @@ exports.updateFeedback = async (req, res) => {
         });
       }
       
-      // Verify status is pending (0)
       if (feedback.Status !== 0) {
         return res.status(400).json({
           success: false,
@@ -426,8 +414,7 @@ exports.deleteFeedback = async (req, res) => {
         message: 'Буруу ID форматтай байна.'
       });
     }
-    
-    // First check if the feedback exists
+
     const [checkFeedback] = await pool.execute(
       `SELECT * FROM feedback WHERE ApplicationId = ?`,
       [feedbackId]
@@ -445,16 +432,14 @@ exports.deleteFeedback = async (req, res) => {
       Status: Number(checkFeedback[0].Status),
       UserAdminUserId: Number(checkFeedback[0].UserAdminUserId)
     };
-    
-    // Check if user is admin
+
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
       [userId]
     );
     
     const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
-    
-    // Admin can delete any feedback
+
     if (isAdmin) {
       await pool.execute(
         'DELETE FROM feedback WHERE ApplicationId = ?',
@@ -466,7 +451,7 @@ exports.deleteFeedback = async (req, res) => {
         message: 'Санал хүсэлт амжилттай устгагдлаа.'
       });
     }
-    // Regular user can only delete their own pending feedback
+
     else {
       if (feedback.UserAdminUserId !== userId) {
         return res.status(403).json({
