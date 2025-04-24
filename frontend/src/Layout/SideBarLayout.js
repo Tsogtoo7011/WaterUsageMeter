@@ -15,7 +15,7 @@ import {
   Droplet,
   Settings,
 } from 'lucide-react';
-import SearchBar from '../components/searchBar'; 
+import SearchBar from '../components/common/searchBar'; 
 
 const SidebarLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);

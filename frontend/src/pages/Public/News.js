@@ -12,10 +12,9 @@ const News = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedNews, setSelectedNews] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [formMode, setFormMode] = useState('create'); // 'create' or 'edit'
+  const [formMode, setFormMode] = useState('create'); 
   const [csrfToken, setCsrfToken] = useState(null);
   
-  // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',

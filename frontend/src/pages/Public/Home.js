@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import VerificationReminder from '../../components/verificationReminder';
+import VerificationReminder from '../../components/common/verificationReminder';
 import api from "../../utils/api";
 
 function Home() {

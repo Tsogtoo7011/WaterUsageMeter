@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import api from "../../utils/api"; 
-import VerificationReminder from "../../components/verificationReminder"; 
+import VerificationReminder from "../../components/common/verificationReminder"; 
 
 export function Profile() {
   const navigate = useNavigate();

@@ -192,8 +192,7 @@ export function Feedback() {
         return feedback[field];
       }
     }
-    
-    // If none of the common fields found, return null
+  
     return null;
   };
 
@@ -206,7 +205,7 @@ export function Feedback() {
           </h1>
           <div className="flex space-x-2 self-end sm:self-auto">
             <button
-              onClick={() => navigate('/user/home')}
+              onClick={() => navigate('/home')}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-3 md:px-4 rounded-lg text-sm md:text-base transition duration-200"
             >
               Буцах

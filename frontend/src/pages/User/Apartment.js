@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FaHome, FaEdit, FaTrash, FaShare, FaPlus, FaSave, FaTimes, FaSearch, FaInfoCircle } from "react-icons/fa";
-import VerificationReminder from '../../components/verificationReminder';
+import VerificationReminder from '../../components/common/verificationReminder';
 
 export function Apartment() {
   const [apartmentData, setApartmentData] = useState({

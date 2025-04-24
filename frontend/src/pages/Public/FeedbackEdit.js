@@ -30,7 +30,7 @@ function FeedbackEdit() {
           if (data.feedback && data.feedback.Status !== 0) {
             setError('Энэ санал хүсэлтийг засах боломжгүй байна');
             setTimeout(() => {
-              navigate(`/user/feedback/${id}`);
+              navigate(`/feedback/${id}`);
             }, 2000);
           }
         } else {
@@ -43,7 +43,7 @@ function FeedbackEdit() {
         // If 404 or unauthorized, redirect to feedback list
         if (err.response?.status === 404 || err.response?.status === 403) {
           setTimeout(() => {
-            navigate('/user/feedback');
+            navigate('/feedback');
           }, 2000);
         }
       } finally {
@@ -74,7 +74,7 @@ function FeedbackEdit() {
       });
       
       if (data.success) {
-        navigate(`/user/feedback/${id}`);
+        navigate(`/feedback/${id}`);
       } else {
         setError(data.message || 'Санал хүсэлтийг шинэчлэхэд алдаа гарлаа');
       }
@@ -95,7 +95,7 @@ function FeedbackEdit() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Санал хүсэлт засах</h1>
           <button
-            onClick={() => navigate(`/user/feedback/${id}`)}
+            onClick={() => navigate(`/feedback/${id}`)}
             className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200"
           >
             Буцах

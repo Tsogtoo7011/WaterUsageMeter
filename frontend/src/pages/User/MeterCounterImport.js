@@ -1,13 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import Tesseract from 'tesseract.js';
+import api from "../../utils/api"; 
 
 export function MeterCounterImport() {
   const navigate = useNavigate();
   const [coldValue, setColdValue] = useState('');
   const [hotValue, setHotValue] = useState('');
-  const [selectedLocations, setSelectedLocations] = useState(['Ванн', 'Гал тогоо', 'Нойл']);
+  const [selectedLocation, setSelectedLocation] = useState('Ванн');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processedImage, setProcessedImage] = useState(null);
@@ -17,6 +17,59 @@ export function MeterCounterImport() {
   const hotFileInputRef = useRef(null);
   const canvasRef = useRef(null);
   const [currentType, setCurrentType] = useState(null);
+  const [apartments, setApartments] = useState([]);
+  const [selectedApartmentId, setSelectedApartmentId] = useState(null);
+  const [hasExistingReadings, setHasExistingReadings] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch user's apartments on component mount
+  useEffect(() => {
+    const fetchApartments = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get('/water-meters/user');
+
+        if (response.data.success) {
+          setApartments(response.data.apartments || []);
+          
+          // If there are apartments, select the first one by default
+          if (response.data.apartments && response.data.apartments.length > 0) {
+            const defaultApartmentId = response.data.selectedApartmentId || response.data.apartments[0].id;
+            setSelectedApartmentId(defaultApartmentId);
+            
+            // Check if current month already has readings
+            setHasExistingReadings(response.data.hasReadings);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching apartments:', error);
+        setError('Орон сууцны мэдээлэл авахад алдаа гарлаа.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApartments();
+  }, []);
+
+  // Function to handle apartment selection change
+  const handleApartmentChange = async (e) => {
+    const apartmentId = Number(e.target.value);
+    setSelectedApartmentId(apartmentId);
+    
+    try {
+      setIsLoading(true);
+      const response = await api.get(`/water-meters/user?apartmentId=${apartmentId}`);
+
+      if (response.data.success) {
+        setHasExistingReadings(response.data.hasReadings);
+      }
+    } catch (error) {
+      console.error('Error checking apartment readings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const extractMeterReadings = async () => {
     try {
@@ -94,8 +147,13 @@ export function MeterCounterImport() {
       return;
     }
 
-    if (selectedLocations.length === 0) {
+    if (!selectedLocation) {
       setError('Тоолуурын байршлыг сонгоно уу.');
+      return;
+    }
+
+    if (!selectedApartmentId) {
+      setError('Орон сууц сонгоно уу.');
       return;
     }
 
@@ -104,19 +162,31 @@ export function MeterCounterImport() {
       setError(null);
       setSuccess(null);
       
-      const token = localStorage.getItem('token');
+      // Prepare readings array for API
+      const readings = [];
+      
+      if (coldValue) {
+        readings.push({
+          type: 0, // Cold water
+          location: selectedLocation,
+          indication: parseFloat(coldValue)
+        });
+      }
+      
+      if (hotValue && selectedLocation !== 'Нойл') {
+        readings.push({
+          type: 1, // Hot water
+          location: selectedLocation,
+          indication: parseFloat(hotValue)
+        });
+      }
+      
       const payload = {
-        coldWater: coldValue ? parseFloat(coldValue) : undefined,
-        hotWater: hotValue ? parseFloat(hotValue) : undefined,
-        locations: selectedLocations
+        apartmentId: selectedApartmentId,
+        readings: readings
       };
       
-      const response = await axios.post('/api/water-meters/add', payload, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await api.post('/water-meters/add', payload);
       
       if (response.data.success) {
         setSuccess(response.data.message || 'Тоолуурын заалт амжилттай хадгалагдлаа!');
@@ -125,6 +195,7 @@ export function MeterCounterImport() {
         setColdValue('');
         setHotValue('');
         setProcessedImage(null);
+        setHasExistingReadings(true);
         
         // Navigate back after 2 seconds
         setTimeout(() => {
@@ -141,13 +212,42 @@ export function MeterCounterImport() {
     }
   };
 
-  const handleLocationChange = (location) => {
-    if (selectedLocations.includes(location)) {
-      setSelectedLocations(selectedLocations.filter(loc => loc !== location));
-    } else {
-      setSelectedLocations([...selectedLocations, location]);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden p-8">
+          <div className="flex justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+          <p className="text-center mt-4 text-gray-600">Ачаалж байна...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (apartments.length === 0) {
+    return (
+      <div className="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden p-8">
+          <div className="text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 className="text-xl font-bold mt-4">Орон сууц олдсонгүй</h2>
+            <p className="mt-2 text-gray-600">Таны хандалтай холбоотой орон сууц олдсонгүй.</p>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => navigate('/user/apartments')}
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+            >
+              Орон сууц нэмэх
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
@@ -172,8 +272,40 @@ export function MeterCounterImport() {
           className="hidden"
         />
 
-        {/* Image Upload and Processing Section */}
         <div className="p-6">
+          {/* Apartment Selection */}
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="apartment">
+              Орон сууц сонгох:
+            </label>
+            <select
+              id="apartment"
+              value={selectedApartmentId || ''}
+              onChange={handleApartmentChange}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Орон сууц сонгох --</option>
+              {apartments.map(apt => (
+                <option key={apt.id} value={apt.id}>
+                  {apt.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Existing Readings Warning */}
+          {hasExistingReadings && (
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg mb-4" role="alert">
+              <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="font-medium">Анхааруулга:</span>
+                <span className="ml-2">Та энэ сард тоолуурын заалтаа өгсөн байна. Үргэлжлүүлбэл одоогийн утгыг дарж шинэчлэх болно.</span>
+              </div>
+            </div>
+          )}
+
           {/* Canvas for displaying uploaded image */}
           {processedImage && (
             <div className="mb-4">
@@ -213,6 +345,29 @@ export function MeterCounterImport() {
             </div>
           )}
 
+          {/* Location Radio Buttons */}
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Байршил:
+            </label>
+            <div className="space-y-2">
+              {['Ванн', 'Гал тогоо', 'Нойл'].map(location => (
+                <div key={location} className="flex items-center">
+                  <input
+                    type="radio"
+                    id={location}
+                    name="location"
+                    value={location}
+                    checked={selectedLocation === location}
+                    onChange={() => setSelectedLocation(location)}
+                    className="mr-2"
+                  />
+                  <label htmlFor={location} className="text-gray-700">{location}</label>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Input Fields */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -240,60 +395,42 @@ export function MeterCounterImport() {
               </button>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <div className="flex-grow">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hot">
-                  Халуун усны тоолуур (m³)
-                </label>
-                <input
-                  id="hot"
-                  type="number"
-                  value={hotValue}
-                  onChange={(e) => setHotValue(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Халуун усны утга оруулах"
-                />
+            {/* Only show hot water input for locations other than Нойл */}
+            {selectedLocation !== 'Нойл' && (
+              <div className="flex items-center space-x-2">
+                <div className="flex-grow">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hot">
+                    Халуун усны тоолуур (m³)
+                  </label>
+                  <input
+                    id="hot"
+                    type="number"
+                    value={hotValue}
+                    onChange={(e) => setHotValue(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Халуун усны утга оруулах"
+                  />
+                </div>
+                <button
+                  onClick={() => triggerFileInput(hotFileInputRef)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                  Зураг
+                </button>
               </div>
-              <button
-                onClick={() => triggerFileInput(hotFileInputRef)}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                </svg>
-                Зураг
-              </button>
-            </div>
-            
-            {/* Locations Checkbox */}
-            <div className="mt-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Байршлууд:
-              </label>
-              <div className="space-y-2">
-                {['Ванн', 'Гал тогоо', 'Нойл'].map(location => (
-                  <div key={location} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={location}
-                      checked={selectedLocations.includes(location)}
-                      onChange={() => handleLocationChange(location)}
-                      className="mr-2"
-                    />
-                    <label htmlFor={location} className="text-gray-700">{location}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
           
           {/* Submit Button */}
           <div className="mt-6 flex justify-center">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !selectedApartmentId}
               className={`px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center shadow-md ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                (isSubmitting || !selectedApartmentId) ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
               {isSubmitting ? (

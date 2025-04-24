@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import api from "../../utils/api"; 
-import VerificationReminder from '../../components/verificationReminder';
+import VerificationReminder from '../../components/common/verificationReminder';
 import {
   Chart as ChartJS,
   CategoryScale,

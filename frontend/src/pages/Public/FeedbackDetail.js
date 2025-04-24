@@ -31,7 +31,7 @@ export function FeedbackDetails() {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          navigate('/', { state: { from: `/user/feedback/${id}` } });
+          navigate('/', { state: { from: `/feedback/${id}` } });
           return;
         }
         
@@ -50,12 +50,12 @@ export function FeedbackDetails() {
             }
           } catch (err) {
             console.error('Error fetching user profile:', err);
-            navigate('/');
+            navigate('/public');
           }
         }
       } catch (err) {
         console.error('Error checking authentication:', err);
-        navigate('/');
+        navigate('/public');
       }
     };
     
@@ -93,7 +93,7 @@ export function FeedbackDetails() {
   }, [user, id, isAdmin]);
 
   const handleEditFeedback = () => {
-    navigate(`/user/feedback/edit/${id}`);
+    navigate(`/public/feedback/edit/${id}`);
   };
 
   const handleDeleteFeedback = async () => {
@@ -102,7 +102,7 @@ export function FeedbackDetails() {
         const { data } = await api.delete(`/feedback/${id}`);
         
         if (data.success) {
-          navigate('/user/feedback');
+          navigate('/public/feedback');
         } else {
           setError('Санал хүсэлтийг устгахад алдаа гарлаа');
         }
@@ -186,7 +186,7 @@ export function FeedbackDetails() {
             Санал хүсэлтийн дэлгэрэнгүй
           </h1>
           <button
-            onClick={() => navigate('/user/feedback')}
+            onClick={() => navigate('/public/feedback')}
             className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-3 md:px-4 rounded-lg text-sm md:text-base transition duration-200"
           >
             Буцах

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import VerificationReminder from '../../components/verificationReminder';
+import VerificationReminder from '../../components/common/verificationReminder';
 import api from "../../utils/api";
 
 export function FeedbackCreate() {
@@ -118,7 +118,7 @@ export function FeedbackCreate() {
       });
       
       setTimeout(() => {
-        navigate('/user/feedback');
+        navigate('/feedback');
       }, 2000);
       
     } catch (error) {
@@ -134,7 +134,7 @@ export function FeedbackCreate() {
   };
 
   const handleBackToList = () => {
-    navigate('/user/feedback');
+    navigate('/feedback');
   };
 
   return (
