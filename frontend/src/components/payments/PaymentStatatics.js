@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from "../../utils/api"; 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorAlert from '../common/ErrorAlert';
@@ -20,7 +20,7 @@ const PaymentStatistics = ({ apartmentId }) => {
       setError(null);
       
       try {
-        const response = await axios.get('/api/payments/statistics');
+        const response = await api.get('/payments/statistics');
         setStatistics({
           monthlyStats: response.data.monthlyStats,
           yearlyTotal: response.data.yearlyTotal

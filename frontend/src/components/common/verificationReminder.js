@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from "../../utils/api"; 
 
 function VerificationReminder({ user, onVerify }) {
   const [status, setStatus] = useState('idle');
@@ -28,15 +28,10 @@ function VerificationReminder({ user, onVerify }) {
       setStatus('sending');
       console.log('Sending verification request for email:', email);
       
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/verification/resend`,
-        { email },
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true 
-        }
+      // Use your custom API client instead of direct axios
+      const response = await api.post(
+        '/verification/resend',
+        { email }
       );
       
       console.log('Verification response:', response.data);

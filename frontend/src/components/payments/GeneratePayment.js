@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from "../../utils/api"; 
 
 const GeneratePayment = ({ apartmentId, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -12,14 +12,12 @@ const GeneratePayment = ({ apartmentId, onClose, onSuccess }) => {
     setError(null);
     
     try {
-      const response = await axios.post('/api/payments/generate', {
+      const response = await api.post('/payments/generate', {
         apartmentId: apartmentId
       });
       
       setSuccess(true);
       setPaymentData(response.data);
-      
-      // Call onSuccess after a delay to show the success message
       setTimeout(() => {
         onSuccess();
       }, 2000);

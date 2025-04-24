@@ -9,7 +9,7 @@ import GeneratePayment from '../../components/payments/GeneratePayment';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
 
-const PaymentsPage = () => {
+const Payment = () => {
   const navigate = useNavigate();
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState({ total: 0, paid: 0, pending: 0 });
@@ -19,7 +19,7 @@ const PaymentsPage = () => {
   const [error, setError] = useState(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [hasApartments, setHasApartments] = useState(true);
-  const [activeTab, setActiveTab] = useState('payments'); // 'payments' or 'statistics'
+  const [activeTab, setActiveTab] = useState('payments'); 
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -61,7 +61,6 @@ const PaymentsPage = () => {
     
     try {
       await api.post('/payments/process', { paymentId });
-      // Refresh payments after processing
       fetchPayments();
     } catch (err) {
       setError('Payment processing failed. Please try again.');
@@ -184,4 +183,4 @@ const PaymentsPage = () => {
   );
 };
 
-export default PaymentsPage;
+export default Payment;

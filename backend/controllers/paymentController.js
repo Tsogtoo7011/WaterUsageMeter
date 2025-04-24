@@ -15,7 +15,6 @@ async function getUserApartments(userId) {
   return apartments.map(apt => apt.ApartmentId);
 }
 
-// Get current tariff
 async function getCurrentTariff() {
   const [tariffs] = await pool.execute(
     'SELECT * FROM Tarif ORDER BY TariffId DESC LIMIT 1'
@@ -28,9 +27,7 @@ async function getCurrentTariff() {
   return tariffs[0];
 }
 
-// Calculate water consumption and costs
 async function calculateWaterUsage(apartmentId, month, year) {
-  // Get water meter readings for the specified month
   const [readings] = await pool.execute(
     `SELECT 
       Type,
@@ -42,14 +39,12 @@ async function calculateWaterUsage(apartmentId, month, year) {
     GROUP BY Type`,
     [apartmentId, month, year]
   );
-  
-  // Initialize with zeros
+
   const usage = {
     cold: 0,
     hot: 0
   };
   
-  // Process readings
   readings.forEach(reading => {
     if (reading.Type === 0) {
       usage.cold = Number(reading.total);
@@ -61,12 +56,10 @@ async function calculateWaterUsage(apartmentId, month, year) {
   return usage;
 }
 
-// Get payments for the current user
 exports.getUserPayments = async (req, res) => {
   try {
     const userId = req.userData.userId;
-    
-    // Get list of user's apartments
+
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0) {
@@ -379,7 +372,6 @@ exports.processPayment = async (req, res) => {
       });
     }
     
-    // Verify this payment belongs to the user
     const [payments] = await pool.execute(
       `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentApartmentId
        FROM Payment p
@@ -396,8 +388,7 @@ exports.processPayment = async (req, res) => {
     }
     
     const payment = payments[0];
-    
-    // Check if payment is already processed
+
     if (payment.Status === 'PAID') {
       return res.status(400).json({
         success: false,
@@ -405,10 +396,6 @@ exports.processPayment = async (req, res) => {
       });
     }
     
-    // In a real system, you would integrate with a payment gateway here
-    // For now, we'll simulate a successful payment
-    
-    // Update payment status
     await pool.execute(
       `UPDATE Payment
        SET Status = 'PAID', PaidDate = CURRENT_TIMESTAMP
@@ -427,12 +414,10 @@ exports.processPayment = async (req, res) => {
   }
 };
 
-// Get payment statistics
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const userId = req.userData.userId;
-    
-    // Get list of user's apartments
+ 
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0) {
@@ -445,11 +430,9 @@ exports.getPaymentStatistics = async (req, res) => {
         hasApartments: false
       });
     }
-    
-    // Get current year
+
     const currentYear = new Date().getFullYear();
-    
-    // Get monthly statistics for current year
+
     const [monthlyStats] = await pool.execute(
       `SELECT 
         MONTH(p.PayDate) as month,
@@ -464,8 +447,7 @@ exports.getPaymentStatistics = async (req, res) => {
       ORDER BY MONTH(p.PayDate)`,
       [...apartmentIds, userId, currentYear]
     );
-    
-    // Process monthly stats
+
     const months = Array(12).fill().map((_, i) => i + 1);
     const formattedStats = months.map(month => {
       const monthData = monthlyStats.find(stat => stat.month === month);
@@ -478,11 +460,9 @@ exports.getPaymentStatistics = async (req, res) => {
         pendingCount: monthData ? monthData.pendingCount : 0
       };
     });
-    
-    // Calculate yearly total
+
     const yearlyTotal = formattedStats.reduce((acc, stat) => acc + stat.totalAmount, 0);
-    
-    // Get list of apartment objects
+
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
        FROM Apartment a
