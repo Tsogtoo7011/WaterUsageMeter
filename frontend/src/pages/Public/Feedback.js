@@ -38,21 +38,21 @@ export function Feedback() {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
           setIsAdmin(parsedUser.AdminRight === 1);
-          setIsEmailVerified(!!parsedUser.Verified || !!parsedUser.verified);
+          setIsEmailVerified(!!parsedUser.IsVerified);
           console.log("User info:", parsedUser);
           console.log("Is admin:", parsedUser.AdminRight === 1);
-          console.log("Email verified:", !!parsedUser.Verified || !!parsedUser.verified);
+          console.log("Email verified:", !!parsedUser.IsVerified);
         } else {
           try {
             const { data } = await api.get('/users/profile');
             if (data.success && data.user) {
               setUser(data.user);
               setIsAdmin(data.user.AdminRight === 1);
-              setIsEmailVerified(!!data.user.Verified || !!data.user.verified);
+              setIsEmailVerified(!!data.user.IsVerified);
               localStorage.setItem('user', JSON.stringify(data.user));
               console.log("User info from API:", data.user);
               console.log("Is admin from API:", data.user.AdminRight === 1);
-              console.log("Email verified from API:", !!data.user.Verified || !!data.user.verified);
+              console.log("Email verified from API:", !!data.user.IsVerified);
             }
           } catch (err) {
             console.error('Error fetching user profile:', err);
@@ -145,10 +145,13 @@ export function Feedback() {
     navigate(`/feedback/${feedbackId}`);
   };
 
-  // Handle verification success
-  const handleVerificationSent = () => {
-    // You could show a success message or update UI
-    console.log("Verification email sent successfully");
+  // Handle verification success - update the user state like in Home.js
+  const handleVerificationSuccess = () => {
+    setUser(prev => ({
+      ...prev,
+      IsVerified: true
+    }));
+    setIsEmailVerified(true);
   };
 
   const canEditFeedback = (status, userId) => {
@@ -226,9 +229,9 @@ export function Feedback() {
           </div>
         </div>
 
-        {/* Display verification reminder if email is not verified */}
+        {/* Display verification reminder if email is not verified - updated to match Home.js */}
         {user && !isEmailVerified && (
-          <VerificationReminder user={user} onVerify={handleVerificationSent} />
+          <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
         )}
 
         {error && (

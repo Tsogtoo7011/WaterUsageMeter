@@ -22,8 +22,6 @@ function SignIn() {
         rememberMe: true
       }));
     }
-    
-    // Clear any previous auth errors if the page is reloaded
     setError('');
   }, []);
 
@@ -62,19 +60,18 @@ function SignIn() {
           localStorage.removeItem('rememberedUsername');
         }
 
-        // Store only accessToken since the refreshToken is handled by cookies
+        // Store token and user data
         localStorage.setItem('token', response.data.accessToken);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        // Dispatch a custom event to notify app of authentication change
-        window.dispatchEvent(new Event('authChange'));
-        
-        // Navigate based on user role
-        if (response.data.user.AdminRight === 1) {
+        // Ensure localStorage updates are completed before navigation
+        setTimeout(() => {
+          // Dispatch auth change event
+          window.dispatchEvent(new Event('authChange'));
+          
+          // Navigate based on user role
           navigate('/home', { replace: true });
-        } else {
-          navigate('/home', { replace: true });
-        }
+        }, 100);
       }
     } catch (err) {
       let errorMessage = 'Хэрэглэгчийн нэр эсвэл нууц үг буруу байна';
