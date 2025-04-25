@@ -35,7 +35,6 @@ export default function AdminTariff() {
   const fetchTariffData = async () => {
     try {
       setLoading(true);
-      // Use the api client
       const response = await api.get('/tariff');
       
       const tariffData = response.data;

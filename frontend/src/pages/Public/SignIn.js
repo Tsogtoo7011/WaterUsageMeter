@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from "../../utils/api"; 
 import backgroundImage from '../../figures/images/apartment.jpg';
 
 function SignIn() {
@@ -49,11 +49,10 @@ function SignIn() {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/signin', {
+      // Using the API client instead of direct axios call
+      const response = await api.post('/auth/signin', {
         username: formData.username.trim(),
         password: formData.password.trim()
-      }, {
-        withCredentials: true  // This is important for sending/receiving cookies
       });
 
       if (response.data) {

@@ -70,20 +70,7 @@ exports.getUserFeedback = async (req, res) => {
 
 exports.getAllFeedback = async (req, res) => {
   try {
-    const userId = req.userData.userId;
-
-    const [adminCheck] = await pool.execute(
-      'SELECT AdminRight FROM useradmin WHERE UserId = ?',
-      [userId]
-    );
-    
-    if (adminCheck.length === 0 || adminCheck[0].AdminRight !== 1) {
-      return res.status(403).json({
-        success: false,
-        message: 'Энэ үйлдлийг хийх эрх хүрэлцэхгүй байна.'
-      });
-    }
-    
+    // No need to check admin rights as it's handled by middleware
     const [feedbacks] = await pool.execute(
       `SELECT 
         f.ApplicationId,
@@ -125,12 +112,8 @@ exports.getFeedbackById = async (req, res) => {
       });
     }
     
-    const [adminCheck] = await pool.execute(
-      'SELECT AdminRight FROM useradmin WHERE UserId = ?',
-      [userId]
-    );
-    
-    const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
+    // The isAdmin check is still needed to determine which query to use
+    const isAdmin = req.userData.AdminRight === 1;
     
     let query = '';
     let params = [];
@@ -194,7 +177,6 @@ exports.getFeedbackById = async (req, res) => {
 exports.getAdminFeedbackById = async (req, res) => {
   try {
     const feedbackId = req.params.id;
-    const userId = req.userData.userId;
     
     if (!feedbackId || isNaN(Number(feedbackId))) {
       return res.status(400).json({
@@ -202,19 +184,8 @@ exports.getAdminFeedbackById = async (req, res) => {
         message: 'Буруу ID форматтай байна.'
       });
     }
-
-    const [adminCheck] = await pool.execute(
-      'SELECT AdminRight FROM useradmin WHERE UserId = ?',
-      [userId]
-    );
     
-    if (adminCheck.length === 0 || Number(adminCheck[0].AdminRight) !== 1) {
-      return res.status(403).json({
-        success: false,
-        message: 'Энэ үйлдлийг хийх эрх хүрэлцэхгүй байна.'
-      });
-    }
-    
+    // No need to check admin rights as it's handled by middleware
     const [feedbacks] = await pool.execute(
       `SELECT 
         f.ApplicationId,
@@ -277,13 +248,7 @@ exports.updateFeedback = async (req, res) => {
     }
     
     const feedback = checkFeedback[0];
-
-    const [adminCheck] = await pool.execute(
-      'SELECT AdminRight FROM useradmin WHERE UserId = ?',
-      [userId]
-    );
-    
-    const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
+    const isAdmin = req.userData.AdminRight === 1;
 
     if (isAdmin) {
       const { status, adminResponse } = req.body;
@@ -403,13 +368,7 @@ exports.deleteFeedback = async (req, res) => {
     }
     
     const feedback = checkFeedback[0];
-
-    const [adminCheck] = await pool.execute(
-      'SELECT AdminRight FROM useradmin WHERE UserId = ?',
-      [userId]
-    );
-    
-    const isAdmin = adminCheck.length > 0 && Number(adminCheck[0].AdminRight) === 1;
+    const isAdmin = req.userData.AdminRight === 1;
 
     if (isAdmin) {
       await pool.execute(
@@ -422,7 +381,6 @@ exports.deleteFeedback = async (req, res) => {
         message: 'Санал хүсэлт амжилттай устгагдлаа.'
       });
     }
-
     else {
       if (feedback.UserAdminId !== userId) {
         return res.status(403).json({

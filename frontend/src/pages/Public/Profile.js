@@ -113,7 +113,7 @@ export function Profile() {
             🔑 Нууцлал
           </button>
         </div>
-        {userData.AdminRight === 0 && (
+        {userData.AdminRight == 0 && (
           <button 
             onClick={() => navigate('/user/Profile/Apartment')} 
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"

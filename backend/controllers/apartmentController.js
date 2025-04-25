@@ -3,18 +3,13 @@ const { handleError } = require('../utils/errorHandler');
 
 exports.getApartments = async (req, res) => {
   try {
-
     const [users] = await pool.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
     const [apartments] = await pool.execute(
@@ -41,26 +36,20 @@ exports.getApartments = async (req, res) => {
 exports.searchApartments = async (req, res) => {
   try {
     const [users] = await pool.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
-    
-    if (users[0].IsVerified !== 1) {
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
-    }
 
     const { ApartmentCode, City, District, SubDistrict, AptName, BlckNmbr, UnitNmbr } = req.query;
     
-
     let whereConditions = [];
     let params = [];
     let hasSearchCriteria = false;
     
-
     if (AptName && AptName.trim() !== '') {
       whereConditions.push('a.ApartmentName LIKE ?');
       params.push(`%${AptName}%`);
@@ -132,6 +121,7 @@ exports.searchApartments = async (req, res) => {
     handleError(res, error, 'Байрны хайлтын мэдээлэл авах');
   }
 };
+
 exports.addApartmentByCode = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -139,18 +129,13 @@ exports.addApartmentByCode = async (req, res) => {
     await connection.beginTransaction();
 
     const [users] = await connection.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
     const { apartmentId, apartmentCode, apartmentType } = req.body;
@@ -220,18 +205,13 @@ exports.createApartment = async (req, res) => {
     await connection.beginTransaction();
 
     const [users] = await connection.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
 
     const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr'];
@@ -310,18 +290,13 @@ exports.deleteApartment = async (req, res) => {
     await connection.beginTransaction();
 
     const [users] = await connection.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
 
     const [apartments] = await connection.execute(
@@ -371,18 +346,13 @@ exports.updateApartment = async (req, res) => {
     await connection.beginTransaction();
 
     const [users] = await connection.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
 
     const [apartments] = await connection.execute(
@@ -467,18 +437,13 @@ exports.updateApartment = async (req, res) => {
 
 exports.getApartmentById = async (req, res) => {
   try {
-
     const [users] = await pool.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
     const apartmentId = req.params.id;
@@ -516,18 +481,13 @@ exports.shareApartment = async (req, res) => {
     await connection.beginTransaction();
     
     const [users] = await connection.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
     );
     
     if (!users.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      await connection.rollback();
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
     const [apartments] = await connection.execute(

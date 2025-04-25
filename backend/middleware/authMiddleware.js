@@ -14,8 +14,8 @@ exports.authenticate = (req, res, next) => {
     req.userData = {
       userId: decodedToken.id,
       username: decodedToken.username,
-      isVerified: decodedToken.isVerified,
-      isAdmin: decodedToken.isAdmin
+      IsVerified: decodedToken.IsVerified === 1 || decodedToken.IsVerified === true,
+      AdminRight: decodedToken.AdminRight || 0
     };
     
     next();
@@ -27,23 +27,18 @@ exports.authenticate = (req, res, next) => {
 };
 
 exports.adminOnly = (req, res, next) => {
-  if (!req.userData.isAdmin) {
+  if (!req.userData || req.userData.AdminRight !== 1) {
     return res.status(403).json({
       message: 'Админ эрх байхгүй байна'
     });
   }
   next();
 };
+
 exports.verifiedOnly = (req, res, next) => {
-  console.log("Verification check:", {
-    userData: req.userData,
-    isVerified: req.userData?.verified, 
-    email: req.userData?.email
-  });
-  
-  if (!req.userData || req.userData.verified !== 1) { 
-    return res.status(403).json({ 
-      message: 'Та имэйл хаягаа баталгаажуулсны дараа санал хүсэлт илгээх боломжтой.' 
+  if (!req.userData || !req.userData.IsVerified) {
+    return res.status(403).json({
+      message: 'Та имэйл хаягаа баталгаажуулах шаардлагатай'
     });
   }
   next();

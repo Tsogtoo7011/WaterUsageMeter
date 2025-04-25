@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { FaHome, FaEdit, FaTrash, FaShare, FaPlus, FaSave, FaTimes, FaSearch, FaInfoCircle } from "react-icons/fa";
 import VerificationReminder from '../../components/common/verificationReminder';
+import api from "../../utils/api"; 
 
 export function Apartment() {
   const [apartmentData, setApartmentData] = useState({
@@ -30,7 +30,7 @@ export function Apartment() {
   const [isSearching, setIsSearching] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  const API_URL = "http://localhost:5000/api/user/Profile/Apartment";
+  const API_URL = "/user/Profile/Apartment"; // Updated URL without the base
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -66,15 +66,8 @@ export function Apartment() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-      
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Using the API service instead of direct axios call
+      const response = await api.get(API_URL);
       setUserApartments(response.data);
     } catch (error) {
       console.error("Error fetching user apartments:", error);
@@ -105,10 +98,9 @@ export function Apartment() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/search`, {
-        params: apartmentData,
-        headers: { Authorization: `Bearer ${token}` }
+      // Using the API service with params
+      const response = await api.get(`${API_URL}/search`, {
+        params: apartmentData
       });
       setSearchResults(response.data);
       setIsSearching(true);
@@ -123,15 +115,14 @@ export function Apartment() {
   const handleSelectApartment = async (apartment) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
+      // Using the API service for post request
+      const response = await api.post(
         `${API_URL}/add-by-code`,
         {
           apartmentId: apartment.ApartmentId,
           apartmentCode: apartment.ApartmentCode,
           apartmentType: "түрээслэгч" 
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
       
       setUserApartments([...userApartments, response.data]);
@@ -153,14 +144,11 @@ export function Apartment() {
     setError(null);
     
     try {
-      const token = localStorage.getItem("token");
-      
       if (editingApartment) {
-        // Update existing apartment
-        const response = await axios.put(
+        // Update existing apartment using API service
+        const response = await api.put(
           `${API_URL}/${editingApartment.ApartmentId}`, 
-          apartmentData,
-          { headers: { Authorization: `Bearer ${token}` } }
+          apartmentData
         );
         
         setUserApartments(userApartments.map(apt => 
@@ -170,11 +158,10 @@ export function Apartment() {
         setEditingApartment(null);
         showNotification("Байрны мэдээлэл амжилттай шинэчлэгдлээ", "success");
       } else {
-        // Create new apartment
-        const response = await axios.post(
+        // Create new apartment using API service
+        const response = await api.post(
           API_URL, 
-          apartmentData,
-          { headers: { Authorization: `Bearer ${token}` } }
+          apartmentData
         );
         
         setUserApartments([...userApartments, response.data]);
@@ -197,11 +184,10 @@ export function Apartment() {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(
+      // Using the API service for sharing
+      await api.post(
         `${API_URL}/share`, 
-        shareData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        shareData
       );
       
       setIsSharing(false);
@@ -243,10 +229,8 @@ export function Apartment() {
     
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/${apartmentId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Using API service for delete request
+      await api.delete(`${API_URL}/${apartmentId}`);
       
       setUserApartments(userApartments.filter(apt => apt.ApartmentId !== apartmentId));
       showNotification("Байрны мэдээлэл амжилттай устгагдлаа", "success");

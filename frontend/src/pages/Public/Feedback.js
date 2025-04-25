@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from "../../utils/api";
+import VerificationReminder from '../../components/common/verificationReminder';
 
 export function Feedback() {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -8,6 +9,7 @@ export function Feedback() {
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(true); 
   const navigate = useNavigate();
 
   const feedbackTypeNames = {
@@ -36,17 +38,21 @@ export function Feedback() {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
           setIsAdmin(parsedUser.AdminRight === 1);
+          setIsEmailVerified(!!parsedUser.Verified || !!parsedUser.verified);
           console.log("User info:", parsedUser);
           console.log("Is admin:", parsedUser.AdminRight === 1);
+          console.log("Email verified:", !!parsedUser.Verified || !!parsedUser.verified);
         } else {
           try {
             const { data } = await api.get('/users/profile');
             if (data.success && data.user) {
               setUser(data.user);
               setIsAdmin(data.user.AdminRight === 1);
+              setIsEmailVerified(!!data.user.Verified || !!data.user.verified);
               localStorage.setItem('user', JSON.stringify(data.user));
               console.log("User info from API:", data.user);
               console.log("Is admin from API:", data.user.AdminRight === 1);
+              console.log("Email verified from API:", !!data.user.Verified || !!data.user.verified);
             }
           } catch (err) {
             console.error('Error fetching user profile:', err);
@@ -139,7 +145,12 @@ export function Feedback() {
     navigate(`/feedback/${feedbackId}`);
   };
 
-  // Modified to include more debugging and to handle potential issues with data structure
+  // Handle verification success
+  const handleVerificationSent = () => {
+    // You could show a success message or update UI
+    console.log("Verification email sent successfully");
+  };
+
   const canEditFeedback = (status, userId) => {
     const currentUserId = user?.UserId;
     console.log("Can edit check:", {
@@ -150,9 +161,7 @@ export function Feedback() {
       result: !isAdmin && status === 0 && currentUserId && Number(currentUserId) === Number(userId)
     });
     
-    // If userId is undefined or null, try looking for it in other properties
     if (userId === undefined || userId === null) {
-      // Try looking for user ID in other possible fields
       return !isAdmin && status === 0;
     }
     
@@ -173,18 +182,14 @@ export function Feedback() {
       result: status === 0 && currentUserId && Number(currentUserId) === Number(userId)
     });
     
-    // If userId is undefined or null, try looking for it in other properties
     if (userId === undefined || userId === null) {
-      // Try looking for user ID in other possible fields
       return status === 0;
     }
     
     return status === 0 && currentUserId && Number(currentUserId) === Number(userId);
   };
 
-  // Function to find the user ID field in the feedback object
   const findUserIdField = (feedback) => {
-    // Look for common field names that might contain the user ID
     const possibleFields = ['UserAdminUserId', 'UserId', 'userId', 'user_id', 'createdBy'];
     
     for (const field of possibleFields) {
@@ -220,6 +225,11 @@ export function Feedback() {
             )}
           </div>
         </div>
+
+        {/* Display verification reminder if email is not verified */}
+        {user && !isEmailVerified && (
+          <VerificationReminder user={user} onVerify={handleVerificationSent} />
+        )}
 
         {error && (
           <div className="p-4 mb-6 bg-red-100 text-red-700 rounded-lg">
@@ -264,15 +274,12 @@ export function Feedback() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {feedbacks.map((feedback, index) => {
-                  // Add debugging for each feedback item
                   console.log(`Feedback ${index}:`, feedback);
                   const userId = findUserIdField(feedback);
                   console.log(`User ID for feedback ${index}:`, userId);
                   
-                  // Check if the status is a number, if not convert from string
                   const status = typeof feedback.Status === 'string' ? parseInt(feedback.Status, 10) : feedback.Status;
                   
-                  // Calculate if edit/delete buttons should show
                   const shouldShowEdit = canEditFeedback(status, userId);
                   const shouldShowDelete = canDeleteFeedback(status, userId);
                   

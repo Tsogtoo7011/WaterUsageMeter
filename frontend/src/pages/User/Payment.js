@@ -8,9 +8,12 @@ import PaymentStatistics from '../../components/payments/PaymentStatatics';
 import GeneratePayment from '../../components/payments/GeneratePayment';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
+import NoApartments from '../../components/common/NoApartment';
+import VerificationReminder from '../../components/common/verificationReminder';
 
 const Payment = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState({ total: 0, paid: 0, pending: 0 });
   const [apartments, setApartments] = useState([]);
@@ -20,6 +23,16 @@ const Payment = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [hasApartments, setHasApartments] = useState(true);
   const [activeTab, setActiveTab] = useState('payments'); 
+
+  useEffect(() => {
+    // Get user from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+
+    fetchPayments();
+  }, []);
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -44,9 +57,12 @@ const Payment = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPayments();
-  }, []);
+  const handleVerificationSuccess = () => {
+    setUser(prev => ({
+      ...prev,
+      IsVerified: true
+    }));
+  };
 
   const handleApartmentChange = (apartmentId) => {
     setSelectedApartmentId(Number(apartmentId));
@@ -88,27 +104,30 @@ const Payment = () => {
 
   if (!hasApartments) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                You don't have any apartments registered in the system. Please contact the administrator to add your apartment.
-              </p>
-            </div>
+      <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
+        {user && !user.IsVerified && (
+          <div className="w-full max-w-3xl mb-6 mx-auto">
+            <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
           </div>
-        </div>
+        )}
+        <NoApartments 
+          title="Таньд холбоотой байр байхгүй байна" 
+          description="Төлбөрийн мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
+          buttonText="Байр нэмэх"
+          buttonHref="/user/profile/apartment"
+          iconColor="blue"
+        />
       </div>
     );
   }
-
   return (
     <div className="container mx-auto px-4 py-8">
+      {user && !user.IsVerified && (
+        <div className="w-full max-w-3xl mb-6 mx-auto">
+          <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
+        </div>
+      )}
+      
       <h1 className="text-2xl font-bold mb-6">Payments Management</h1>
       
       {error && <ErrorAlert message={error} onClose={() => setError(null)} />}

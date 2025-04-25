@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from "../../utils/api"; 
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const News = () => {
   const [news, setNews] = useState([]);
@@ -50,9 +48,9 @@ const News = () => {
   // Fetch CSRF token
   const fetchCsrfToken = async () => {
     try {
-      const response = await axios.get(`${API_URL}/csrf-token`, { withCredentials: true });
+      const response = await api.get('/csrf-token');
       setCsrfToken(response.data.csrfToken);
-      axios.defaults.headers.common['X-CSRF-Token'] = response.data.csrfToken;
+      api.defaults.headers.common['X-CSRF-Token'] = response.data.csrfToken;
       console.log("CSRF token obtained");
     } catch (err) {
       console.error('Error fetching CSRF token:', err);
@@ -63,7 +61,7 @@ const News = () => {
   const fetchNews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/news`);
+      const response = await api.get('/news');
       setNews(response.data);
       setLoading(false);
     } catch (err) {
@@ -149,13 +147,6 @@ const News = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Authentication error. Please login again.');
-      navigate('/login');
-      return;
-    }
-    
     if (!csrfToken) {
       alert('CSRF token is missing. Please reload the page.');
       fetchCsrfToken();
@@ -171,20 +162,14 @@ const News = () => {
         formPayload.append('coverImage', formData.coverImage);
       }
       
-      const config = {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`,
-          'X-CSRF-Token': csrfToken
-        },
-        withCredentials: true // Important for CSRF cookie
-      };
+      // Include CSRF token in the headers
+      api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
       
       if (formMode === 'create') {
-        const response = await axios.post(`${API_URL}/news`, formPayload, config);
+        const response = await api.post('/news', formPayload);
         console.log('Create response:', response.data);
       } else if (formMode === 'edit') {
-        const response = await axios.put(`${API_URL}/news/${selectedNews.NewsId}`, formPayload, config);
+        const response = await api.put(`/news/${selectedNews.NewsId}`, formPayload);
         console.log('Update response:', response.data);
       }
       
@@ -202,25 +187,11 @@ const News = () => {
       
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to save news';
       alert(errorMessage);
-      
-      // If unauthorized, redirect to login
-      if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
     }
   };
   
   const handleDelete = async (newsId) => {
     if (!window.confirm('Are you sure you want to delete this news item?')) {
-      return;
-    }
-    
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Authentication error. Please login again.');
-      navigate('/login');
       return;
     }
     
@@ -231,13 +202,10 @@ const News = () => {
     }
     
     try {
-      await axios.delete(`${API_URL}/news/${newsId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-CSRF-Token': csrfToken
-        },
-        withCredentials: true // Important for CSRF cookie
-      });
+      // Include CSRF token in the headers
+      api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+      
+      await api.delete(`/news/${newsId}`);
       fetchNews();
     } catch (err) {
       console.error('Error deleting news:', err);
@@ -251,19 +219,12 @@ const News = () => {
       
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to delete news';
       alert(errorMessage);
-      
-      // If unauthorized, redirect to login
-      if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
     }
   };
   
   const handleViewDetails = async (newsId) => {
     try {
-      const response = await axios.get(`${API_URL}/news/${newsId}`);
+      const response = await api.get(`/news/${newsId}`);
       setSelectedNews(response.data);
       setShowModal(true);
       setFormMode('view');
@@ -280,6 +241,9 @@ const News = () => {
   const totalPages = Math.ceil(news.length / newsPerPage);
   
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  
+  // Get the API base URL for image paths
+  const API_URL = api.defaults.baseURL;
   
   if (loading) {
     return (

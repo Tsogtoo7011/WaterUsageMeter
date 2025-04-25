@@ -359,7 +359,6 @@ exports.generateMonthlyPayment = async (req, res) => {
   }
 };
 
-// Process payment
 exports.processPayment = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -395,19 +394,32 @@ exports.processPayment = async (req, res) => {
         message: 'Payment has already been processed'
       });
     }
+
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
     
-    await pool.execute(
-      `UPDATE Payment
-       SET Status = 'PAID', PaidDate = CURRENT_TIMESTAMP
-       WHERE PaymentId = ?`,
-      [paymentId]
-    );
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Payment processed successfully',
-      paymentId: payment.PaymentId
-    });
+    try {
+      await connection.execute(
+        `UPDATE Payment
+         SET Status = 'PAID', PaidDate = CURRENT_TIMESTAMP
+         WHERE PaymentId = ?`,
+        [paymentId]
+      );
+      
+      await connection.commit();
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Payment processed successfully',
+        paymentId: payment.PaymentId
+      });
+    } catch (error) {
+      // Rollback on error
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
     
   } catch (error) {
     handleError(res, error, 'Process payment');
@@ -440,7 +452,7 @@ exports.getPaymentStatistics = async (req, res) => {
         COUNT(CASE WHEN p.Status = 'PAID' THEN 1 END) as paidCount,
         COUNT(CASE WHEN p.Status = 'PENDING' THEN 1 END) as pendingCount
       FROM Payment p
-      WHERE p.ApartmentApartmentId IN (${apartmentIds.map(() => '?').join(',')})
+      WHERE p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})
       AND p.UserAdminId = ?
       AND YEAR(p.PayDate) = ?
       GROUP BY MONTH(p.PayDate)

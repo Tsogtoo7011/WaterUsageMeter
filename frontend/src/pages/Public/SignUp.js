@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from "../../utils/api"; 
 import signupImage from '../../figures/images/apartment.jpg'; 
 
 function SignUp() {
@@ -58,7 +58,7 @@ function SignUp() {
     if (!formData.password) {
       newErrors.password = 'Нууц үг заавал оруулна уу';
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Нууц үг хамгийн багадаа 6 тэмдэгтээс бүрдэнэ';
+      newErrors.password = 'Нууц үг хамгийн багадаа 8 тэмдэгтээс бүрдэнэ';
     } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/.test(formData.password)) {
       newErrors.password = 'Нууц үг доод тал нь 8 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой';
     }
@@ -95,7 +95,8 @@ function SignUp() {
     setIsSubmitting(true);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/signup', {
+      // Use the api service instead of axios directly
+      const response = await api.post('/auth/signup', {
         username: formData.username,
         password: formData.password,
         firstname: formData.firstname,
@@ -279,7 +280,7 @@ function SignUp() {
                 {errors.password ? (
                   <p className="mt-1 text-sm text-red-600">{errors.password}</p>
                 ) : (
-                  <p className="mt-1 text-xs text-gray-500">Нууц үг доод тал нь 6 тэмдэгт байх ба 1 онцгой тэмдэг (!@#$%^&*), 1 тоо агуулсан байх ёстой</p>
+                  <p className="mt-1 text-xs text-gray-500">Нууц үг доод тал нь 8 тэмдэгт байх ба 1 онцгой тэмдэг (!@#$%^&*), 1 тоо агуулсан байх ёстой</p>
                 )}
               </div>
               

@@ -5,14 +5,16 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware.authenticate);
 
-router.post('/',  feedbackController.createFeedback);
+// User routes
 router.get('/', feedbackController.getUserFeedback);
-router.get('/my-feedback', feedbackController.getUserFeedback);
-router.get('/:id', feedbackController.getFeedbackById);
-router.put('/:id', feedbackController.updateFeedback);
-router.delete('/:id',  feedbackController.deleteFeedback);
+router.post('/', authMiddleware.verifiedOnly, feedbackController.createFeedback);
+router.get('/my-feedback', authMiddleware.verifiedOnly, feedbackController.getUserFeedback);
+router.get('/:id', authMiddleware.verifiedOnly, feedbackController.getFeedbackById);
+router.put('/:id', authMiddleware.verifiedOnly, feedbackController.updateFeedback);
+router.delete('/:id', authMiddleware.verifiedOnly, feedbackController.deleteFeedback);
 
-router.get('/admin/all', feedbackController.getAllFeedback);
-router.get('/admin/:id', feedbackController.getAdminFeedbackById);
+// Admin routes
+router.get('/admin/all', authMiddleware.verifiedOnly, authMiddleware.adminOnly, feedbackController.getAllFeedback);
+router.get('/admin/:id', authMiddleware.verifiedOnly, authMiddleware.adminOnly, feedbackController.getAdminFeedbackById);
 
 module.exports = router;

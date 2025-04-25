@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import api from "../../utils/api"; 
 import VerificationReminder from '../../components/common/verificationReminder';
+import NoApartments from '../../components/common/NoApartment';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -152,25 +153,6 @@ export function MeterCounter() {
     ],
   });
 
-  // Component to display when no apartments are found
-  const NoApartmentsView = () => (
-    <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-blue-50 border-2 border-blue-200 rounded-lg shadow-lg">
-      <div className="mb-4 text-blue-800">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      </div>
-      <h2 className="mb-4 text-xl font-bold text-gray-800">Таньд холбоотой байр байхгүй байна</h2>
-      <p className="mb-6 text-gray-600">Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү.</p>
-      <a 
-        href="/user/profile/apartment"
-        className="px-6 py-3 text-white transition-all bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-      >
-        Байр нэмэх
-      </a>
-    </div>
-  );
-
   // Component to display when no water meter readings are found
   const NoReadingsView = () => (
     <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-yellow-50 border-2 border-yellow-200 rounded-lg shadow-lg">
@@ -198,8 +180,6 @@ export function MeterCounter() {
         </div>
       )}
       
-      <h1 className="text-3xl font-bold mb-6">Усны тоолуур</h1>
-      
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -210,7 +190,13 @@ export function MeterCounter() {
           <p>{error}</p>
         </div>
       ) : !hasApartments ? (
-        <NoApartmentsView />
+        <NoApartments 
+          title="Таньд холбоотой байр байхгүй байна"
+          description="Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
+          buttonText="Байр нэмэх"
+          buttonHref="/user/profile/apartment"
+          iconColor="blue"
+        />
       ) : !hasReadings ? (
         <>
           {/* Apartment Selector (only show if there are multiple apartments) */}

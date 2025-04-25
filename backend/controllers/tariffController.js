@@ -4,18 +4,9 @@ const { handleError } = require('../utils/errorHandler');
 // Get the current active tariff
 exports.getTariff = async (req, res) => {
   try {
-    // Check if user is verified
-    const [users] = await pool.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
-      [req.userData.userId]
-    );
-    
+
     if (!users.length) {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
     // Get the currently active tariff
@@ -104,8 +95,7 @@ exports.updateTariff = async (req, res) => {
       'VALUES (?, ?, ?, ?, 1)',
       [ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom]
     );
-    
-    // Get the newly created tariff
+
     const [updatedTariff] = await connection.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
       'EffectiveFrom, EffectiveTo, IsActive FROM Tarif WHERE TariffId = ?',
@@ -138,8 +128,7 @@ exports.toggleTariffStatus = async (req, res) => {
       await connection.rollback();
       return res.status(400).json({ message: 'Тарифын ID болон төлөв шаардлагатай' });
     }
-    
-    // If activating a tariff, deactivate any currently active ones
+
     if (isActive === 1) {
       await connection.execute(
         'UPDATE Tarif SET IsActive = 0, EffectiveTo = CURRENT_DATE() WHERE IsActive = 1'

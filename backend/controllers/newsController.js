@@ -1,4 +1,3 @@
-// controllers/newsController.js
 const db = require('../config/db');
 const path = require('path');
 const fs = require('fs');
@@ -58,13 +57,7 @@ exports.getNewsById = async (req, res) => {
 exports.createNews = async (req, res) => {
   try {
     const { title, description } = req.body;
-    
-    // Validate user is admin - Using userData from auth middleware
-    if (!req.userData || !req.userData.userId) {
-      return res.status(401).json({ message: 'Нэвтрэх эрх байхгүй байна' });
-    }
-    
-    const userId = req.userData.userId; // Get from auth middleware
+    const userId = req.userData.userId;
     
     if (!req.file) {
       return res.status(400).json({ message: 'Cover image is required' });
@@ -98,11 +91,6 @@ exports.updateNews = async (req, res) => {
   try {
     const newsId = req.params.id;
     const { title, description } = req.body;
-    
-    // Validate user is admin - Using userData from auth middleware
-    if (!req.userData || !req.userData.userId) {
-      return res.status(401).json({ message: 'Нэвтрэх эрх байхгүй байна' });
-    }
     
     // Check if news exists
     const checkQuery = 'SELECT * FROM News WHERE NewsId = ?';
@@ -154,11 +142,6 @@ exports.updateNews = async (req, res) => {
 exports.deleteNews = async (req, res) => {
   try {
     const newsId = req.params.id;
-    
-    // Validate user is admin - Using userData from auth middleware
-    if (!req.userData || !req.userData.userId) {
-      return res.status(401).json({ message: 'Нэвтрэх эрх байхгүй байна' });
-    }
     
     const query = 'DELETE FROM News WHERE NewsId = ?';
     
