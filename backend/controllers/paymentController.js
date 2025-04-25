@@ -33,7 +33,7 @@ async function calculateWaterUsage(apartmentId, month, year) {
       Type,
       SUM(Indication) as total
     FROM WaterMeter
-    WHERE ApartmentApartmentId = ?
+    WHERE ApartmentId = ?
     AND MONTH(WaterMeterDate) = ?
     AND YEAR(WaterMeterDate) = ?
     GROUP BY Type`,
@@ -81,7 +81,7 @@ exports.getUserPayments = async (req, res) => {
     const [payments] = await pool.execute(
       `SELECT 
         p.PaymentId,
-        p.ApartmentApartmentId,
+        p.ApartmentId,
         p.Amount,
         p.PayDate,
         p.PaidDate,
@@ -90,9 +90,9 @@ exports.getUserPayments = async (req, res) => {
         a.BlockNumber,
         a.UnitNumber
       FROM Payment p
-      JOIN Apartment a ON p.ApartmentApartmentId = a.ApartmentId
-      WHERE p.ApartmentApartmentId IN (${apartmentIds.map(() => '?').join(',')})
-      AND p.UserAdminUserId = ?
+      JOIN Apartment a ON p.ApartmentId = a.ApartmentId
+      WHERE p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})
+      AND p.UserAdminId = ?
       ORDER BY p.PayDate DESC`,
       [...apartmentIds, userId]
     );
@@ -100,7 +100,7 @@ exports.getUserPayments = async (req, res) => {
     // Format payments
     const formattedPayments = payments.map(payment => ({
       id: payment.PaymentId,
-      apartmentId: payment.ApartmentApartmentId,
+      apartmentId: payment.ApartmentId,
       amount: payment.Amount,
       payDate: payment.PayDate,
       paidDate: payment.PaidDate,
@@ -178,7 +178,7 @@ exports.getPaymentById = async (req, res) => {
     const [payments] = await pool.execute(
       `SELECT 
         p.PaymentId,
-        p.ApartmentApartmentId,
+        p.ApartmentId,
         p.Amount,
         p.PayDate,
         p.PaidDate,
@@ -188,9 +188,9 @@ exports.getPaymentById = async (req, res) => {
         a.BlockNumber,
         a.UnitNumber
       FROM Payment p
-      JOIN Apartment a ON p.ApartmentApartmentId = a.ApartmentId
+      JOIN Apartment a ON p.ApartmentId = a.ApartmentId
       WHERE p.PaymentId = ?
-      AND p.UserAdminUserId = ?`,
+      AND p.UserAdminId = ?`,
       [paymentId, userId]
     );
     
@@ -209,7 +209,7 @@ exports.getPaymentById = async (req, res) => {
     const year = payDate.getFullYear();
     
     const waterUsage = await calculateWaterUsage(
-      payment.ApartmentApartmentId,
+      payment.ApartmentId,
       month,
       year
     );
@@ -226,7 +226,7 @@ exports.getPaymentById = async (req, res) => {
       success: true,
       payment: {
         id: payment.PaymentId,
-        apartmentId: payment.ApartmentApartmentId,
+        apartmentId: payment.ApartmentId,
         amount: payment.Amount,
         payDate: payment.PayDate,
         paidDate: payment.PaidDate,
@@ -288,8 +288,8 @@ exports.generateMonthlyPayment = async (req, res) => {
     const [existingPayments] = await pool.execute(
       `SELECT COUNT(*) as count
        FROM Payment
-       WHERE ApartmentApartmentId = ?
-       AND UserAdminUserId = ?
+       WHERE ApartmentId = ?
+       AND UserAdminId = ?
        AND MONTH(PayDate) = ?
        AND YEAR(PayDate) = ?`,
       [apartmentId, userId, currentMonth, currentYear]
@@ -324,7 +324,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     // Create payment record
     const [result] = await pool.execute(
       `INSERT INTO Payment 
-        (ApartmentApartmentId, UserAdminUserId, Amount, PayDate, PaidDate, Status, OrderOrderId)
+        (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
        VALUES (?, ?, ?, CURRENT_TIMESTAMP, NULL, 'PENDING', ?)`,
       [apartmentId, userId, totalAmount, orderId]
     );
@@ -373,10 +373,10 @@ exports.processPayment = async (req, res) => {
     }
     
     const [payments] = await pool.execute(
-      `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentApartmentId
+      `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentId
        FROM Payment p
        WHERE p.PaymentId = ?
-       AND p.UserAdminUserId = ?`,
+       AND p.UserAdminId = ?`,
       [paymentId, userId]
     );
     
@@ -441,7 +441,7 @@ exports.getPaymentStatistics = async (req, res) => {
         COUNT(CASE WHEN p.Status = 'PENDING' THEN 1 END) as pendingCount
       FROM Payment p
       WHERE p.ApartmentApartmentId IN (${apartmentIds.map(() => '?').join(',')})
-      AND p.UserAdminUserId = ?
+      AND p.UserAdminId = ?
       AND YEAR(p.PayDate) = ?
       GROUP BY MONTH(p.PayDate)
       ORDER BY MONTH(p.PayDate)`,

@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 
-// Get the tariff
+// Get the current active tariff
 exports.getTariff = async (req, res) => {
   try {
     // Check if user is verified
@@ -18,8 +18,11 @@ exports.getTariff = async (req, res) => {
       return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
     }
     
+    // Get the currently active tariff
     const [tariff] = await pool.execute(
-      'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff FROM Tarif LIMIT 1'
+      'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
+      'EffectiveFrom, EffectiveTo, IsActive FROM Tarif WHERE IsActive = 1 ' +
+      'ORDER BY EffectiveFrom DESC LIMIT 1'
     );
     
     if (tariff.length === 0) {
@@ -32,39 +35,81 @@ exports.getTariff = async (req, res) => {
   }
 };
 
+// Get tariff history
+exports.getTariffHistory = async (req, res) => {
+  try {
+    // Check if user is verified
+    const [users] = await pool.execute(
+      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
+      [req.userData.userId]
+    );
+    
+    if (!users.length) {
+      return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
+    }
+    
+    if (users[0].IsVerified !== 1) {
+      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
+    }
+    
+    // Get all tariffs ordered by date
+    const [tariffs] = await pool.execute(
+      'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
+      'EffectiveFrom, EffectiveTo, IsActive, CreatedAt, UpdatedAt FROM Tarif ' +
+      'ORDER BY EffectiveFrom DESC'
+    );
+    
+    res.json(tariffs);
+  } catch (error) {
+    handleError(res, error, 'Тарифын түүх авах');
+  }
+};
+
 exports.updateTariff = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     await connection.beginTransaction();
-    const { ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff } = req.body;
+    const { 
+      ColdWaterTariff, 
+      HeatWaterTariff, 
+      DirtyWaterTariff,
+      EffectiveFrom
+    } = req.body;
     
     // Validate input
-    if (!ColdWaterTariff || !HeatWaterTariff || !DirtyWaterTariff) {
+    if (!ColdWaterTariff || !HeatWaterTariff || !DirtyWaterTariff || !EffectiveFrom) {
       await connection.rollback();
-      return res.status(400).json({ message: 'Бүх тарифын утгуудыг оруулах шаардлагатай' });
+      return res.status(400).json({ 
+        message: 'Бүх тарифын утгуудыг болон хэрэгжих огноог оруулах шаардлагатай' 
+      });
     }
     
-    // Check if tariff exists first
-    const [existingTariff] = await connection.execute('SELECT TariffId FROM Tarif LIMIT 1');
-    
-    if (existingTariff.length === 0) {
-      // If no tariff exists, create one
-      await connection.execute(
-        'INSERT INTO Tarif (ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff) VALUES (?, ?, ?)',
-        [ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff]
-      );
-    } else {
-      // Update existing tariff
-      await connection.execute(
-        'UPDATE Tarif SET ColdWaterTariff = ?, HeatWaterTariff = ?, DirtyWaterTariff = ? WHERE TariffId = ?',
-        [ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, existingTariff[0].TariffId]
-      );
+    // Validate effective date format
+    const effectiveDate = new Date(EffectiveFrom);
+    if (isNaN(effectiveDate.getTime())) {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Хэрэгжих огноо буруу форматтай байна' });
     }
     
-    // Get the updated tariff with optimized query
+    // First, deactivate any currently active tariff
+    await connection.execute(
+      'UPDATE Tarif SET IsActive = 0, EffectiveTo = ? WHERE IsActive = 1',
+      [EffectiveFrom]
+    );
+    
+    // Insert new tariff record
+    const [result] = await connection.execute(
+      'INSERT INTO Tarif (ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom, IsActive) ' +
+      'VALUES (?, ?, ?, ?, 1)',
+      [ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom]
+    );
+    
+    // Get the newly created tariff
     const [updatedTariff] = await connection.execute(
-      'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff FROM Tarif LIMIT 1'
+      'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
+      'EffectiveFrom, EffectiveTo, IsActive FROM Tarif WHERE TariffId = ?',
+      [result.insertId]
     );
     
     await connection.commit();
@@ -76,6 +121,57 @@ exports.updateTariff = async (req, res) => {
   } catch (error) {
     await connection.rollback();
     handleError(res, error, 'Тарифын мэдээлэл шинэчлэх');
+  } finally {
+    connection.release();
+  }
+};
+
+// Activate/deactivate a tariff
+exports.toggleTariffStatus = async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    const { tariffId, isActive } = req.body;
+    
+    if (tariffId === undefined || isActive === undefined) {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Тарифын ID болон төлөв шаардлагатай' });
+    }
+    
+    // If activating a tariff, deactivate any currently active ones
+    if (isActive === 1) {
+      await connection.execute(
+        'UPDATE Tarif SET IsActive = 0, EffectiveTo = CURRENT_DATE() WHERE IsActive = 1'
+      );
+    }
+    
+    // Update the target tariff status
+    await connection.execute(
+      'UPDATE Tarif SET IsActive = ? WHERE TariffId = ?',
+      [isActive, tariffId]
+    );
+    
+    // Get the updated tariff
+    const [updatedTariff] = await connection.execute(
+      'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
+      'EffectiveFrom, EffectiveTo, IsActive FROM Tarif WHERE TariffId = ?',
+      [tariffId]
+    );
+    
+    await connection.commit();
+    
+    if (updatedTariff.length === 0) {
+      return res.status(404).json({ message: 'Тариф олдсонгүй' });
+    }
+    
+    res.json({
+      message: isActive === 1 ? 'Тариф идэвхжүүлэгдлээ' : 'Тариф идэвхгүй болголоо',
+      data: updatedTariff[0]
+    });
+  } catch (error) {
+    await connection.rollback();
+    handleError(res, error, 'Тарифын төлөв шинэчлэх');
   } finally {
     connection.release();
   }

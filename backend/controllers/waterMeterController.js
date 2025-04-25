@@ -68,7 +68,7 @@ exports.getUserWaterMeters = async (req, res) => {
         Indication,
         WaterMeterDate
       FROM WaterMeter
-      WHERE ApartmentApartmentId = ?
+      WHERE ApartmentId = ?
       AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
       AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())
       ORDER BY Location, Type`,
@@ -104,7 +104,7 @@ exports.getUserWaterMeters = async (req, res) => {
         Type,
         SUM(Indication) as total
       FROM WaterMeter
-      WHERE ApartmentApartmentId = ?
+      WHERE ApartmentId = ?
       AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE()) 
       AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())
       GROUP BY Location, Type
@@ -137,7 +137,7 @@ exports.getUserWaterMeters = async (req, res) => {
         Type,
         SUM(Indication) as total
       FROM WaterMeter
-      WHERE ApartmentApartmentId = ?
+      WHERE ApartmentId = ?
       AND YEAR(WaterMeterDate) = ?
       GROUP BY MONTH(WaterMeterDate), Type
       ORDER BY MONTH(WaterMeterDate), Type`,
@@ -234,7 +234,7 @@ exports.getWaterMeterDetails = async (req, res) => {
         Indication,
         WaterMeterDate
       FROM WaterMeter
-      WHERE ApartmentApartmentId = ?
+      WHERE ApartmentId = ?
       ORDER BY WaterMeterDate DESC, Location, Type`,
       [validApartmentId]
     );
@@ -345,7 +345,7 @@ exports.addMeterReading = async (req, res) => {
     const [existingReadings] = await pool.execute(
       `SELECT COUNT(*) as count
        FROM WaterMeter
-       WHERE ApartmentApartmentId = ?
+       WHERE ApartmentId = ?
        AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
        AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())`,
       [apartmentId]
@@ -360,7 +360,7 @@ exports.addMeterReading = async (req, res) => {
           Type, 
           Location
          FROM WaterMeter
-         WHERE ApartmentApartmentId = ?
+         WHERE ApartmentId = ?
          AND MONTH(WaterMeterDate) = MONTH(CURRENT_DATE())
          AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())`,
         [apartmentId]
@@ -398,7 +398,7 @@ exports.addMeterReading = async (req, res) => {
       // Insert all new readings
       const insertPromises = readings.map(reading => 
         pool.execute(
-          'INSERT INTO WaterMeter (ApartmentApartmentId, Type, Location, Indication) VALUES (?, ?, ?, ?)',
+          'INSERT INTO WaterMeter (ApartmentId, Type, Location, Indication) VALUES (?, ?, ?, ?)',
           [apartmentId, reading.type, reading.location, reading.indication]
         )
       );
@@ -452,9 +452,9 @@ exports.getWaterMeterById = async (req, res) => {
         a.BlockNumber,
         a.UnitNumber
       FROM WaterMeter wm
-      JOIN Apartment a ON wm.ApartmentApartmentId = a.ApartmentId
+      JOIN Apartment a ON wm.ApartmentId = a.ApartmentId
       WHERE wm.WaterMeterId = ?
-      AND wm.ApartmentApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
+      AND wm.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
       [waterMeterId, ...apartmentIds]
     );
     

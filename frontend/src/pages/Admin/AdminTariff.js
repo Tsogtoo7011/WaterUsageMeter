@@ -1,22 +1,30 @@
 import { useState, useEffect } from 'react';
 import api from "../../utils/api"; 
 
-export default function TariffManagement() {
+export default function AdminTariff() {
   const [tariff, setTariff] = useState({
     TariffId: null,
     ColdWaterTariff: 0,
     HeatWaterTariff: 0,
-    DirtyWaterTariff: 0
+    DirtyWaterTariff: 0,
+    EffectiveFrom: '',
+    EffectiveTo: null,
+    IsActive: 1
   });
+  
+  const [tariffHistory, setTariffHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   
   const [editedTariff, setEditedTariff] = useState({
     ColdWaterTariff: 0,
     HeatWaterTariff: 0,
-    DirtyWaterTariff: 0
+    DirtyWaterTariff: 0,
+    EffectiveFrom: new Date().toISOString().split('T')[0] 
   });
   
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
@@ -36,7 +44,8 @@ export default function TariffManagement() {
       setEditedTariff({
         ColdWaterTariff: tariffData.ColdWaterTariff,
         HeatWaterTariff: tariffData.HeatWaterTariff,
-        DirtyWaterTariff: tariffData.DirtyWaterTariff
+        DirtyWaterTariff: tariffData.DirtyWaterTariff,
+        EffectiveFrom: new Date().toISOString().split('T')[0] // Default to today
       });
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Тарифын мэдээлэл авахад алдаа гарлаа';
@@ -47,12 +56,45 @@ export default function TariffManagement() {
     }
   };
 
+  const fetchTariffHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const response = await api.get('/tariff/history');
+      setTariffHistory(response.data);
+      setShowHistory(true);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Тарифын түүхийг авахад алдаа гарлаа';
+      setError(errorMessage);
+      console.error('Error fetching tariff history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const toggleTariffStatus = async (tariffId, isActive) => {
+    try {
+      await api.post('/tariff/toggle-status', { tariffId, isActive });
+      // Refresh both current tariff and history
+      fetchTariffData();
+      if (showHistory) {
+        fetchTariffHistory();
+      }
+      setMessage(isActive ? 'Тариф идэвхжүүлэгдлээ' : 'Тариф идэвхгүй болголоо');
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Тарифын төлөв өөрчлөхөд алдаа гарлаа';
+      setError(errorMessage);
+      console.error('Error toggling tariff status:', err);
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
     setEditedTariff({
       ...editedTariff,
-      [name]: value === '' ? '' : parseFloat(value)
+      [name]: name === 'EffectiveFrom' ? value : (value === '' ? '' : parseFloat(value))
     });
   };
 
@@ -62,7 +104,8 @@ export default function TariffManagement() {
     const submitData = {
       ColdWaterTariff: editedTariff.ColdWaterTariff === '' ? 0 : parseFloat(editedTariff.ColdWaterTariff),
       HeatWaterTariff: editedTariff.HeatWaterTariff === '' ? 0 : parseFloat(editedTariff.HeatWaterTariff),
-      DirtyWaterTariff: editedTariff.DirtyWaterTariff === '' ? 0 : parseFloat(editedTariff.DirtyWaterTariff)
+      DirtyWaterTariff: editedTariff.DirtyWaterTariff === '' ? 0 : parseFloat(editedTariff.DirtyWaterTariff),
+      EffectiveFrom: editedTariff.EffectiveFrom
     };
     
     try {
@@ -73,6 +116,11 @@ export default function TariffManagement() {
       setTariff(data.data || data);
       setMessage('Тариф амжилттай шинэчлэгдлээ');
       setIsEditing(false);
+      
+      // Refresh tariff history if it's being shown
+      if (showHistory) {
+        fetchTariffHistory();
+      }
       
       setTimeout(() => {
         setMessage(null);
@@ -94,6 +142,16 @@ export default function TariffManagement() {
       currency: 'MNT',
       minimumFractionDigits: 2
     }).format(value);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Тодорхойгүй';
+    
+    return new Date(dateString).toLocaleDateString('mn-MN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
 
   if (loading) {
@@ -121,8 +179,13 @@ export default function TariffManagement() {
       )}
       
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="px-6 py-4 bg-blue-500 text-white">
+        <div className="px-6 py-4 bg-blue-500 text-white flex justify-between items-center">
           <h2 className="text-xl font-bold">Одоогийн тарифын мэдээлэл</h2>
+          <div className="flex items-center">
+            <span className={`px-2 py-1 rounded text-xs ${tariff.IsActive ? 'bg-green-500' : 'bg-gray-500'}`}>
+              {tariff.IsActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+            </span>
+          </div>
         </div>
         
         <div className="p-6">
@@ -148,12 +211,31 @@ export default function TariffManagement() {
                 </div>
               </div>
               
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-sm mb-1 text-yellow-700">Хэрэгжиж эхэлсэн огноо</h3>
+                  <p className="text-lg font-medium">{formatDate(tariff.EffectiveFrom)}</p>
+                </div>
+                
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-sm mb-1 text-orange-700">Дуусах огноо</h3>
+                  <p className="text-lg font-medium">{tariff.EffectiveTo ? formatDate(tariff.EffectiveTo) : 'Тодорхойгүй'}</p>
+                </div>
+              </div>
+              
               <div className="mt-6 text-center">
                 <button 
                   onClick={() => setIsEditing(true)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg transition duration-200"
+                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg transition duration-200 mr-3"
                 >
-                  Тариф шинэчлэх
+                  Шинэ тариф нэмэх
+                </button>
+                
+                <button 
+                  onClick={() => showHistory ? setShowHistory(false) : fetchTariffHistory()}
+                  className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg transition duration-200"
+                >
+                  {historyLoading ? 'Ачааллаж байна...' : (showHistory ? 'Түүх хаах' : 'Тарифын түүх')}
                 </button>
               </div>
             </div>
@@ -212,6 +294,21 @@ export default function TariffManagement() {
                 </div>
               </div>
               
+              <div className="space-y-2">
+                <label htmlFor="EffectiveFrom" className="block text-sm font-medium text-gray-700">
+                  Хэрэгжиж эхлэх огноо
+                </label>
+                <input
+                  type="date"
+                  id="EffectiveFrom"
+                  name="EffectiveFrom"
+                  value={editedTariff.EffectiveFrom}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+              
               <div className="flex justify-center space-x-4">
                 <button
                   type="button"
@@ -220,7 +317,8 @@ export default function TariffManagement() {
                     setEditedTariff({
                       ColdWaterTariff: tariff.ColdWaterTariff,
                       HeatWaterTariff: tariff.HeatWaterTariff,
-                      DirtyWaterTariff: tariff.DirtyWaterTariff
+                      DirtyWaterTariff: tariff.DirtyWaterTariff,
+                      EffectiveFrom: new Date().toISOString().split('T')[0]
                     });
                   }}
                   className="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-6 rounded-lg transition duration-200"
@@ -240,11 +338,94 @@ export default function TariffManagement() {
         </div>
       </div>
       
+      {showHistory && (
+        <div className="mt-8 bg-white shadow-lg rounded-lg overflow-hidden">
+          <div className="px-6 py-4 bg-gray-500 text-white">
+            <h2 className="text-xl font-bold">Тарифын түүх</h2>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Хүйтэн ус
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Халуун ус
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Бохир ус
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Эхэлсэн
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Дууссан
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Төлөв
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Үйлдэл
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {tariffHistory.map((item) => (
+                  <tr key={item.TariffId}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {formatCurrency(item.ColdWaterTariff)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatCurrency(item.HeatWaterTariff)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatCurrency(item.DirtyWaterTariff)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(item.EffectiveFrom)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.EffectiveTo ? formatDate(item.EffectiveTo) : 'Тодорхойгүй'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        item.IsActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {item.IsActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {!item.IsActive ? (
+                        <button
+                          onClick={() => toggleTariffStatus(item.TariffId, 1)}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Идэвхжүүлэх
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="text-gray-400 cursor-not-allowed"
+                        >
+                          Идэвхтэй
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
       <div className="mt-8 bg-blue-50 p-6 rounded-lg">
         <h3 className="text-lg font-semibold mb-2">Тарифын тухай</h3>
         <p className="text-gray-700">
-          Энэхүү тариф нь усны хэрэглээний нэгж үнийг харуулж байна. Тарифыг шинэчлэхийн тулд 
-          системд нэвтэрсэн байх шаардлагатай.
+          Энэхүү тариф нь усны хэрэглээний нэгж үнийг харуулж байна. Шинэ тариф нэмэх үед өмнөх тариф
+          автоматаар идэвхгүй болно. Тарифын түүхээс хуучин тарифуудыг харах болон дахин идэвхжүүлэх боломжтой.
         </p>
       </div>
     </div>

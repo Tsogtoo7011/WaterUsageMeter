@@ -9,7 +9,7 @@ exports.getAllNews = async (req, res) => {
     const query = `
       SELECT n.NewsId, n.Title, n.NewsDescription, n.CoverImageType, u.Username 
       FROM News n
-      JOIN UserAdmin u ON n.UserAdminUserId = u.UserId
+      JOIN UserAdmin u ON n.UserAdminId = u.UserId
       ORDER BY n.NewsId DESC
     `;
     
@@ -31,7 +31,7 @@ exports.getNewsById = async (req, res) => {
     const query = `
       SELECT n.*, u.Username 
       FROM News n
-      JOIN UserAdmin u ON n.UserAdminUserId = u.UserId
+      JOIN UserAdmin u ON n.UserAdminId = u.UserId
       WHERE n.NewsId = ?
     `;
     
@@ -74,7 +74,7 @@ exports.createNews = async (req, res) => {
     const coverImageData = req.file.buffer;
     
     const query = `
-      INSERT INTO News (UserAdminUserId, Title, NewsDescription, CoverImageType, CoverImageData)
+      INSERT INTO News (UserAdminId, Title, NewsDescription, CoverImageType, CoverImageData)
       VALUES (?, ?, ?, ?, ?)
     `;
     

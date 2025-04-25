@@ -23,8 +23,8 @@ exports.createFeedback = async (req, res) => {
     }
     
     const [result] = await pool.execute(
-      'INSERT INTO feedback (UserAdminUserId, Type, Description, Status) VALUES (?, ?, ?, 0)',
-      [userId, type, description.trim()]
+      'INSERT INTO Feedback (UserAdminId, Type, Description, Status) VALUES (?, ?, ?, ?)',
+      [userId, type, description.trim(), 'Хүлээгдэж байна']
     );
     
     return res.status(201).json({
@@ -47,28 +47,20 @@ exports.getUserFeedback = async (req, res) => {
         ApplicationId,
         Type,
         Description,
-        admin_response,
+        AdminResponse,
         Status,
-        created_at,
-        updated_at,
-        UserAdminUserId
-      FROM feedback
-      WHERE UserAdminUserId = ?
-      ORDER BY created_at DESC`,
+        CreatedAt,
+        UpdatedAt,
+        UserAdminId
+      FROM Feedback
+      WHERE UserAdminId = ?
+      ORDER BY CreatedAt DESC`,
       [userId]
     );
     
-    const formattedFeedbacks = feedbacks.map(feedback => ({
-      ...feedback,
-      Type: Number(feedback.Type),
-      Status: Number(feedback.Status),
-      ApplicationId: Number(feedback.ApplicationId),
-      UserAdminUserId: Number(feedback.UserAdminUserId)
-    }));
-    
     return res.status(200).json({
       success: true,
-      feedbacks: formattedFeedbacks
+      feedbacks: feedbacks
     });
     
   } catch (error) {
@@ -97,28 +89,23 @@ exports.getAllFeedback = async (req, res) => {
         f.ApplicationId,
         f.Type,
         f.Description,
-        f.admin_response,
+        f.AdminResponse,
         f.Status,
-        f.created_at,
-        f.updated_at,
+        f.CreatedAt,
+        f.UpdatedAt,
         u.Username,
-        f.UserAdminUserId
-      FROM feedback f
-      LEFT JOIN useradmin u ON f.UserAdminUserId = u.UserId
-      ORDER BY f.created_at DESC`
+        f.UserAdminId,
+        f.AdminResponderId,
+        IFNULL(a.Username, '') as ResponderUsername
+      FROM Feedback f
+      LEFT JOIN useradmin u ON f.UserAdminId = u.UserId
+      LEFT JOIN useradmin a ON f.AdminResponderId = a.UserId
+      ORDER BY f.CreatedAt DESC`
     );
-    
-    const formattedFeedbacks = feedbacks.map(feedback => ({
-      ...feedback,
-      Type: Number(feedback.Type),
-      Status: Number(feedback.Status),
-      ApplicationId: Number(feedback.ApplicationId),
-      UserAdminUserId: Number(feedback.UserAdminUserId)
-    }));
     
     return res.status(200).json({
       success: true,
-      feedbacks: formattedFeedbacks
+      feedbacks: feedbacks
     });
     
   } catch (error) {
@@ -154,31 +141,33 @@ exports.getFeedbackById = async (req, res) => {
           f.ApplicationId,
           f.Type,
           f.Description,
-          f.admin_response,
+          f.AdminResponse,
           f.Status,
-          f.created_at,
-          f.updated_at,
+          f.CreatedAt,
+          f.UpdatedAt,
           u.Username,
-          f.UserAdminUserId
-        FROM feedback f
-        LEFT JOIN useradmin u ON f.UserAdminUserId = u.UserId
+          f.UserAdminId,
+          f.AdminResponderId,
+          IFNULL(a.Username, '') as ResponderUsername
+        FROM Feedback f
+        LEFT JOIN useradmin u ON f.UserAdminId = u.UserId
+        LEFT JOIN useradmin a ON f.AdminResponderId = a.UserId
         WHERE f.ApplicationId = ?
       `;
       params = [feedbackId];
     } else {
-
       query = `
         SELECT 
           ApplicationId,
           Type,
           Description,
-          admin_response,
+          AdminResponse,
           Status,
-          created_at,
-          updated_at,
-          UserAdminUserId
-        FROM feedback
-        WHERE ApplicationId = ? AND UserAdminUserId = ?
+          CreatedAt,
+          UpdatedAt,
+          UserAdminId
+        FROM Feedback
+        WHERE ApplicationId = ? AND UserAdminId = ?
       `;
       params = [feedbackId, userId];
     }
@@ -192,17 +181,9 @@ exports.getFeedbackById = async (req, res) => {
       });
     }
 
-    const formattedFeedback = {
-      ...feedbacks[0],
-      Type: Number(feedbacks[0].Type),
-      Status: Number(feedbacks[0].Status),
-      ApplicationId: Number(feedbacks[0].ApplicationId),
-      UserAdminUserId: Number(feedbacks[0].UserAdminUserId)
-    };
-    
     return res.status(200).json({
       success: true,
-      feedback: formattedFeedback
+      feedback: feedbacks[0]
     });
     
   } catch (error) {
@@ -239,14 +220,17 @@ exports.getAdminFeedbackById = async (req, res) => {
         f.ApplicationId,
         f.Type,
         f.Description,
-        f.admin_response,
+        f.AdminResponse,
         f.Status,
-        f.created_at,
-        f.updated_at,
+        f.CreatedAt,
+        f.UpdatedAt,
         u.Username,
-        f.UserAdminUserId
-      FROM feedback f
-      LEFT JOIN useradmin u ON f.UserAdminUserId = u.UserId
+        f.UserAdminId,
+        f.AdminResponderId,
+        IFNULL(a.Username, '') as ResponderUsername
+      FROM Feedback f
+      LEFT JOIN useradmin u ON f.UserAdminId = u.UserId
+      LEFT JOIN useradmin a ON f.AdminResponderId = a.UserId
       WHERE f.ApplicationId = ?`,
       [feedbackId]
     );
@@ -258,17 +242,9 @@ exports.getAdminFeedbackById = async (req, res) => {
       });
     }
 
-    const formattedFeedback = {
-      ...feedbacks[0],
-      Type: Number(feedbacks[0].Type),
-      Status: Number(feedbacks[0].Status),
-      ApplicationId: Number(feedbacks[0].ApplicationId),
-      UserAdminUserId: Number(feedbacks[0].UserAdminUserId)
-    };
-    
     return res.status(200).json({
       success: true,
-      feedback: formattedFeedback
+      feedback: feedbacks[0]
     });
     
   } catch (error) {
@@ -289,7 +265,7 @@ exports.updateFeedback = async (req, res) => {
     }
 
     const [checkFeedback] = await pool.execute(
-      `SELECT * FROM feedback WHERE ApplicationId = ?`,
+      `SELECT * FROM Feedback WHERE ApplicationId = ?`,
       [feedbackId]
     );
     
@@ -300,11 +276,7 @@ exports.updateFeedback = async (req, res) => {
       });
     }
     
-    const feedback = {
-      ...checkFeedback[0],
-      Status: Number(checkFeedback[0].Status),
-      UserAdminUserId: Number(checkFeedback[0].UserAdminUserId)
-    };
+    const feedback = checkFeedback[0];
 
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
@@ -319,20 +291,23 @@ exports.updateFeedback = async (req, res) => {
       const params = [];
       
       if (status !== undefined) {
-        const statusNum = parseInt(status, 10);
-        if (isNaN(statusNum) || ![0, 1, 2].includes(statusNum)) {
+        if (!['Хүлээгдэж байна', 'Хүлээн авсан', 'Хүлээн авахаас татгалзсан'].includes(status)) {
           return res.status(400).json({
             success: false,
             message: 'Статус буруу байна.'
           });
         }
         updates.push('Status = ?');
-        params.push(statusNum);
+        params.push(status);
       }
       
       if (adminResponse !== undefined) {
-        updates.push('admin_response = ?');
+        updates.push('AdminResponse = ?');
         params.push(adminResponse.trim());
+        
+        // Add admin responder ID
+        updates.push('AdminResponderId = ?');
+        params.push(userId);
       }
       
       if (updates.length === 0) {
@@ -345,7 +320,7 @@ exports.updateFeedback = async (req, res) => {
       params.push(feedbackId);
       
       await pool.execute(
-        `UPDATE feedback SET ${updates.join(', ')}, updated_at = NOW() WHERE ApplicationId = ?`,
+        `UPDATE Feedback SET ${updates.join(', ')} WHERE ApplicationId = ?`,
         params
       );
       
@@ -355,14 +330,14 @@ exports.updateFeedback = async (req, res) => {
       });
     } 
     else {
-      if (feedback.UserAdminUserId !== userId) {
+      if (feedback.UserAdminId !== userId) {
         return res.status(403).json({
           success: false,
           message: 'Та зөвхөн өөрийн санал хүсэлтийг засах боломжтой.'
         });
       }
       
-      if (feedback.Status !== 0) {
+      if (feedback.Status !== 'Хүлээгдэж байна') {
         return res.status(400).json({
           success: false,
           message: 'Зөвхөн хүлээгдэж буй санал хүсэлтийг засах боломжтой.'
@@ -388,7 +363,7 @@ exports.updateFeedback = async (req, res) => {
       }
       
       await pool.execute(
-        'UPDATE feedback SET Type = ?, Description = ?, updated_at = NOW() WHERE ApplicationId = ?',
+        'UPDATE Feedback SET Type = ?, Description = ? WHERE ApplicationId = ?',
         [type, description.trim(), feedbackId]
       );
       
@@ -416,7 +391,7 @@ exports.deleteFeedback = async (req, res) => {
     }
 
     const [checkFeedback] = await pool.execute(
-      `SELECT * FROM feedback WHERE ApplicationId = ?`,
+      `SELECT * FROM Feedback WHERE ApplicationId = ?`,
       [feedbackId]
     );
     
@@ -427,11 +402,7 @@ exports.deleteFeedback = async (req, res) => {
       });
     }
     
-    const feedback = {
-      ...checkFeedback[0],
-      Status: Number(checkFeedback[0].Status),
-      UserAdminUserId: Number(checkFeedback[0].UserAdminUserId)
-    };
+    const feedback = checkFeedback[0];
 
     const [adminCheck] = await pool.execute(
       'SELECT AdminRight FROM useradmin WHERE UserId = ?',
@@ -442,7 +413,7 @@ exports.deleteFeedback = async (req, res) => {
 
     if (isAdmin) {
       await pool.execute(
-        'DELETE FROM feedback WHERE ApplicationId = ?',
+        'DELETE FROM Feedback WHERE ApplicationId = ?',
         [feedbackId]
       );
       
@@ -453,14 +424,14 @@ exports.deleteFeedback = async (req, res) => {
     }
 
     else {
-      if (feedback.UserAdminUserId !== userId) {
+      if (feedback.UserAdminId !== userId) {
         return res.status(403).json({
           success: false,
           message: 'Та зөвхөн өөрийн санал хүсэлтийг устгах боломжтой.'
         });
       }
     
-      if (feedback.Status !== 0) {
+      if (feedback.Status !== 'Хүлээгдэж байна') {
         return res.status(400).json({
           success: false,
           message: 'Зөвхөн хүлээгдэж буй санал хүсэлтийг устгах боломжтой.'
@@ -468,7 +439,7 @@ exports.deleteFeedback = async (req, res) => {
       }
       
       await pool.execute(
-        'DELETE FROM feedback WHERE ApplicationId = ?',
+        'DELETE FROM Feedback WHERE ApplicationId = ?',
         [feedbackId]
       );
       
