@@ -15,6 +15,7 @@ const newsRoutes = require('./routes/newsRoutes');
 const tariffRoutes = require('./routes/tariffRoutes'); 
 const waterMeterRoutes = require('./routes/waterMeterRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 
 require('dotenv').config();
 
@@ -90,7 +91,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/tariff', tariffRoutes);
 app.use('/api/water-meters', waterMeterRoutes);
 app.use('/api/payments', paymentRoutes);
-
+app.use('/api/services', serviceRoutes);
 
 // CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {

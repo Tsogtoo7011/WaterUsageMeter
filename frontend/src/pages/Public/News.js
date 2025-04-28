@@ -24,13 +24,11 @@ const News = () => {
   const navigate = useNavigate();
   
   const newsPerPage = 6;
-  
-  // Fetch news and CSRF token on component mount
+
   useEffect(() => {
     fetchCsrfToken();
     fetchNews();
-    
-    // Check if user is logged in
+
     const userData = localStorage.getItem('user');
     const token = localStorage.getItem('token');
     
