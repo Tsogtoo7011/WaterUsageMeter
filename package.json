@@ -1,26 +1,52 @@
 {
   "name": "waterusagemeter",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Дипломын ажилд зориулсан усны хэрэглээний тоолуурын систем",
   "scripts": {
     "frontend": "cd frontend && npm start",
     "backend": "cd backend && npm run dev",
-    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "start": "npm run dev",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Tsogtoo7011/WaterUsageMeter.git"
   },
-  "keywords": [],
-  "author": "",
+  "repositories": [
+    {
+      "type": "git",
+      "url": "git+https://github.com/Tsogtoo7011/WaterUsageMeter.git"
+    },
+    {
+      "type": "git",
+      "url": "git+https://gitlab.sict.edu.mn/Tsogtoo7011/b210910026.diplom.git"
+    }
+  ],
+  "keywords": [
+    "water-usage",
+    "meter",
+    "react",
+    "nodejs",
+    "express",
+    "mysql"
+  ],
+  "author": "Tsend-Ochir Tsogtbayar",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Tsogtoo7011/WaterUsageMeter/issues"
+    "url": "https://github.com/Tsogtoo7011/WaterUsageMeter/issues",
+    "email": "tsogtoo7011@gmail.com"
   },
-  "homepage": "https://github.com/Tsogtoo7011/WaterUsageMeter#readme",
+  
   "dependencies": {
     "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
