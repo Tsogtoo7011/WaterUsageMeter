@@ -51,7 +51,7 @@ const PaymentDetails = () => {
   };
 
   const handleBack = () => {
-    navigate('/payments');
+    navigate(-1);
   };
 
   if (loading) {

@@ -5,11 +5,11 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware.authenticate);
 
-// User routes
+
 router.get('/', paymentController.getUserPayments);
+router.get('/statistics', authMiddleware.verifiedOnly, paymentController.getPaymentStatistics);
 router.get('/:id', authMiddleware.verifiedOnly, paymentController.getPaymentById);
 router.post('/process', authMiddleware.verifiedOnly, paymentController.processPayment);
-router.get('/statistics', authMiddleware.verifiedOnly, paymentController.getPaymentStatistics);
 router.post('/generate', authMiddleware.verifiedOnly, paymentController.generateMonthlyPayment);
 
 module.exports = router;

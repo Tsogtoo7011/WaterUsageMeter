@@ -14,6 +14,10 @@ import {
   Bell,
   Droplet,
   Settings,
+  HardDriveUpload,
+  HardDriveDownload,
+  Home,
+  FileText
 } from 'lucide-react';
 import SearchBar from '../components/common/searchBar'; 
 
@@ -62,14 +66,13 @@ const SidebarLayout = ({ children }) => {
 
   const routes = isAdmin ? [
     { path: `/home`, label: 'Нүүр хуудас', component: 'Home' },
-    { path: `/admin/payment`, label: 'Төлбөрийн мэдээлэл', component: 'AdminPayment' },
-    { path: `/admin/metercounter`, label: 'Тоолуурын заалт', component: 'AdminMeterCounter' },
-    { path: `/admin/feedback`, label: 'Санал хүсэлт', component: 'AdminFeedback' },
-    { path: `/admin/service`, label: 'Үйлчилгээ', component: 'AdminService' },
+    { path: `/admin/report`, label: 'Тайлан', component: 'AdminReport' },
+    { path: `/admin/tarif`, label: 'Төлбөрийн тариф', component: 'AdminTarif' },
     { path: `/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
+    { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
+    { path: `/service`, label: 'Үйлчилгээ', component: 'Services' },
     { path: `/profile`, label: 'Профайл', component: 'Profile' },
-    { path: `/settings`, label: 'Тохиргоо', component: 'Settings' },
-    { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' }
+    { path: `/settings`, label: 'Тохиргоо', component: 'Settings' }
   ] : [
     { path: `/home`, label: 'Нүүр хуудас', component: 'Home' },
     { path: `/user/profile/apartment`, label: 'Орон сууц', component: 'Apartment' },
@@ -78,22 +81,24 @@ const SidebarLayout = ({ children }) => {
     { path: `/user/about-us`, label: 'Бидний тухай', component: 'AboutUs' },
     { path: `/user/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
     { path: `/user/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
+    { path: `/user/payment/:id`, label: 'Төлбөрийн дэлгэрэнгүй', component: 'PaymentDetails' },
     { path: `/user/services`, label: 'Үйлчилгээ', component: 'Services' },
     { path: `/profile`, label: 'Профайл', component: 'Profile' },
     { path: `/settings`, label: 'Тохиргоо', component: 'Settings' },
     { path: `/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
     { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
     { path: `/feedback/create`, label: 'Санал хүсэлт явуулах', component: 'FeedbackCreate' },
+    { path: `/feedback/:id`, label: 'Санал дэлгэрэнгүй', component: 'FeedbackDetail' },
+    { path: `/feedback/edit/:id`, label: 'Санал засварлах', component: 'FeedbackEdit' }
   ];
 
   const adminMenuItems = [
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `/home` },
-    { icon: CreditCard, label: 'Тайлан', path: `/admin/report` },
+    { icon: FileText, label: 'Тайлан', path: `/admin/report` },
     { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` },
     { icon: Clock, label: 'Төлбөрийн тариф', path: `/admin/tarif` },
     { icon: MessageCircle, label: 'Санал хүсэлт', path: `/feedback` },
-    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/service` },
-
+    { icon: HelpCircle, label: 'Үйлчилгээ', path: `/service` }
   ];
 
   const userMenuItems = [
@@ -136,6 +141,7 @@ const SidebarLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Desktop Sidebar */}
       <div 
         className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 shadow-sm fixed h-full transition-all duration-300 ease-in-out z-20`}
       >

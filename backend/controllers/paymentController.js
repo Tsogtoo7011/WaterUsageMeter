@@ -15,6 +15,29 @@ async function getUserApartments(userId) {
   return apartments.map(apt => apt.ApartmentId);
 }
 
+function determinePaymentStatus(payment) {
+  const status = payment.Status?.toLowerCase();
+  
+  if (status === 'paid') {
+    return 'paid';  
+  }
+
+  if (status === 'cancelled') {
+    return 'cancelled';  
+  }
+  
+  const payDate = new Date(payment.PayDate);
+  const currentDate = new Date();
+
+  const dueDate = new Date(payDate);
+  dueDate.setDate(dueDate.getDate() + 30);
+  
+  if (currentDate > dueDate) {
+    return 'overdue';  
+  }
+  return 'pending'; 
+}
+
 async function getCurrentTariff() {
   const [tariffs] = await pool.execute(
     'SELECT * FROM Tarif ORDER BY TariffId DESC LIMIT 1'
@@ -28,10 +51,19 @@ async function getCurrentTariff() {
 }
 
 async function calculateWaterUsage(apartmentId, month, year) {
-  const [readings] = await pool.execute(
+  // Get previous month and year
+  let prevMonth = month - 1;
+  let prevYear = year;
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear = year - 1;
+  }
+
+  // Get current month readings
+  const [currentReadings] = await pool.execute(
     `SELECT 
       Type,
-      SUM(Indication) as total
+      MAX(Indication) as latest_reading
     FROM WaterMeter
     WHERE ApartmentId = ?
     AND MONTH(WaterMeterDate) = ?
@@ -40,16 +72,37 @@ async function calculateWaterUsage(apartmentId, month, year) {
     [apartmentId, month, year]
   );
 
+  // Get previous month readings
+  const [prevReadings] = await pool.execute(
+    `SELECT 
+      Type,
+      MAX(Indication) as latest_reading
+    FROM WaterMeter
+    WHERE ApartmentId = ?
+    AND MONTH(WaterMeterDate) = ?
+    AND YEAR(WaterMeterDate) = ?
+    GROUP BY Type`,
+    [apartmentId, prevMonth, prevYear]
+  );
+
   const usage = {
     cold: 0,
     hot: 0
   };
   
-  readings.forEach(reading => {
-    if (reading.Type === 0) {
-      usage.cold = Number(reading.total);
-    } else if (reading.Type === 1) {
-      usage.hot = Number(reading.total);
+  // Calculate usage as difference between current and previous readings
+  currentReadings.forEach(current => {
+    const prevReading = prevReadings.find(prev => prev.Type === current.Type);
+    const previousValue = prevReading ? Number(prevReading.latest_reading) : 0;
+    const currentValue = Number(current.latest_reading);
+    
+    // Calculate usage (handle case where meter was reset)
+    const usageValue = currentValue >= previousValue ? currentValue - previousValue : currentValue;
+    
+    if (current.Type === 0) {
+      usage.cold = usageValue;
+    } else if (current.Type === 1) {
+      usage.hot = usageValue;
     }
   });
   
@@ -59,6 +112,7 @@ async function calculateWaterUsage(apartmentId, month, year) {
 exports.getUserPayments = async (req, res) => {
   try {
     const userId = req.userData.userId;
+    const apartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
 
     const apartmentIds = await getUserApartments(userId);
     
@@ -70,14 +124,23 @@ exports.getUserPayments = async (req, res) => {
         summary: {
           total: 0,
           paid: 0,
-          pending: 0
+          pending: 0,
+          overdue: 0
         },
         apartments: [],
         hasApartments: false
       });
     }
     
-    // Get payments for all user's apartments
+    // If apartmentId is provided and valid, only get payments for that apartment
+    const whereClause = apartmentId && apartmentIds.includes(apartmentId) 
+      ? 'p.ApartmentId = ?' 
+      : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
+    
+    const queryParams = apartmentId && apartmentIds.includes(apartmentId) 
+      ? [apartmentId, userId]
+      : [...apartmentIds, userId];
+    
     const [payments] = await pool.execute(
       `SELECT 
         p.PaymentId,
@@ -91,44 +154,55 @@ exports.getUserPayments = async (req, res) => {
         a.UnitNumber
       FROM Payment p
       JOIN Apartment a ON p.ApartmentId = a.ApartmentId
-      WHERE p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})
+      WHERE ${whereClause}
       AND p.UserAdminId = ?
       ORDER BY p.PayDate DESC`,
-      [...apartmentIds, userId]
+      queryParams
     );
-    
-    // Format payments
-    const formattedPayments = payments.map(payment => ({
-      id: payment.PaymentId,
-      apartmentId: payment.ApartmentId,
-      amount: payment.Amount,
-      payDate: payment.PayDate,
-      paidDate: payment.PaidDate,
-      status: payment.Status,
-      apartment: {
-        name: payment.ApartmentName,
-        block: payment.BlockNumber,
-        unit: payment.UnitNumber,
-        displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
-      }
-    }));
-    
-    // Calculate summary
+
+    const formattedPayments = payments.map(payment => {
+      // Calculate actual status based on backend logic
+      const calculatedStatus = determinePaymentStatus(payment);
+      
+      // Calculate due date (for frontend reference)
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+      
+      return {
+        id: payment.PaymentId,
+        apartmentId: payment.ApartmentId,
+        amount: payment.Amount,
+        payDate: payment.PayDate,
+        paidDate: payment.PaidDate,
+        dueDate: dueDate.toISOString(),
+        status: calculatedStatus,
+        apartment: {
+          name: payment.ApartmentName,
+          block: payment.BlockNumber,
+          unit: payment.UnitNumber,
+          displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
+        }
+      };
+    });
+  
     let totalAmount = 0;
     let paidAmount = 0;
     let pendingAmount = 0;
+    let overdueAmount = 0;
     
     formattedPayments.forEach(payment => {
       totalAmount += Number(payment.amount);
       
-      if (payment.status === 'PAID') {
+      if (payment.status === 'paid') {
         paidAmount += Number(payment.amount);
-      } else {
+      } else if (payment.status === 'overdue') {
+        overdueAmount += Number(payment.amount);
+      } else if (payment.status === 'pending') {
         pendingAmount += Number(payment.amount);
       }
     });
     
-    // Get list of apartment objects for selection
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
        FROM Apartment a
@@ -150,7 +224,8 @@ exports.getUserPayments = async (req, res) => {
       summary: {
         total: totalAmount,
         paid: paidAmount,
-        pending: pendingAmount
+        pending: pendingAmount,
+        overdue: overdueAmount
       },
       apartments: apartments,
       hasApartments: true
@@ -161,7 +236,6 @@ exports.getUserPayments = async (req, res) => {
   }
 };
 
-// Get payment details by ID
 exports.getPaymentById = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -173,8 +247,7 @@ exports.getPaymentById = async (req, res) => {
         message: 'Invalid payment ID'
       });
     }
-    
-    // Get payment with validation that it belongs to the user
+
     const [payments] = await pool.execute(
       `SELECT 
         p.PaymentId,
@@ -203,10 +276,18 @@ exports.getPaymentById = async (req, res) => {
     
     const payment = payments[0];
     
-    // Get water usage details for this payment (from the same month)
+    // Calculate actual status based on backend logic
+    const calculatedStatus = determinePaymentStatus(payment);
+    
+    // Calculate due date
     const payDate = new Date(payment.PayDate);
-    const month = payDate.getMonth() + 1; // JavaScript months are 0-indexed
-    const year = payDate.getFullYear();
+    const dueDate = new Date(payDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+    
+    // Get water usage details for this payment (from the same month)
+    const paymentDate = new Date(payment.PayDate);
+    const month = paymentDate.getMonth() + 1; // JavaScript months are 0-indexed
+    const year = paymentDate.getFullYear();
     
     const waterUsage = await calculateWaterUsage(
       payment.ApartmentId,
@@ -217,10 +298,11 @@ exports.getPaymentById = async (req, res) => {
     // Get tariff that was used for calculation
     const tariff = await getCurrentTariff();
     
-    // Calculate breakdown
-    const coldWaterCost = waterUsage.cold * tariff.ColdWaterTariff;
+    // Calculate breakdown with the corrected formula
+    const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
     const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
+    const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
     
     return res.status(200).json({
       success: true,
@@ -230,7 +312,8 @@ exports.getPaymentById = async (req, res) => {
         amount: payment.Amount,
         payDate: payment.PayDate,
         paidDate: payment.PaidDate,
-        status: payment.Status,
+        dueDate: dueDate.toISOString(),
+        status: calculatedStatus,
         orderId: payment.OrderOrderId,
         apartment: {
           name: payment.ApartmentName,
@@ -262,7 +345,6 @@ exports.getPaymentById = async (req, res) => {
   }
 };
 
-// Generate monthly payment for user's apartments
 exports.generateMonthlyPayment = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -286,7 +368,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     
     // Check if payment for this month already exists
     const [existingPayments] = await pool.execute(
-      `SELECT COUNT(*) as count
+      `SELECT COUNT(*) as count, PaymentId
        FROM Payment
        WHERE ApartmentId = ?
        AND UserAdminId = ?
@@ -295,11 +377,44 @@ exports.generateMonthlyPayment = async (req, res) => {
       [apartmentId, userId, currentMonth, currentYear]
     );
     
+    // If payment exists, return it instead of creating a new one
     if (existingPayments[0].count > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment for this month already exists'
-      });
+      // Get the existing payment details
+      const [paymentDetails] = await pool.execute(
+        `SELECT 
+          p.PaymentId,
+          p.ApartmentId,
+          p.Amount,
+          p.PayDate,
+          p.PaidDate,
+          p.Status,
+          p.OrderOrderId
+        FROM Payment p
+        WHERE p.PaymentId = ?`,
+        [existingPayments[0].PaymentId]
+      );
+      
+      if (paymentDetails.length > 0) {
+        const payment = paymentDetails[0];
+        const payDate = new Date(payment.PayDate);
+        const dueDate = new Date(payDate);
+        dueDate.setDate(dueDate.getDate() + 30);
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Payment for current month already exists',
+          payment: {
+            id: payment.PaymentId,
+            apartmentId: Number(apartmentId),
+            amount: payment.Amount,
+            status: payment.Status,
+            payDate: payment.PayDate,
+            dueDate: dueDate.toISOString(),
+            orderId: payment.OrderOrderId
+          },
+          exists: true
+        });
+      }
     }
     
     // Get water usage for the current month
@@ -312,8 +427,8 @@ exports.generateMonthlyPayment = async (req, res) => {
     // Get current tariff
     const tariff = await getCurrentTariff();
     
-    // Calculate costs
-    const coldWaterCost = waterUsage.cold * tariff.ColdWaterTariff;
+    // Calculate costs with the corrected formula
+    const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
     const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
@@ -331,6 +446,11 @@ exports.generateMonthlyPayment = async (req, res) => {
     
     const paymentId = result.insertId;
     
+    // Calculate due date
+    const now2 = new Date();
+    const dueDate = new Date(now2);
+    dueDate.setDate(dueDate.getDate() + 30);
+    
     return res.status(201).json({
       success: true,
       message: 'Monthly payment generated successfully',
@@ -339,6 +459,7 @@ exports.generateMonthlyPayment = async (req, res) => {
         apartmentId: Number(apartmentId),
         amount: totalAmount,
         status: 'PENDING',
+        dueDate: dueDate.toISOString(),
         orderId: orderId
       },
       waterUsage: {
@@ -357,7 +478,7 @@ exports.generateMonthlyPayment = async (req, res) => {
   } catch (error) {
     handleError(res, error, 'Generate monthly payment');
   }
-};
+}; 
 
 exports.processPayment = async (req, res) => {
   try {
@@ -372,7 +493,7 @@ exports.processPayment = async (req, res) => {
     }
     
     const [payments] = await pool.execute(
-      `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentId
+      `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentId, p.PayDate
        FROM Payment p
        WHERE p.PaymentId = ?
        AND p.UserAdminId = ?`,
@@ -387,11 +508,19 @@ exports.processPayment = async (req, res) => {
     }
     
     const payment = payments[0];
+    const calculatedStatus = determinePaymentStatus(payment);
 
-    if (payment.Status === 'PAID') {
+    if (calculatedStatus === 'paid') {
       return res.status(400).json({
         success: false,
         message: 'Payment has already been processed'
+      });
+    }
+
+    if (calculatedStatus === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot process a cancelled payment'
       });
     }
 
@@ -414,7 +543,6 @@ exports.processPayment = async (req, res) => {
         paymentId: payment.PaymentId
       });
     } catch (error) {
-      // Rollback on error
       await connection.rollback();
       throw error;
     } finally {
@@ -429,6 +557,7 @@ exports.processPayment = async (req, res) => {
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const userId = req.userData.userId;
+    const apartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
  
     const apartmentIds = await getUserApartments(userId);
     
@@ -443,37 +572,101 @@ exports.getPaymentStatistics = async (req, res) => {
       });
     }
 
+    if (apartmentId && !apartmentIds.includes(apartmentId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this apartment'
+      });
+    }
+
     const currentYear = new Date().getFullYear();
 
-    const [monthlyStats] = await pool.execute(
+    const whereClause = apartmentId 
+      ? 'p.ApartmentId = ?' 
+      : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
+    
+    const queryParams = apartmentId 
+      ? [apartmentId, userId, currentYear]
+      : [...apartmentIds, userId, currentYear];
+
+    const [monthlyData] = await pool.execute(
       `SELECT 
         MONTH(p.PayDate) as month,
-        SUM(p.Amount) as totalAmount,
-        COUNT(CASE WHEN p.Status = 'PAID' THEN 1 END) as paidCount,
-        COUNT(CASE WHEN p.Status = 'PENDING' THEN 1 END) as pendingCount
+        p.PaymentId,
+        p.Status,
+        p.PayDate,
+        p.Amount
       FROM Payment p
-      WHERE p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})
+      WHERE ${whereClause}
       AND p.UserAdminId = ?
       AND YEAR(p.PayDate) = ?
-      GROUP BY MONTH(p.PayDate)
       ORDER BY MONTH(p.PayDate)`,
-      [...apartmentIds, userId, currentYear]
+      queryParams
     );
+
+    const monthlyPayments = monthlyData.map(payment => {
+      return {
+        ...payment,
+        calculatedStatus: determinePaymentStatus(payment)
+      };
+    });
+    
+    const monthStats = {};
+    monthlyPayments.forEach(payment => {
+      const month = payment.month;
+      if (!monthStats[month]) {
+        monthStats[month] = {
+          month,
+          totalAmount: 0,
+          paidCount: 0,
+          pendingCount: 0,
+          overdueCount: 0
+        };
+      }
+      
+      monthStats[month].totalAmount += Number(payment.Amount);
+      
+      // Fixed conditional checks to match lowercase status values from determinePaymentStatus function
+      if (payment.calculatedStatus === 'paid') {
+        monthStats[month].paidCount++;
+      } else if (payment.calculatedStatus === 'pending') {
+        monthStats[month].pendingCount++;
+      } else if (payment.calculatedStatus === 'overdue') {
+        monthStats[month].overdueCount++;
+      }
+    });
 
     const months = Array(12).fill().map((_, i) => i + 1);
     const formattedStats = months.map(month => {
-      const monthData = monthlyStats.find(stat => stat.month === month);
+      const monthData = monthStats[month];
       
       return {
         month: month,
         monthName: new Date(currentYear, month - 1, 1).toLocaleString('default', { month: 'long' }),
         totalAmount: monthData ? Number(monthData.totalAmount) : 0,
         paidCount: monthData ? monthData.paidCount : 0,
-        pendingCount: monthData ? monthData.pendingCount : 0
+        pendingCount: monthData ? monthData.pendingCount : 0,
+        overdueCount: monthData ? monthData.overdueCount : 0
       };
     });
 
     const yearlyTotal = formattedStats.reduce((acc, stat) => acc + stat.totalAmount, 0);
+
+    let totalPaid = 0;
+    let totalPending = 0;
+    let totalOverdue = 0;
+    
+    formattedStats.forEach(month => {
+      totalPaid += month.paidCount || 0;
+      totalPending += month.pendingCount || 0;
+      totalOverdue += month.overdueCount || 0;
+    });
+
+    const yearlyStatusData = [
+      { name: 'Paid', value: totalPaid, color: '#10B981' },
+      { name: 'Pending', value: totalPending, color: '#F59E0B' },
+      { name: 'Overdue', value: totalOverdue, color: '#EF4444' }
+    ].filter(item => item.value > 0);
 
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
@@ -494,6 +687,7 @@ exports.getPaymentStatistics = async (req, res) => {
       success: true,
       monthlyStats: formattedStats,
       yearlyTotal: yearlyTotal,
+      yearlyStatusData: yearlyStatusData, 
       apartments: apartments,
       hasApartments: true
     });
