@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api";
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare } from 'lucide-react';
+import ApartmentSelector from '../../components/common/ApartmentSelector';
 
 const Service = () => {
   const [services, setServices] = useState([]);
@@ -13,24 +14,24 @@ const Service = () => {
   const [formMode, setFormMode] = useState('create');
   const [csrfToken, setCsrfToken] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [apartments, setApartments] = useState([]);
 
   const [formData, setFormData] = useState({
     description: '',
     respond: '',
     status: 'pending',
     amount: '',
+    apartmentId: '',
   });
   
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   
-  const servicesPerPage = 6;
+  const servicesPerPage = 10;
   
-  // Fetch services and CSRF token on component mount
   useEffect(() => {
     fetchCsrfToken();
     
-    // Check if user is logged in
     const userData = localStorage.getItem('user');
     const token = localStorage.getItem('token');
     
@@ -38,9 +39,9 @@ const Service = () => {
       try {
         const parsedUser = JSON.parse(userData);
         setUser({ ...parsedUser, token });
-        console.log("User loaded:", parsedUser);
         
-        // Fetch appropriate services based on user role
+        fetchUserApartments();
+        
         if (parsedUser.isAdmin === true || parsedUser.AdminRight === 1) {
           fetchAllServices();
         } else {
@@ -50,18 +51,31 @@ const Service = () => {
         console.error("Error parsing user data:", err);
       }
     } else {
-      // Redirect to login if not logged in
       navigate('/login');
     }
   }, []);
+
+  const fetchUserApartments = async () => {
+    try {
+      const response = await api.get('/services/my-apartments');
+      setApartments(response.data);
+      
+      if (response.data.length > 0) {
+        setFormData(prevState => ({
+          ...prevState,
+          apartmentId: response.data[0].id
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching user apartments:', err);
+    }
+  };
   
-  // Fetch CSRF token
   const fetchCsrfToken = async () => {
     try {
       const response = await api.get('/csrf-token');
       setCsrfToken(response.data.csrfToken);
       api.defaults.headers.common['X-CSRF-Token'] = response.data.csrfToken;
-      console.log("CSRF token obtained");
     } catch (err) {
       console.error('Error fetching CSRF token:', err);
       setError('Failed to fetch CSRF token. Please reload the page.');
@@ -100,10 +114,27 @@ const Service = () => {
     }
   };
   
-  // Check if user is admin - This should align with what the JWT token has
   const isUserAdmin = () => {
-    // Check if user has the isAdmin property (from JWT)
     return user && (user.isAdmin === true || user.AdminRight === 1);
+  };
+  
+  const handleViewDetails = async (serviceId) => {
+    try {
+      setLoading(true);
+      let endpoint = isUserAdmin() 
+        ? `/services/admin/${serviceId}`
+        : `/services/${serviceId}`;
+        
+      const response = await api.get(endpoint);
+      setSelectedService(response.data);
+      setFormMode('view');
+      setShowModal(true);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching service details:', err);
+      alert('Failed to fetch service details');
+      setLoading(false);
+    }
   };
   
   const handleOpenModal = (mode, serviceItem = null) => {
@@ -114,22 +145,34 @@ const Service = () => {
         description: serviceItem.Description,
         respond: serviceItem.Respond || '',
         status: serviceItem.Status,
-        amount: '',  // Don't pre-fill amount
+        amount: serviceItem.Amount ? serviceItem.Amount.toString() : '',
+        apartmentId: serviceItem.ApartmentId || '',
       });
       setSelectedService(serviceItem);
+      setShowModal(true);
     } else if (mode === 'create') {
       setFormData({
         description: '',
         respond: '',
         status: 'pending',
         amount: '',
+        apartmentId: apartments.length > 0 ? apartments[0].id : '',
       });
       setSelectedService(null);
+      setShowModal(true);
     } else if (mode === 'view' && serviceItem) {
+      handleViewDetails(serviceItem.ServiceId);
+    } else if (mode === 'respond' && serviceItem) {
+      setFormData({
+        description: serviceItem.Description,
+        respond: serviceItem.Respond || '',
+        status: serviceItem.Status,
+        amount: serviceItem.Amount ? serviceItem.Amount.toString() : '',
+        apartmentId: serviceItem.ApartmentId || '',
+      });
       setSelectedService(serviceItem);
+      setShowModal(true);
     }
-    
-    setShowModal(true);
   };
   
   const handleCloseModal = () => {
@@ -139,6 +182,7 @@ const Service = () => {
       respond: '',
       status: 'pending',
       amount: '',
+      apartmentId: apartments.length > 0 ? apartments[0].id : '',
     });
     setSelectedService(null);
   };
@@ -148,6 +192,13 @@ const Service = () => {
     setFormData({
       ...formData,
       [name]: value,
+    });
+  };
+
+  const handleApartmentChange = (apartmentId) => {
+    setFormData({
+      ...formData,
+      apartmentId,
     });
   };
   
@@ -161,26 +212,41 @@ const Service = () => {
     }
     
     try {
-      // Include CSRF token in the headers
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
       
       if (formMode === 'create') {
         const response = await api.post('/services', {
-          description: formData.description
+          description: formData.description,
+          apartmentId: formData.apartmentId || null
         });
         console.log('Create response:', response.data);
-      } else if (formMode === 'edit') {
-        const response = await api.put(`/services/admin/${selectedService.ServiceId}`, {
-          respond: formData.respond,
-          status: formData.status,
-          amount: formData.amount ? parseFloat(formData.amount) : undefined
-        });
+      } else if (formMode === 'edit' && selectedService) {
+        let endpoint;
+        let payload;
+        
+        if (isUserAdmin()) {
+          const amount = formData.amount ? parseFloat(formData.amount) : null;
+          
+          endpoint = `/services/admin/${selectedService.ServiceId}`;
+          payload = {
+            respond: formData.respond,
+            status: formData.status,
+            amount: amount
+          };
+        } else {
+          endpoint = `/services/update/${selectedService.ServiceId}`;
+          payload = {
+            description: formData.description,
+            apartmentId: formData.apartmentId || null
+          };
+        }
+        
+        const response = await api.put(endpoint, payload);
         console.log('Update response:', response.data);
       }
       
       handleCloseModal();
       
-      // Refresh the appropriate list based on user role
       if (isUserAdmin()) {
         fetchAllServices();
       } else {
@@ -189,7 +255,6 @@ const Service = () => {
     } catch (err) {
       console.error('Error submitting form:', err);
       
-      // Check if it's a CSRF error
       if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
         alert('CSRF token is invalid. Please reload the page.');
         fetchCsrfToken();
@@ -213,12 +278,14 @@ const Service = () => {
     }
     
     try {
-      // Include CSRF token in the headers
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
       
-      await api.delete(`/services/admin/${serviceId}`);
+      const endpoint = isUserAdmin() 
+        ? `/services/admin/${serviceId}`
+        : `/services/${serviceId}`;
+        
+      await api.delete(endpoint);
       
-      // Refresh the appropriate list based on user role
       if (isUserAdmin()) {
         fetchAllServices();
       } else {
@@ -227,7 +294,6 @@ const Service = () => {
     } catch (err) {
       console.error('Error deleting service:', err);
       
-      // Check if it's a CSRF error
       if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
         alert('CSRF token is invalid. Please reload the page.');
         fetchCsrfToken();
@@ -239,32 +305,14 @@ const Service = () => {
     }
   };
   
-  const handleViewDetails = async (serviceId) => {
-    try {
-      let endpoint = isUserAdmin() 
-        ? `/services/admin/${serviceId}`
-        : `/services/${serviceId}`;
-        
-      const response = await api.get(endpoint);
-      setSelectedService(response.data);
-      setShowModal(true);
-      setFormMode('view');
-    } catch (err) {
-      console.error('Error fetching service details:', err);
-      alert('Failed to fetch service details');
-    }
-  };
-  
   const handleStatusFilterChange = (e) => {
     const newStatus = e.target.value;
     setStatusFilter(newStatus);
     
-    // Only admins can filter by status
     if (isUserAdmin()) {
       if (newStatus === 'all') {
         fetchAllServices();
       } else {
-        // Update URL and fetch filtered services
         const endpoint = `/services/admin/status/${newStatus}`;
         
         setLoading(true);
@@ -282,7 +330,6 @@ const Service = () => {
     }
   };
   
-  // Get status badge color
   const getStatusBadgeClass = (status) => {
     switch(status) {
       case 'pending':
@@ -300,12 +347,22 @@ const Service = () => {
     }
   };
   
-  // Format status display
   const formatStatus = (status) => {
     return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
+
+  const getApartmentDisplay = (service) => {
+    if (!service.ApartmentId) return 'Not specified';
+    return `${service.ApartmentName} - Block ${service.BlockNumber}, Unit ${service.UnitNumber}`;
+  };
   
-  // Pagination logic
+  const canUserEditService = (service) => {
+    return !isUserAdmin() && 
+           service.Status === 'pending' && 
+           user && 
+           service.UserId === user.id;
+  };
+  
   const indexOfLastService = currentPage * servicesPerPage;
   const indexOfFirstService = indexOfLastService - servicesPerPage;
   const currentServices = services.slice(indexOfFirstService, indexOfLastService);
@@ -348,7 +405,7 @@ const Service = () => {
                 onChange={handleStatusFilterChange}
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All Statuses</option>
+                <option value="">Select</option>
                 <option value="pending">Pending</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
@@ -367,13 +424,17 @@ const Service = () => {
         </div>
       </div>
       
-      {/* Services Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              {isUserAdmin() && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
+                Apartment
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Description
@@ -386,6 +447,9 @@ const Service = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Amount
+              </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -395,8 +459,20 @@ const Service = () => {
             {currentServices.length > 0 ? (
               currentServices.map((service) => (
                 <tr key={service.ServiceId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {service.ServiceId}
+                  {isUserAdmin() && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {service.ServiceId}
+                    </td>
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {service.ApartmentId ? (
+                      <div className="flex items-center">
+                        <Home size={16} className="mr-1 text-blue-500" />
+                        <span>{getApartmentDisplay(service)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Not specified</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
                     {service.Description}
@@ -411,16 +487,41 @@ const Service = () => {
                       {formatStatus(service.Status)}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {service.Amount !== null && service.Amount !== undefined
+                      ? `$${parseFloat(service.Amount).toFixed(2)}`
+                      : '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                     <div className="flex justify-center gap-2">
                       <button
-                        onClick={() => handleViewDetails(service.ServiceId)}
+                        onClick={() => handleOpenModal('view', service)}
                         className="text-blue-500 hover:text-blue-700"
                         title="View details"
                       >
                         <Eye size={16} />
                       </button>
+                      
                       {isUserAdmin() && (
+                        <>
+                          <button
+                            onClick={() => handleOpenModal('edit', service)}
+                            className="text-green-500 hover:text-green-700"
+                            title="Respond to service"
+                          >
+                            <MessageSquare size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(service.ServiceId)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Delete service"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
+                      
+                      {canUserEditService(service) && (
                         <>
                           <button
                             onClick={() => handleOpenModal('edit', service)}
@@ -444,7 +545,7 @@ const Service = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={isUserAdmin() ? 5 : 4} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={isUserAdmin() ? 7 : 6} className="px-6 py-4 text-center text-gray-500">
                   No service requests found
                 </td>
               </tr>
@@ -453,7 +554,6 @@ const Service = () => {
         </table>
       </div>
       
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-8">
           <nav className="flex items-center gap-1">
@@ -498,7 +598,6 @@ const Service = () => {
         </div>
       )}
       
-      {/* Modal for Create/Edit/View */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-90vh overflow-y-auto">
@@ -507,8 +606,10 @@ const Service = () => {
                 <h2 className="text-2xl font-bold text-gray-800">
                   {formMode === 'create'
                     ? 'New Service Request'
-                    : formMode === 'edit'
+                    : formMode === 'edit' && isUserAdmin()
                     ? 'Respond to Service Request'
+                    : formMode === 'edit' && !isUserAdmin()
+                    ? 'Edit Service Request'
                     : 'Service Request Details'}
                 </h2>
                 <button
@@ -523,7 +624,9 @@ const Service = () => {
                 <div>
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold mb-1">Description</h3>
-                    <p className="text-gray-700">{selectedService.Description}</p>
+                    <p className="text-gray-700 max-h-40 overflow-y-auto break-words">
+                      {selectedService.Description}
+                    </p>
                   </div>
                   
                   {selectedService.Respond && (
@@ -533,13 +636,15 @@ const Service = () => {
                     </div>
                   )}
 
-                  {/* Payment Amount Section */}
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold mb-1">Payment Amount</h3>
                     <p className="text-gray-700">
-                      {selectedService.Amount ? `$${parseFloat(selectedService.Amount).toFixed(2)}` : '-'}
+                      {selectedService.Amount !== null && selectedService.Amount !== undefined && !isNaN(parseFloat(selectedService.Amount))
+                        ? `$${parseFloat(selectedService.Amount).toFixed(2)}`
+                        : '-'}
                     </p>
                   </div>
+
                   
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
@@ -557,27 +662,91 @@ const Service = () => {
                     <div>
                       <h3 className="text-sm font-semibold mb-1">Last Updated</h3>
                       <p className="text-gray-700">
-                        {selectedService.SubmitDate ? new Date(selectedService.SubmitDate).toLocaleString() : '-'}
+                        {selectedService.SubmitDate ? new Date(selectedService.SubmitDate).toLocaleString() : 'Not yet updated'}
                       </p>
                     </div>
+                    
+                    {selectedService.PaidDay && (
+                      <div>
+                        <h3 className="text-sm font-semibold mb-1">Payment Date</h3>
+                        <p className="text-gray-700">{new Date(selectedService.PaidDay).toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end mt-4 gap-2">
+                    {isUserAdmin() && (
+                      <button
+                        onClick={() => {
+                          setFormMode('edit');
+                          setFormData({
+                            description: selectedService.Description,
+                            respond: selectedService.Respond || '',
+                            status: selectedService.Status,
+                            amount: selectedService.Amount ? selectedService.Amount.toString() : '',
+                            apartmentId: selectedService.ApartmentId || '',
+                          });
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                      >
+                        Respond
+                      </button>
+                    )}
+                    
+                    {canUserEditService(selectedService) && (
+                      <button
+                        onClick={() => {
+                          setFormMode('edit');
+                          setFormData({
+                            description: selectedService.Description,
+                            respond: selectedService.Respond || '',
+                            status: selectedService.Status,
+                            amount: selectedService.Amount ? selectedService.Amount.toString() : '',
+                            apartmentId: selectedService.ApartmentId || '',
+                          });
+                        }}
+                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                      >
+                        Edit
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit}>
-                  {formMode === 'create' ? (
-                    <div className="mb-4">
-                      <label className="block text-gray-700 text-sm font-bold mb-2">
-                        Description
-                      </label>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
-                        placeholder="Describe your service request..."
-                        required
-                      />
-                    </div>
+                  {formMode === 'create' || (!isUserAdmin() && formMode === 'edit') ? (
+                    <>
+                      <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          value={formData.description}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
+                          placeholder="Describe your service request..."
+                          required
+                        />
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2">
+                          Select Apartment
+                        </label>
+                        {apartments.length > 0 ? (
+                          <ApartmentSelector 
+                            apartments={apartments} 
+                            selectedApartmentId={formData.apartmentId}
+                            onChange={handleApartmentChange}
+                          />
+                        ) : (
+                          <p className="text-yellow-600">
+                            No apartments available. Contact support if you need to add apartments to your account.
+                          </p>
+                        )}
+                      </div>
+                    </>
                   ) : (
                     <>
                       <div className="mb-4">
@@ -625,7 +794,7 @@ const Service = () => {
                         
                         <div className="mb-4">
                           <label className="block text-gray-700 text-sm font-bold mb-2">
-                            Amount (optional)
+                            Payment Amount
                           </label>
                           <input
                             type="number"
@@ -637,6 +806,11 @@ const Service = () => {
                             step="0.01"
                             min="0"
                           />
+                          {selectedService && selectedService.Amount && (
+                            <div className="mt-1 text-sm text-gray-600">
+                              Current amount: ${parseFloat(selectedService.Amount).toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </>
@@ -654,7 +828,7 @@ const Service = () => {
                       type="submit"
                       className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                     >
-                      {formMode === 'create' ? 'Submit Request' : 'Update'}
+                      {formMode === 'create' ? 'Submit Request' : 'Update Response'}
                     </button>
                   </div>
                 </form>

@@ -1,21 +1,32 @@
 import React from 'react';
+import { Home } from 'lucide-react';
 
 const ApartmentSelector = ({ apartments, selectedApartmentId, onChange }) => {
   if (!apartments || apartments.length === 0) {
-    return null;
+    return (
+      <div className="text-yellow-600">
+        No apartments available for selection.
+      </div>
+    );
   }
-  
+
+  const handleChange = (e) => {
+    const selectedId = e.target.value;
+    onChange(selectedId);
+  };
+
   return (
-    <div className="w-full max-w-xs">
-      <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-1">
-        Select Apartment
-      </label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <Home size={16} className="text-gray-500" />
+      </div>
       <select
-        id="apartment-select"
+        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={selectedApartmentId || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+        onChange={handleChange}
+        required
       >
+        <option value="">-- Select an apartment --</option>
         {apartments.map((apartment) => (
           <option key={apartment.id} value={apartment.id}>
             {apartment.displayName}
