@@ -14,9 +14,7 @@ import {
   Bell,
   Droplet,
   Settings,
-  HardDriveUpload,
-  HardDriveDownload,
-  Home,
+  ClipboardList,
   FileText
 } from 'lucide-react';
 import SearchBar from '../components/common/searchBar'; 
@@ -68,6 +66,7 @@ const SidebarLayout = ({ children }) => {
     { path: `/home`, label: 'Нүүр хуудас', component: 'Home' },
     { path: `/admin/report`, label: 'Тайлан', component: 'AdminReport' },
     { path: `/admin/tarif`, label: 'Төлбөрийн тариф', component: 'AdminTarif' },
+    { path: `/admin/user`, label: 'Хэрэглэгчийн хүснэгт', component: 'AdminUser' },
     { path: `/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
     { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
     { path: `/service`, label: 'Үйлчилгээ', component: 'Services' },
@@ -94,6 +93,7 @@ const SidebarLayout = ({ children }) => {
 
   const adminMenuItems = [
     { icon: HomeIcon, label: 'Нүүр хуудас', path: `/home` },
+    { icon: ClipboardList, label: 'Хэрэглэгчийн хүснэгт', path: `/admin/user` },
     { icon: FileText, label: 'Тайлан', path: `/admin/report` },
     { icon: Newspaper, label: 'Мэдээ мэдээлэл', path: `/news` },
     { icon: Clock, label: 'Төлбөрийн тариф', path: `/admin/tarif` },

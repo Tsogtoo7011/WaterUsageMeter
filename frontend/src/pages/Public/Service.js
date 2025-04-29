@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api";
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search } from 'lucide-react';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
 
 const Service = () => {
   const [services, setServices] = useState([]);
+  const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -15,6 +16,7 @@ const Service = () => {
   const [csrfToken, setCsrfToken] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [apartments, setApartments] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState({
     description: '',
@@ -55,6 +57,23 @@ const Service = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const filtered = services.filter(service => {
+      const matchesSearch = 
+        service.Description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        service.ServiceId.toString().includes(searchQuery) ||
+        (service.ApartmentName && service.ApartmentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (service.Status && service.Status.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesStatus = statusFilter === 'all' || service.Status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+    
+    setFilteredServices(filtered);
+    setCurrentPage(1);
+  }, [searchQuery, services, statusFilter]);
+
   const fetchUserApartments = async () => {
     try {
       const response = await api.get('/services/my-apartments');
@@ -85,13 +104,7 @@ const Service = () => {
   const fetchAllServices = async () => {
     try {
       setLoading(true);
-      let endpoint = '/services/admin/all';
-      
-      if (statusFilter !== 'all') {
-        endpoint = `/services/admin/status/${statusFilter}`;
-      }
-      
-      const response = await api.get(endpoint);
+      const response = await api.get('/services/admin/all');
       setServices(response.data);
       setLoading(false);
     } catch (err) {
@@ -308,26 +321,6 @@ const Service = () => {
   const handleStatusFilterChange = (e) => {
     const newStatus = e.target.value;
     setStatusFilter(newStatus);
-    
-    if (isUserAdmin()) {
-      if (newStatus === 'all') {
-        fetchAllServices();
-      } else {
-        const endpoint = `/services/admin/status/${newStatus}`;
-        
-        setLoading(true);
-        api.get(endpoint)
-          .then(response => {
-            setServices(response.data);
-            setLoading(false);
-          })
-          .catch(err => {
-            console.error('Error fetching filtered services:', err);
-            setError('Failed to fetch services');
-            setLoading(false);
-          });
-      }
-    }
   };
   
   const getStatusBadgeClass = (status) => {
@@ -365,47 +358,72 @@ const Service = () => {
   
   const indexOfLastService = currentPage * servicesPerPage;
   const indexOfFirstService = indexOfLastService - servicesPerPage;
-  const currentServices = services.slice(indexOfFirstService, indexOfLastService);
-  const totalPages = Math.ceil(services.length / servicesPerPage);
+  const currentServices = filteredServices.slice(indexOfFirstService, indexOfLastService);
+  const totalPages = Math.ceil(filteredServices.length / servicesPerPage);
   
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
   
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
   
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-6" role="alert">
-        <strong className="font-bold">Error!</strong>
-        <span className="block sm:inline"> {error}</span>
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-2 bg-red-200 hover:bg-red-300 px-4 py-2 rounded"
-        >
-          Reload Page
-        </button>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-50 p-4 rounded-md max-w-md mx-4">
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-2 bg-red-200 hover:bg-red-300 px-4 py-2 rounded w-full"
+          >
+            Reload Page
+          </button>
+        </div>
       </div>
     );
   }
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Service Requests</h1>
-        <div className="flex items-center gap-4">
-          {isUserAdmin() && (
-            <div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h1 className="text-2xl font-bold text-gray-800">Service Requests</h1>
+            <button
+              onClick={() => handleOpenModal('create')}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors w-full sm:w-auto justify-center"
+            >
+              <PlusCircle size={20} />
+              <span>New Request</span>
+            </button>
+          </div>
+          
+          {/* Search and Filter Bar */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-grow">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search requests..."
+                className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            <div className="w-full md:w-auto">
               <select 
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
-                className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select</option>
+                <option value="all">All</option>
                 <option value="pending">Pending</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
@@ -413,197 +431,212 @@ const Service = () => {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-          )}
-          <button
-            onClick={() => handleOpenModal('create')}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            <PlusCircle size={20} />
-            <span>New Request</span>
-          </button>
-        </div>
-      </div>
-      
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {isUserAdmin() && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-              )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Apartment
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Description
-              </th>
-              {isUserAdmin() && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Username
-                </th>
-              )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Payment Amount
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {currentServices.length > 0 ? (
-              currentServices.map((service) => (
-                <tr key={service.ServiceId} className="hover:bg-gray-50">
-                  {isUserAdmin() && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {service.ServiceId}
-                    </td>
-                  )}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {service.ApartmentId ? (
-                      <div className="flex items-center">
-                        <Home size={16} className="mr-1 text-blue-500" />
-                        <span>{getApartmentDisplay(service)}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">Not specified</span>
+          </div>
+          
+          {/* Responsive Table */}
+          <div className="overflow-x-auto">
+            <div className="align-middle inline-block min-w-full shadow overflow-hidden rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                      Apartment
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    {isUserAdmin() && (
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                        User
+                      </th>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
-                    {service.Description}
-                  </td>
-                  {isUserAdmin() && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {service.Username}
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentServices.length > 0 ? (
+                    currentServices.map((service) => (
+                      <tr key={service.ServiceId} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {service.ServiceId}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
+                          {service.ApartmentId ? (
+                            <div className="flex items-center">
+                              <Home size={16} className="mr-1 text-blue-500" />
+                              <span className="truncate max-w-[150px]">{getApartmentDisplay(service)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Not specified</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-500">
+                          <div className="max-w-[200px] truncate">{service.Description}</div>
+                        </td>
+                        {isUserAdmin() && (
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
+                            <div className="truncate max-w-[100px]">{service.Username}</div>
+                          </td>
+                        )}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(service.Status)}`}>
+                            {formatStatus(service.Status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
+                          {service.Amount !== null && service.Amount !== undefined
+                            ? `$${parseFloat(service.Amount).toFixed(2)}`
+                            : '-'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium sticky right-0 bg-white z-10 border-l border-gray-100">
+                          <div className="flex justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenModal('view', service)}
+                              className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded"
+                              title="View details"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            
+                            {isUserAdmin() && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenModal('edit', service)}
+                                  className="text-green-500 hover:text-green-700 p-1 bg-green-50 rounded"
+                                  title="Respond to service"
+                                >
+                                  <MessageSquare size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(service.ServiceId)}
+                                  className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded"
+                                  title="Delete service"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                            
+                            {canUserEditService(service) && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenModal('edit', service)}
+                                  className="text-green-500 hover:text-green-700 p-1 bg-green-50 rounded"
+                                  title="Edit service"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(service.ServiceId)}
+                                  className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded"
+                                  title="Delete service"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={isUserAdmin() ? 7 : 6} className="px-6 py-4 text-center text-gray-500">
+                        No service requests found
+                      </td>
+                    </tr>
                   )}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(service.Status)}`}>
-                      {formatStatus(service.Status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {service.Amount !== null && service.Amount !== undefined
-                      ? `$${parseFloat(service.Amount).toFixed(2)}`
-                      : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => handleOpenModal('view', service)}
-                        className="text-blue-500 hover:text-blue-700"
-                        title="View details"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      
-                      {isUserAdmin() && (
-                        <>
-                          <button
-                            onClick={() => handleOpenModal('edit', service)}
-                            className="text-green-500 hover:text-green-700"
-                            title="Respond to service"
-                          >
-                            <MessageSquare size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(service.ServiceId)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Delete service"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      )}
-                      
-                      {canUserEditService(service) && (
-                        <>
-                          <button
-                            onClick={() => handleOpenModal('edit', service)}
-                            className="text-green-500 hover:text-green-700"
-                            title="Edit service"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(service.ServiceId)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Delete service"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={isUserAdmin() ? 7 : 6} className="px-6 py-4 text-center text-gray-500">
-                  No service requests found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+              <div className="text-sm text-gray-500">
+                Showing {indexOfFirstService + 1} to {Math.min(indexOfLastService, filteredServices.length)} of {filteredServices.length} entries
+              </div>
+              
+              <nav className="flex items-center gap-1">
+                <button
+                  onClick={() => paginate(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className={`p-2 rounded-md ${
+                    currentPage === 1
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-blue-500 hover:bg-blue-50'
+                  }`}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = index + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = index + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + index;
+                  } else {
+                    pageNum = currentPage - 2 + index;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => paginate(pageNum)}
+                      className={`w-10 h-10 rounded-md ${
+                        currentPage === pageNum
+                          ? 'bg-blue-500 text-white'
+                          : 'text-gray-700 hover:bg-blue-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                
+                <button
+                  onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`p-2 rounded-md ${
+                    currentPage === totalPages
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-blue-500 hover:bg-blue-50'
+                  }`}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </nav>
+              
+              <div className="text-sm text-gray-500">
+                Page {currentPage} of {totalPages}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-8">
-          <nav className="flex items-center gap-1">
-            <button
-              onClick={() => paginate(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-md ${
-                currentPage === 1
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-blue-500 hover:bg-blue-50'
-              }`}
-            >
-              <ChevronLeft size={20} />
-            </button>
-            
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => paginate(index + 1)}
-                className={`w-10 h-10 rounded-md ${
-                  currentPage === index + 1
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-700 hover:bg-blue-50'
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-            
-            <button
-              onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-md ${
-                currentPage === totalPages
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-blue-500 hover:bg-blue-50'
-              }`}
-            >
-              <ChevronRight size={20} />
-            </button>
-          </nav>
-        </div>
-      )}
-      
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-90vh overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                   {formMode === 'create'
                     ? 'New Service Request'
                     : formMode === 'edit' && isUserAdmin()
@@ -614,7 +647,7 @@ const Service = () => {
                 </h2>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
                 >
                   &times;
                 </button>
@@ -624,7 +657,7 @@ const Service = () => {
                 <div>
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold mb-1">Description</h3>
-                    <p className="text-gray-700 max-h-40 overflow-y-auto break-words">
+                    <p className="text-gray-700 max-h-40 overflow-y-auto break-words p-3 bg-gray-50 rounded-md">
                       {selectedService.Description}
                     </p>
                   </div>
@@ -632,9 +665,16 @@ const Service = () => {
                   {selectedService.Respond && (
                     <div className="mb-4">
                       <h3 className="text-lg font-semibold mb-1">Response</h3>
-                      <p className="text-gray-700">{selectedService.Respond}</p>
+                      <p className="text-gray-700 p-3 bg-gray-50 rounded-md">{selectedService.Respond}</p>
                     </div>
                   )}
+
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold mb-1">Apartment</h3>
+                    <p className="text-gray-700">
+                      {selectedService.ApartmentId ? getApartmentDisplay(selectedService) : 'Not specified'}
+                    </p>
+                  </div>
 
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold mb-1">Payment Amount</h3>
@@ -644,9 +684,8 @@ const Service = () => {
                         : '-'}
                     </p>
                   </div>
-
                   
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <h3 className="text-sm font-semibold mb-1">Status</h3>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(selectedService.Status)}`}>
@@ -674,7 +713,7 @@ const Service = () => {
                     )}
                   </div>
                   
-                  <div className="flex justify-end mt-4 gap-2">
+                  <div className="flex flex-col sm:flex-row justify-end mt-4 gap-2">
                     {isUserAdmin() && (
                       <button
                         onClick={() => {
@@ -710,6 +749,13 @@ const Service = () => {
                         Edit
                       </button>
                     )}
+                    
+                    <button
+                      onClick={handleCloseModal}
+                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -736,28 +782,24 @@ const Service = () => {
                         </label>
                         {apartments.length > 0 ? (
                           <ApartmentSelector 
-                            apartments={apartments} 
-                            selectedApartmentId={formData.apartmentId}
-                            onChange={handleApartmentChange}
+                            apartments={apartments}
+                            selectedApartment={formData.apartmentId}
+                            onSelect={handleApartmentChange}
                           />
                         ) : (
-                          <p className="text-yellow-600">
-                            No apartments available. Contact support if you need to add apartments to your account.
-                          </p>
+                          <p className="text-gray-500 italic">No apartments found. Please contact support.</p>
                         )}
                       </div>
                     </>
-                  ) : (
+                  ) : isUserAdmin() && formMode === 'edit' ? (
                     <>
                       <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">
-                          User's Request
-                        </label>
-                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                          {selectedService.Description}
-                        </div>
+                        <h3 className="text-lg font-semibold mb-1">Description</h3>
+                        <p className="text-gray-700 mb-4 p-3 bg-gray-50 rounded-md">
+                          {formData.description}
+                        </p>
                       </div>
-                      
+
                       <div className="mb-4">
                         <label className="block text-gray-700 text-sm font-bold mb-2">
                           Your Response
@@ -767,12 +809,12 @@ const Service = () => {
                           value={formData.respond}
                           onChange={handleInputChange}
                           className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
-                          placeholder="Respond to the service request..."
+                          placeholder="Enter your response..."
                           required
                         />
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="mb-4">
                           <label className="block text-gray-700 text-sm font-bold mb-2">
                             Status
@@ -791,10 +833,10 @@ const Service = () => {
                             <option value="cancelled">Cancelled</option>
                           </select>
                         </div>
-                        
+
                         <div className="mb-4">
                           <label className="block text-gray-700 text-sm font-bold mb-2">
-                            Payment Amount
+                            Payment Amount ($)
                           </label>
                           <input
                             type="number"
@@ -806,29 +848,24 @@ const Service = () => {
                             step="0.01"
                             min="0"
                           />
-                          {selectedService && selectedService.Amount && (
-                            <div className="mt-1 text-sm text-gray-600">
-                              Current amount: ${parseFloat(selectedService.Amount).toFixed(2)}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </>
-                  )}
-                  
-                  <div className="flex justify-end gap-2 mt-6">
+                  ) : null}
+
+                  <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    >
+                      {formMode === 'create' ? 'Submit Request' : 'Save Changes'}
+                    </button>
                     <button
                       type="button"
                       onClick={handleCloseModal}
                       className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
                     >
                       Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                    >
-                      {formMode === 'create' ? 'Submit Request' : 'Update Response'}
                     </button>
                   </div>
                 </form>

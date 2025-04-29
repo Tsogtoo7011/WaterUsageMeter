@@ -13,6 +13,7 @@ import FeedbackEdit from './pages/Public/FeedbackEdit';
 import Services from './pages/Public/Service';
 import AdminReport from './pages/Admin/AdminReport';
 import AdminTarif from './pages/Admin/AdminTariff';
+import AdminUser from './pages/Admin/AdminUser';
 import AboutUs from './pages/User/About';
 import MeterCounterDetail from './pages/User/MeterCounterDetails';
 import MeterCounterImport from './pages/User/MeterCounterImport';
@@ -76,6 +77,7 @@ function App() {
         <Route path="/admin" element={<Navigate to="/home" replace />} />
         <Route path="/admin/tarif" element={<AdminRoute><AdminTarif /></AdminRoute>} />
         <Route path="/admin/report" element={<AdminRoute><AdminReport /></AdminRoute>} />
+        <Route path="/admin/user" element={<AdminRoute><AdminUser /></AdminRoute>} />
         
         <Route path="/user" element={<Navigate to="/home" replace />} />
         <Route path="/user/profile/apartment" element={<UserRoute><Apartment /></UserRoute>} />
