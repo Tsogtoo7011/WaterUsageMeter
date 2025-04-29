@@ -17,6 +17,8 @@ const waterMeterRoutes = require('./routes/waterMeterRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const AdminUserRoutes = require('./routes/AdminUserRoutes');
+const AdminReportRoutes = require('./routes/AdminReportRoutes');
+
 require('dotenv').config();
 
 const app = express();
@@ -93,6 +95,7 @@ app.use('/api/water-meters', waterMeterRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/AdminUser', AdminUserRoutes);
+app.use('/api/AdminReport', AdminReportRoutes);
 
 // CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
