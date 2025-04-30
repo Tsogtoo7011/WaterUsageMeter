@@ -58,10 +58,9 @@ const passwordResetLimiter = rateLimit({
   }
 });
 
-// Rate limiter for news creation/editing
 const contentCreationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 20, 
   message: {
     message: 'Хэт олон удаа контент үүсгэх оролдлого хийсэн байна. 15 минутын дараа дахин оролдоно уу.'
   }
