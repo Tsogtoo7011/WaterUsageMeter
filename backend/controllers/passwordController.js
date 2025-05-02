@@ -12,11 +12,9 @@ exports.forgotPassword = async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: 'Имэйл хаяг оруулна уу' });
     }
-    
-    // Find user by email
+
     const [users] = await pool.execute('SELECT * FROM UserAdmin WHERE Email = ?', [email]);
     
-    // Don't reveal if email exists or not
     if (!users.length) {
       return res.status(200).json({ 
         message: 'Нууц үг шинэчлэх зааврыг имэйлээр илгээлээ. Имэйлээ шалгана уу.' 
@@ -73,13 +71,11 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Токен болон шинэ нууц үг оруулна уу' });
     }
     
-    // Hash the token to compare with stored hash
     const hashedToken = crypto
       .createHash('sha256')
       .update(token)
       .digest('hex');
     
-    // Find user with this token and valid expiry
     const [users] = await pool.execute(
       'SELECT * FROM UserAdmin WHERE ResetPasswordToken = ? AND ResetPasswordExpiry > NOW()',
       [hashedToken]

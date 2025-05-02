@@ -1,15 +1,8 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 
-// Get the current active tariff
 exports.getTariff = async (req, res) => {
   try {
-
-    if (!users.length) {
-      return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    // Get the currently active tariff
     const [tariff] = await pool.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
       'EffectiveFrom, EffectiveTo, IsActive FROM Tarif WHERE IsActive = 1 ' +
@@ -29,20 +22,6 @@ exports.getTariff = async (req, res) => {
 // Get tariff history
 exports.getTariffHistory = async (req, res) => {
   try {
-    // Check if user is verified
-    const [users] = await pool.execute(
-      'SELECT IsVerified FROM UserAdmin WHERE UserId = ?',
-      [req.userData.userId]
-    );
-    
-    if (!users.length) {
-      return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
-    }
-    
-    if (users[0].IsVerified !== 1) {
-      return res.status(403).json({ message: 'Имэйл хаягаа баталгаажуулна уу' });
-    }
-    
     // Get all tariffs ordered by date
     const [tariffs] = await pool.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +

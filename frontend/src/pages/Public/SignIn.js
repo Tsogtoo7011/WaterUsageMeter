@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from "../../utils/api"; 
-import backgroundImage from '../../figures/images/apartment.jpg';
+import api from "../../utils/api";
 
-function SignIn() {
+const SignIn = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -11,6 +10,7 @@ function SignIn() {
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,12 +34,15 @@ function SignIn() {
     if (error) setError('');
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
 
-    // Validate inputs before submission
     if (!formData.username.trim() || !formData.password.trim()) {
       setError('Хэрэглэгчийн нэр болон нууц үгээ оруулна уу');
       setIsSubmitting(false);
@@ -47,7 +50,6 @@ function SignIn() {
     }
 
     try {
-      // Using the API client instead of direct axios call
       const response = await api.post('/auth/signin', {
         username: formData.username.trim(),
         password: formData.password.trim()
@@ -60,16 +62,12 @@ function SignIn() {
           localStorage.removeItem('rememberedUsername');
         }
 
-        // Store token and user data
         localStorage.setItem('token', response.data.accessToken);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        // Ensure localStorage updates are completed before navigation
+   
         setTimeout(() => {
-          // Dispatch auth change event
+   
           window.dispatchEvent(new Event('authChange'));
-          
-          // Navigate based on user role
           navigate('/home', { replace: true });
         }, 100);
       }
@@ -97,225 +95,217 @@ function SignIn() {
   };
 
   const handleForgotPassword = () => {
-    navigate('/forgot-password');
+    navigate('/ForgetPassword');
   };
 
   return (
-    <div className="min-h-screen flex relative">
-      {/* Background image*/}
-      <div 
-        className="absolute top-0 left-0 w-1/2 h-full"
-        style={{
-          backgroundImage: `url(${backgroundImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Darker overlay */}
-        <div className="absolute inset-0 bg-black opacity-40"></div>
+    <div className="bg-blue-50 min-h-screen flex flex-col">
+      {/* Top Navigation Bar */}
+      <div className="bg-white flex justify-between items-center px-5 py-4 border-b-2" style={{ borderColor: '#2D6B9F', borderLeft: '2px solid #2D6B9F' }}>
+        <div className="flex items-center">
+          <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 10.5L12 5.5L17 10.5M17 10.5V19.5H7V10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M5 19.5H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M12 14.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <span className="text-base font-medium ml-2" style={{ color: '#2D6B9F' }}>Усны хэрэглээний вэб</span>
+        </div>
+        <button 
+          className="text-sm px-6 py-2 rounded border" 
+          style={{ borderColor: '#2D6B9F', borderWidth: '1px', color: '#2D6B9F' }}
+          onClick={() => navigate('/signup')}
+        >
+          Бүртгүүлэх
+        </button>
       </div>
-      
-      {/* Left side content */}
-      <div className="w-1/2 p-8 flex flex-col justify-between relative z-10">
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-white">Усны хэрэглээний бүртгэлийн систем</h2>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 group hover:cursor-pointer">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="5" />
+
+      <div className="flex flex-col md:flex-row flex-grow">
+        {/* Left Side */}
+        <div className="w-full md:w-3/5 p-10 border-b md:border-b-0 md:border-r flex flex-col justify-between" style={{ borderWidth: '1px', paddingTop: '40px' }}>
+          <div>
+            <h2 className="text-lg font-medium mb-4" style={{ color: '#2D6B9F' }}>
+              Орон сууцан дахь айл өрхийн усны хэрэглээ бүртгэх вэбсайт
+            </h2>
+
+            <ul className="space-y-3 mb-8 pl-6">
+              <li className="flex items-center">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                <span className="text-base" style={{ color: '#2D6B9F' }}>Усны хэрэглээгээ хянах</span>
+              </li>
+              <li className="flex items-center">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                <span className="text-base" style={{ color: '#2D6B9F' }}>Төлбөрийн дэлгэрэнгүйтэй танилцах</span>
+              </li>
+              <li className="flex items-center">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                <span className="text-base" style={{ color: '#2D6B9F' }}>Онлайнаар төлбөрөө төлөх</span>
+              </li>
+              <li className="flex items-center">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                <span className="text-base" style={{ color: '#2D6B9F' }}>Өргөдөл гомдол, санал хүсэлт өгөх</span>
+              </li>
+              <li className="flex items-center">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                <span className="text-base" style={{ color: '#2D6B9F' }}>Ажлын захиалга болон дуудлага өгөх</span>
+              </li>
+              <li className="flex items-center">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                <span className="text-base" style={{ color: '#2D6B9F' }}>Тоолуурын мэдээлэл, бичилт харах, заалт илгээх</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Bottom Cards */}
+          <div className="flex flex-row justify-between gap-3 mt-auto">
+            <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
+              <div className="mb-2 flex items-center justify-center">
+                <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <span className="text-white group-hover:text-blue-100 group-hover:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] transition-all duration-200">
-                Тоолуурын заалтыг онлайнаар өгөх
-              </span>
+              <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Хэрэгцээт мэдээллийг өдөр тутамд хүргэнэ</span>
             </div>
-            <div className="flex items-center space-x-3 group hover:cursor-pointer">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="5" />
+            <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
+              <div className="mb-2 flex items-center justify-center">
+                <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <span className="text-white group-hover:text-blue-100 group-hover:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] transition-all duration-200">
-                Төлбөрийн дэлгэрэнгүйг танилцуулах
-              </span>
+              <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Усны төлбөрийн задаргааг харуулна</span>
             </div>
-            <div className="flex items-center space-x-3 group hover:cursor-pointer">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="5" />
+            <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
+              <div className="mb-2 flex items-center justify-center">
+                <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M12 8V16M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <span className="text-white group-hover:text-blue-100 group-hover:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] transition-all duration-200">
-                Онлайнаар усны хэрэглээний төлбөрөө төлөх
-              </span>
-            </div>
-            <div className="flex items-center space-x-3 group hover:cursor-pointer">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="5" />
-                </svg>
-              </div>
-              <span className="text-white group-hover:text-blue-100 group-hover:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] transition-all duration-200">
-                Өргөдөл гомдол, санал хүсэлт өгөх
-              </span>
-            </div>
-            <div className="flex items-center space-x-3 group hover:cursor-pointer">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="5" />
-                </svg>
-              </div>
-              <span className="text-white group-hover:text-blue-100 group-hover:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] transition-all duration-200">
-                Засвар үйлчилгээ дуудах
-              </span>
-            </div>
-            <div className="flex items-center space-x-3 group hover:cursor-pointer">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="5" />
-                </svg>
-              </div>
-              <span className="text-white group-hover:text-blue-100 group-hover:drop-shadow-[0_0_8px_rgba(147,197,253,0.8)] transition-all duration-200">
-                Мэдээ мэдээлэл авах
-              </span>
+              <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Хэрэглэгчийн санал хүсэлтэд хариулна </span>
             </div>
           </div>
         </div>
-        
-        {/* Larger bottom icons in single line */}
-        <div className="flex justify-between mt-8">
-          <div className="bg-white p-6 rounded-lg shadow-md text-center w-1/3 mx-2 hover:shadow-lg transition-shadow duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-blue-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700">Усны хэрэглээгээ</span>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md text-center w-1/3 mx-2 hover:shadow-lg transition-shadow duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-blue-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700">Онлайн тоолуурын заалт</span>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md text-center w-1/3 mx-2 hover:shadow-lg transition-shadow duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-blue-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700">Төлбөрийн шийдэл</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Right side with login form */}
-      <div className="w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          <h1 className="text-2xl font-bold mb-6 text-gray-800">Нэвтрэх</h1>
-          
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Нэвтрэх нэр
-              </label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                autoFocus
-              />
-            </div>
+
+        {/* Right Side - Login Form */}
+        <div className="w-full md:w-2/5 p-6 flex items-center justify-center">
+          <div className="w-full max-w-sm">
+            <h2 className="text-xl font-medium mb-4" style={{ color: '#2D6B9F' }}>Нэвтрэх</h2>
             
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Нууц үг
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                minLength="6"
-              />
-            </div>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border text-sm" style={{ borderWidth: '2px' }}>
+                {error}
+              </div>
+            )}
             
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
                 <input
-                  type="checkbox"
-                  id="rememberMe"
-                  name="rememberMe"
-                  checked={formData.rememberMe}
+                  type="text"
+                  id="username"
+                  name="username"
+                  placeholder="Нэвтрэх нэр"
+                  className="w-full p-3 border rounded text-sm"
+                  value={formData.username}
                   onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  required
+                  style={{ color: '#2D6B9F', caretColor: '#2D6B9F', borderColor: '#2D6B9F' }}
                 />
-                <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
-                 Бүртгэл сануулах 
-                </label>
+              </div>
+              
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  placeholder="Нууц үг"
+                  className="w-full p-3 border rounded text-sm"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  style={{ color: '#2D6B9F', caretColor: '#2D6B9F', borderColor: '#2D6B9F' }}
+                />
+                <button 
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={togglePasswordVisibility}
+                >
+                  <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {showPassword ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    )}
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleChange}
+                    className="h-4 w-4 focus:ring-2 rounded"
+                    style={{ borderColor: '#2D6B9F', backgroundColor: '#2D6B9F', outlineColor: '#2D6B9F' }}
+                  />
+                  <label htmlFor="rememberMe" className="ml-2 block text-sm" style={{ color: '#2D6B9F' }}>
+                    Бүртгэл сануулах
+                  </label>
+                </div>
               </div>
               
               <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 rounded text-sm font-medium"
+                style={{ backgroundColor: '#2D6B9F', color: 'white' }}
               >
-                Нууц үгээ мартсан?
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Нэвтэрч байна...
+                  </>
+                ) : 'Нэвтрэх'}
               </button>
-            </div>
-            
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 flex justify-center items-center"
-            >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Нэвтэрч байна...
-                </>
-              ) : 'Нэвтрэх'}
-            </button>
-          </form>
-          
-          <div className="mt-4 text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="h-px w-20 bg-gray-300"></div>
-              <span className="text-gray-500 text-sm">эсвэл</span>
-              <div className="h-px w-20 bg-gray-300"></div>
-            </div>
-            
-            <button className="w-full py-3 px-4 rounded-lg border border-gray-300 text-gray-700 flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors duration-200">
-              <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="24" height="24" viewBox="0 0 48 48">
-                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-              </svg>
-              <span>Google-аар нэвтрэх</span>
-            </button>
-            
-            <p className="mt-4 text-sm text-gray-600">
-              Бүртгэл байхгүй бол{' '}
-              <Link to="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
-                Бүртгүүлэх
-              </Link>
-            </p>
+              
+              <div className="text-center text-gray-400 text-sm my-2">эсвэл</div>
+              
+              <button
+                type="button"
+                className="w-full flex items-center justify-center border border-gray-300 py-3 rounded text-sm font-medium"
+                style={{ color: '#2D6B9F' }}
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                  <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+                  <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
+                  <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19-5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                </svg>
+                <span>Google account ашиглан нэвтрэх</span>
+              </button>
+              
+              <div className="mt-4 text-center">
+                <button 
+                  type="button"
+                  className="text-xs"
+                  style={{ color: 'gray' }}
+                  onClick={handleForgotPassword}
+                >
+                  Нэвтрэх нэр, нууц үгээ мартсан ?
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
+      <div className="bg-blue-800 h-12" style={{ backgroundColor: '#2D6B9F' }}></div>
     </div>
   );
-}
+};
 
 export default SignIn;

@@ -34,7 +34,7 @@ exports.getDashboardStats = async (req, res) => {
     
     // Get total pending payments amount
     const [pendingPaymentsAmount] = await db.query(
-      "SELECT SUM(Amount) as total FROM Payment WHERE Status = 'pending'"
+      "SELECT COALESCE(SUM(Amount), 0) as total FROM Payment WHERE Status = 'pending'"
     );
 
     res.status(200).json({
@@ -43,7 +43,7 @@ exports.getDashboardStats = async (req, res) => {
       pendingServiceCount: pendingServiceCount[0].total,
       pendingFeedbackCount: pendingFeedbackCount[0].total,
       pendingPaymentsCount: pendingPaymentsCount[0].total,
-      pendingPaymentsAmount: pendingPaymentsAmount[0].total || 0
+      pendingPaymentsAmount: pendingPaymentsAmount[0].total
     });
   } catch (err) {
     console.error('Error fetching dashboard statistics:', err);
@@ -149,7 +149,6 @@ exports.getPaymentReport = async (req, res) => {
   }
 };
 
-// Generate water meter report
 exports.getWaterMeterReport = async (req, res) => {
   try {
     const { startDate, endDate, apartmentId, type } = req.query;
@@ -192,9 +191,13 @@ exports.getWaterMeterReport = async (req, res) => {
       queryParams.push(apartmentId);
     }
     
-    if (type !== undefined && type !== null) {
-      query += ' AND w.Type = ?';
-      queryParams.push(parseInt(type));
+    if (type !== undefined && type !== null && type !== '') {
+      // Make sure type is a valid number and matches our schema constraints (0 or 1)
+      const typeNum = parseInt(type);
+      if (!isNaN(typeNum) && (typeNum === 0 || typeNum === 1)) {
+        query += ' AND w.Type = ?';
+        queryParams.push(typeNum);
+      }
     }
     
     query += ' ORDER BY w.WaterMeterDate DESC';
@@ -718,11 +721,9 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const { year } = req.query;
-    
-    // Default to current year if not specified
+
     const reportYear = year || new Date().getFullYear();
-    
-    // Query for monthly payment statistics
+
     const query = `
       SELECT 
         MONTH(PayDate) AS Month,
@@ -738,62 +739,23 @@ exports.getPaymentStatistics = async (req, res) => {
       GROUP BY MONTH(PayDate), PaymentType
       ORDER BY MONTH(PayDate)
     `;
-    
+
     const [results] = await db.query(query, [reportYear]);
-    
-    // Format results into a more structured response
+
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    
-    const formattedResults = results.map(row => {
-      return {
-        ...row,
-        MonthName: monthNames[row.Month - 1],
-        CollectionRate: row.TotalAmount > 0 ? 
-          ((row.PaidAmount / row.TotalAmount) * 100).toFixed(2) + '%' : 
-          '0%'
-      };
-    });
-    
-    if (req.query.format === 'excel') {
-      // Create Excel file
-      const workbook = new excel.Workbook();
-      const worksheet = workbook.addWorksheet('Payment Statistics');
-      
-      // Add columns
-      worksheet.columns = [
-        { header: 'Month', key: 'MonthName', width: 15 },
-        { header: 'Payment Type', key: 'PaymentType', width: 15 },
-        { header: 'Total Payments', key: 'TotalPayments', width: 15 },
-        { header: 'Paid Payments', key: 'PaidPayments', width: 15 },
-        { header: 'Pending Payments', key: 'PendingPayments', width: 15 },
-        { header: 'Total Amount', key: 'TotalAmount', width: 15 },
-        { header: 'Paid Amount', key: 'PaidAmount', width: 15 },
-        { header: 'Pending Amount', key: 'PendingAmount', width: 15 },
-        { header: 'Collection Rate', key: 'CollectionRate', width: 15 }
-      ];
-      
-      // Add rows
-      formattedResults.forEach(row => {
-        worksheet.addRow(row);
-      });
-      
-      // Style the header row
-      worksheet.getRow(1).font = { bold: true };
-      
-      // Set response headers for file download
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename=payment_statistics.xlsx');
-      
-      // Write to response
-      await workbook.xlsx.write(res);
-      res.end();
-    } else {
-      // Return JSON if not requesting Excel
-      res.status(200).json(formattedResults);
-    }
+
+    const formattedResults = results.map(row => ({
+      ...row,
+      MonthName: monthNames[row.Month - 1],
+      CollectionRate: row.TotalAmount > 0
+        ? ((row.PaidAmount / row.TotalAmount) * 100).toFixed(2) + '%'
+        : '0%'
+    }));
+
+    res.status(200).json(formattedResults);
   } catch (err) {
     console.error('Error generating payment statistics:', err);
     res.status(500).json({ error: 'Failed to generate payment statistics' });
@@ -804,81 +766,32 @@ exports.getPaymentStatistics = async (req, res) => {
 exports.getServiceStatistics = async (req, res) => {
   try {
     const { year } = req.query;
-    
-    // Default to current year if not specified
+
     const reportYear = year || new Date().getFullYear();
-    
-    // Query for monthly service request statistics
+
     const query = `
       SELECT 
-        MONTH(RequestDate) AS Month,
+        MONTHNAME(RequestDate) AS Month,
         COUNT(*) AS TotalRequests,
         SUM(CASE WHEN Status = 'completed' THEN 1 ELSE 0 END) AS CompletedRequests,
         SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingRequests,
-        SUM(CASE WHEN Status = 'in progress' THEN 1 ELSE 0 END) AS InProgressRequests,
-        AVG(DATEDIFF(SubmitDate, RequestDate)) AS AvgResolutionDays
+        SUM(CASE WHEN Status = 'in progress' THEN 1 ELSE 0 END) AS InProgressRequests
       FROM Service
       WHERE YEAR(RequestDate) = ?
-      GROUP BY MONTH(RequestDate)
+      GROUP BY MONTH(RequestDate), MONTHNAME(RequestDate)
       ORDER BY MONTH(RequestDate)
     `;
-    
+
     const [results] = await db.query(query, [reportYear]);
-    
-    // Format results into a more structured response
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    
-    const formattedResults = results.map(row => {
-      return {
-        ...row,
-        MonthName: monthNames[row.Month - 1],
-        CompletionRate: row.TotalRequests > 0 ? 
-          ((row.CompletedRequests / row.TotalRequests) * 100).toFixed(2) + '%' : 
-          '0%',
-        AvgResolutionDays: row.AvgResolutionDays ? 
-          parseFloat(row.AvgResolutionDays).toFixed(1) : 
-          'N/A'
-      };
-    });
-    
-    if (req.query.format === 'excel') {
-      // Create Excel file
-      const workbook = new excel.Workbook();
-      const worksheet = workbook.addWorksheet('Service Statistics');
-      
-      // Add columns
-      worksheet.columns = [
-        { header: 'Month', key: 'MonthName', width: 15 },
-        { header: 'Total Requests', key: 'TotalRequests', width: 15 },
-        { header: 'Completed', key: 'CompletedRequests', width: 15 },
-        { header: 'Pending', key: 'PendingRequests', width: 15 },
-        { header: 'In Progress', key: 'InProgressRequests', width: 15 },
-        { header: 'Completion Rate', key: 'CompletionRate', width: 15 },
-        { header: 'Avg. Resolution (Days)', key: 'AvgResolutionDays', width: 20 }
-      ];
-      
-      // Add rows
-      formattedResults.forEach(row => {
-        worksheet.addRow(row);
-      });
-      
-      // Style the header row
-      worksheet.getRow(1).font = { bold: true };
-      
-      // Set response headers for file download
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename=service_statistics.xlsx');
-      
-      // Write to response
-      await workbook.xlsx.write(res);
-      res.end();
-    } else {
-      // Return JSON if not requesting Excel
-      res.status(200).json(formattedResults);
-    }
+
+    const formattedResults = results.map(row => ({
+      ...row,
+      CompletionRate: row.TotalRequests > 0
+        ? ((row.CompletedRequests / row.TotalRequests) * 100).toFixed(2) + '%'
+        : '0%'
+    }));
+
+    res.status(200).json(formattedResults);
   } catch (err) {
     console.error('Error generating service statistics:', err);
     res.status(500).json({ error: 'Failed to generate service statistics' });

@@ -361,25 +361,23 @@ exports.generateMonthlyPayment = async (req, res) => {
       });
     }
     
-    // Get current month and year
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
     
-    // Check if payment for this month already exists
     const [existingPayments] = await pool.execute(
-      `SELECT COUNT(*) as count, PaymentId
+      `SELECT PaymentId
        FROM Payment
        WHERE ApartmentId = ?
        AND UserAdminId = ?
        AND MONTH(PayDate) = ?
-       AND YEAR(PayDate) = ?`,
+       AND YEAR(PayDate) = ?
+       LIMIT 1`,
       [apartmentId, userId, currentMonth, currentYear]
     );
     
-    // If payment exists, return it instead of creating a new one
-    if (existingPayments[0].count > 0) {
-      // Get the existing payment details
+    if (existingPayments.length > 0) {
+
       const [paymentDetails] = await pool.execute(
         `SELECT 
           p.PaymentId,

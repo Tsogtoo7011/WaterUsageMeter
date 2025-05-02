@@ -254,7 +254,7 @@ export function MeterCounterDetails() {
       {/* Back Button */}
       <div className="fixed bottom-6 right-6">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/user/metercounter')}
           className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition flex items-center shadow-md"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">

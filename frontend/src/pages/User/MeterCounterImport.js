@@ -142,8 +142,8 @@ export function MeterCounterImport() {
   };
 
   const handleSubmit = async () => {
-    if (!coldValue && !hotValue) {
-      setError('Оруулах тоолуурын заалтыг оруулна уу.');
+    if (!coldValue || (selectedLocation !== 'Нойл' && !hotValue)) {
+      setError('Бүх байршлын хүйтэн болон халуун усны тоолуурын заалтыг оруулна уу.');
       return;
     }
 
@@ -163,17 +163,15 @@ export function MeterCounterImport() {
       setSuccess(null);
       
       // Prepare readings array for API
-      const readings = [];
-      
-      if (coldValue) {
-        readings.push({
+      const readings = [
+        {
           type: 0, // Cold water
           location: selectedLocation,
           indication: parseFloat(coldValue)
-        });
-      }
-      
-      if (hotValue && selectedLocation !== 'Нойл') {
+        }
+      ];
+
+      if (selectedLocation !== 'Нойл') {
         readings.push({
           type: 1, // Hot water
           location: selectedLocation,
@@ -250,13 +248,13 @@ export function MeterCounterImport() {
   }
 
   return (
-    <div className="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden">
+    <div className="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
+      {/* Increased max-width to fix sizing issues */}
+      <div className="w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden">
         <div className="bg-blue-600 text-white p-4">
-          <h1 className="text-2xl font-bold text-center">Тоолуурын заалт оруулах</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-center">Тоолуурын заалт оруулах</h1>
         </div>
 
-        {/* Hidden File Inputs */}
         <input 
           type="file" 
           ref={coldFileInputRef}
@@ -272,7 +270,7 @@ export function MeterCounterImport() {
           className="hidden"
         />
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Apartment Selection */}
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="apartment">
@@ -311,7 +309,7 @@ export function MeterCounterImport() {
             <div className="mb-4">
               <canvas 
                 ref={canvasRef} 
-                className="w-full border-2 border-gray-300 rounded-lg shadow-md"
+                className="w-full max-h-96 object-contain border-2 border-gray-300 rounded-lg shadow-md"
               />
             </div>
           )}
@@ -345,12 +343,12 @@ export function MeterCounterImport() {
             </div>
           )}
 
-          {/* Location Radio Buttons */}
-          <div className="mb-4">
+          {/* Location Radio Buttons - Better spacing and layout */}
+          <div className="mb-4 mt-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
               Байршил:
             </label>
-            <div className="space-y-2">
+            <div className="flex flex-wrap gap-4">
               {['Ванн', 'Гал тогоо', 'Нойл'].map(location => (
                 <div key={location} className="flex items-center">
                   <input
@@ -360,7 +358,7 @@ export function MeterCounterImport() {
                     value={location}
                     checked={selectedLocation === location}
                     onChange={() => setSelectedLocation(location)}
-                    className="mr-2"
+                    className="mr-2 h-4 w-4"
                   />
                   <label htmlFor={location} className="text-gray-700">{location}</label>
                 </div>
@@ -368,9 +366,9 @@ export function MeterCounterImport() {
             </div>
           </div>
 
-          {/* Input Fields */}
+          {/* Input Fields - Improved layout and sizing */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-start space-x-2">
               <div className="flex-grow">
                 <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="cold">
                   Хүйтэн усны тоолуур (m³)
@@ -384,20 +382,22 @@ export function MeterCounterImport() {
                   placeholder="Хүйтэн усны утга оруулах"
                 />
               </div>
-              <button
-                onClick={() => triggerFileInput(coldFileInputRef)}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                </svg>
-                Зураг
-              </button>
+              <div className="pt-8">
+                <button
+                  onClick={() => triggerFileInput(coldFileInputRef)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                  Зураг
+                </button>
+              </div>
             </div>
             
             {/* Only show hot water input for locations other than Нойл */}
             {selectedLocation !== 'Нойл' && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <div className="flex-grow">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hot">
                     Халуун усны тоолуур (m³)
@@ -411,25 +411,38 @@ export function MeterCounterImport() {
                     placeholder="Халуун усны утга оруулах"
                   />
                 </div>
-                <button
-                  onClick={() => triggerFileInput(hotFileInputRef)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                  </svg>
-                  Зураг
-                </button>
+                <div className="pt-8">
+                  <button
+                    onClick={() => triggerFileInput(hotFileInputRef)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                    </svg>
+                    Зураг
+                  </button>
+                </div>
               </div>
             )}
           </div>
           
-          {/* Submit Button */}
-          <div className="mt-6 flex justify-center">
+          {/* Submit Button - Improved positioning and spacing */}
+          <div className="mt-6 flex flex-col sm:flex-row sm:justify-between items-center gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto order-2 sm:order-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Буцах
+            </button>
+            
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !selectedApartmentId}
-              className={`px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center shadow-md ${
+              className={`w-full sm:w-auto order-1 sm:order-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center shadow-md ${
                 (isSubmitting || !selectedApartmentId) ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
@@ -449,20 +462,6 @@ export function MeterCounterImport() {
             </button>
           </div>
         </div>
-      </div>
-      
-      {/* Back Button */}
-      <div className="mt-6">
-        <button
-          onClick={() => navigate(-1)}
-          disabled={isSubmitting}
-          className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition flex items-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-          </svg>
-          Буцах
-        </button>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import FeedbackCreate from './pages/Public/FeedbackCreate';
 import FeedbackDetail from './pages/Public/FeedbackDetail';
 import FeedbackEdit from './pages/Public/FeedbackEdit';
 import Services from './pages/Public/Service';
+import ForgetPassword from './pages/Public/forgetPassword';
 import AdminReport from './pages/Admin/AdminReport';
 import AdminTarif from './pages/Admin/AdminTariff';
 import AdminUser from './pages/Admin/AdminUser';
@@ -62,7 +63,7 @@ function App() {
       <Routes>
         <Route path="/" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignIn />} />
         <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />} />
-        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignIn />} />
+        <Route path="/ForgetPassword" element={isAuthenticated ? <Navigate to="/home" replace /> : <ForgetPassword />} />
         
         <Route path="/home" element={<SharedLayout><Home /></SharedLayout>} />
         <Route path="/settings" element={<SharedLayout><Settings /></SharedLayout>} />
