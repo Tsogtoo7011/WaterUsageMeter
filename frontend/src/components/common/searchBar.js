@@ -1,6 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, ArrowRight, Clock, UserCircle, Newspaper, CreditCard, MessageCircle, HelpCircle } from 'lucide-react';
+import { 
+  Search, 
+  X, 
+  ArrowRight, 
+  Clock, 
+  UserCircle, 
+  Newspaper, 
+  CreditCard, 
+  MessageCircle, 
+  HelpCircle, 
+  Home, 
+  Settings, 
+  FileText, 
+  ClipboardList, 
+  Building, 
+  Droplet,
+  Info
+} from 'lucide-react';
 
 const SearchBar = ({ routes, isAdmin }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,12 +32,21 @@ const SearchBar = ({ routes, isAdmin }) => {
 
   // Get icon component based on the path
   const getIconForRoute = (path) => {
+    if (path.includes('home')) return Home;
     if (path.includes('profile')) return UserCircle;
     if (path.includes('news')) return Newspaper;
     if (path.includes('payment')) return CreditCard;
     if (path.includes('feedback')) return MessageCircle;
     if (path.includes('service')) return HelpCircle;
-    return null;
+    if (path.includes('settings')) return Settings;
+    if (path.includes('report')) return FileText;
+    if (path.includes('user') && path.includes('admin')) return ClipboardList;
+    if (path.includes('tarif')) return CreditCard;
+    if (path.includes('apartment')) return Building;
+    if (path.includes('metercounter')) return Droplet;
+    if (path.includes('about-us')) return Info;
+    // Default fallback icon
+    return FileText;
   };
 
   useEffect(() => {
@@ -129,7 +155,7 @@ const SearchBar = ({ routes, isAdmin }) => {
       return (
         <button 
           onClick={toggleSearch}
-          className="md:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors duration-200"
+          className="md:hidden p-2 rounded-md text-gray-500 hover:bg-blue-50/50 transition-colors duration-200"
         >
           <Search className="w-5 h-5" />
         </button>
@@ -153,13 +179,16 @@ const SearchBar = ({ routes, isAdmin }) => {
               ref={inputRef}
               type="text"
               placeholder="Хайх..."
+              style={{ color: '#2D6B9F' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full p-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full p-2 pl-10 rounded-lg focus:outline-none focus:ring-2 ${
+                searchQuery ? 'ring-2 ring-[#2D6B9F]' : ''
+              }`}
               autoFocus
             />
-            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 w-4 h-4" style={{ color: '#2D6B9F' }} />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
@@ -182,16 +211,19 @@ const SearchBar = ({ routes, isAdmin }) => {
   const renderDesktopSearch = () => (
     <div ref={searchRef} className="hidden md:block relative max-w-md w-full mx-4">
       <div className="relative">
-        <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+        <Search className="w-5 h-5 absolute left-3 top-2.5" style={{ color: '#2D6B9F' }} />
         <input 
           ref={inputRef}
           type="text" 
           placeholder="Хайх..." 
+          style={{ color: '#2D6B9F' }}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={() => setIsSearchFocused(true)}
           onKeyDown={handleKeyDown}
-          className="pl-10 pr-10 py-2 w-full rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className={`pl-10 pr-10 py-2 w-full rounded-lg focus:outline-none focus:ring-2 ${
+            searchQuery ? 'ring-2 ring-[#2D6B9F]' : ''
+          }`}
         />
         {searchQuery && (
           <button 
@@ -224,16 +256,14 @@ const SearchBar = ({ routes, isAdmin }) => {
           <div 
             key={route.path}
             onClick={() => navigateToRoute(route.path)}
-            className={`p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+            className={`p-3 hover:bg-blue-50/50 cursor-pointer transition-colors ${
               index === selectedIndex ? 'bg-blue-50' : ''
             }`}
           >
             <div className="flex items-center">
-              {IconComponent && (
-                <div className="mr-3 text-gray-400">
-                  <IconComponent className="w-5 h-5" />
-                </div>
-              )}
+              <div className="mr-3 text-gray-400">
+                <IconComponent className="w-5 h-5" />
+              </div>
               <div className="flex-1">
                 <div className="font-medium text-gray-800">{route.label}</div>
                 <div className="text-sm text-gray-500">{route.path}</div>
@@ -266,18 +296,16 @@ const SearchBar = ({ routes, isAdmin }) => {
             <div 
               key={index}
               onClick={() => navigateToRoute(item.path)}
-              className="p-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center"
+              className="p-3 hover:bg-blue-50/50 cursor-pointer transition-colors flex items-center"
             >
               <Clock className="w-4 h-4 text-gray-400 mr-3" />
               <div className="flex-1">
                 <div className="font-medium text-gray-800">{item.query}</div>
                 <div className="text-sm text-gray-500">{item.path}</div>
               </div>
-              {IconComponent && (
-                <div className="ml-3 text-gray-400">
-                  <IconComponent className="w-4 h-4" />
-                </div>
-              )}
+              <div className="ml-3 text-gray-400">
+                <IconComponent className="w-4 h-4" />
+              </div>
             </div>
           );
         })}

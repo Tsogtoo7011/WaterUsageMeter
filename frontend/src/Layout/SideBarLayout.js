@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home as HomeIcon,
@@ -24,6 +24,8 @@ const SidebarLayout = ({ children }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -60,6 +62,20 @@ const SidebarLayout = ({ children }) => {
     if (savedSidebarState !== null) {
       setIsSidebarOpen(savedSidebarState === 'true');
     }
+  }, []);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const routes = isAdmin ? [
@@ -133,28 +149,42 @@ const SidebarLayout = ({ children }) => {
 
   const navigateToProfile = () => {
     navigate('/profile');
+    setIsDropdownOpen(false);
   };
 
   const navigateToSettings = () => {
     navigate('/settings');
+    setIsDropdownOpen(false);
+  };
+  
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+  
+  // Get first letter of username for the avatar
+  const getFirstLetter = () => {
+    if (user && user.Username) {
+      return user.Username.charAt(0).toUpperCase();
+    }
+    return 'Ц';
   };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div 
-        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 shadow-sm fixed h-full transition-all duration-300 ease-in-out z-20`}
+        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full transition-all duration-300 ease-in-out z-20`}
       >
         <div className="flex flex-col h-full p-4">  
           {/* Logo */}
           <div className="p-4 mb-6 flex items-center justify-center cursor-pointer" onClick={toggleSidebar}>
             {isSidebarOpen ? (
-              <h2 className="text-xl font-bold text-blue-600 whitespace-nowrap">
+              <h2 className="text-xl font-bold text-[#2D6B9F] whitespace-nowrap">
                 {isAdmin ? 'Админ' : 'Диплом'}
               </h2>
             ) : (
               <div className="flex items-center justify-center">
-                <Droplet className="w-8 h-8 text-blue-600" />
+                <Droplet className="w-8 h-8 text-[#2D6B9F]" />
               </div>
             )}
           </div>
@@ -169,8 +199,8 @@ const SidebarLayout = ({ children }) => {
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
-                      ? 'bg-blue-50 text-blue-600 font-medium' 
-                      : 'hover:bg-gray-100 text-gray-700'
+                      ? 'bg-blue-50 text-[#2D6B9F] font-medium' 
+                      : 'hover:bg-blue-50/50 text-gray-700'
                   }`
                 }
               >
@@ -183,15 +213,6 @@ const SidebarLayout = ({ children }) => {
               </NavLink>
             ))}
           </nav>
-
-          {/* Logout Button */}
-          <button 
-            onClick={handleLogout}
-            className="mt-auto p-3 rounded-lg hover:bg-gray-100 text-gray-700 flex items-center transition-all duration-200 ease-in-out"
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span className="ml-3 whitespace-nowrap">Гарах</span>}
-          </button>
         </div>
       </div>
 
@@ -205,21 +226,21 @@ const SidebarLayout = ({ children }) => {
 
       {/* Mobile Sidebar */}
       <div 
-        className={`md:hidden fixed top-0 left-0 h-full bg-white border-r border-gray-200 shadow-sm transform transition-transform duration-300 ease-in-out z-40 ${
+        className={`md:hidden fixed top-0 left-0 h-full bg-white border-r border-[#2D6B9F] shadow-sm transform transition-transform duration-300 ease-in-out z-40 ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } w-64`}
       >
         <div className="flex flex-col h-full p-4">
           <div className="p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center cursor-pointer" onClick={toggleMobileSidebar}>
-              <Droplet className="w-6 h-6 text-blue-600 mr-2" />
-              <h2 className="text-xl font-bold text-blue-600">
+              <Droplet className="w-6 h-6 text-[#2D6B9F] mr-2" />
+              <h2 className="text-xl font-bold text-[#2D6B9F]">
                 {isAdmin ? 'Админ' : 'Диплом'}
               </h2>
             </div>
             <button 
               onClick={toggleMobileSidebar}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-500 transition-colors duration-200"
+              className="p-1 rounded-md hover:bg-blue-50/50 text-gray-500 transition-colors duration-200"
             >
               <X className="w-5 h-5" />
             </button>
@@ -235,8 +256,8 @@ const SidebarLayout = ({ children }) => {
                 className={({ isActive }) => 
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
-                      ? 'bg-blue-50 text-blue-600 font-medium' 
-                      : 'hover:bg-gray-100 text-gray-700'
+                      ? 'bg-blue-50 text-[#2D6B9F] font-medium' 
+                      : 'hover:bg-blue-50/50 text-gray-700'
                   }`
                 }
               >
@@ -248,7 +269,7 @@ const SidebarLayout = ({ children }) => {
 
           <button 
             onClick={handleLogout}
-            className="mt-auto p-3 rounded-lg hover:bg-gray-100 text-gray-700 flex items-center transition-all duration-200 ease-in-out"
+            className="mt-auto p-3 rounded-lg hover:bg-blue-50/50 text-gray-700 flex items-center transition-all duration-200 ease-in-out"
           >
             <LogOut className="w-5 h-5" />
             <span className="ml-3">Гарах</span>
@@ -263,12 +284,12 @@ const SidebarLayout = ({ children }) => {
         } transition-all duration-300 ease-in-out`}
       >
         {/* Top Navigation Bar */}
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center px-4 sticky top-0 z-10">
+        <header className="bg-white border-b border-[#2D6B9F] h-16 flex items-center px-4 sticky top-0 z-10">
           <div className="flex items-center justify-between w-full">
             {/* Mobile menu button */}
             <button 
               onClick={toggleMobileSidebar}
-              className="md:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors duration-200"
+              className="md:hidden p-2 rounded-md text-gray-500 hover:bg-blue-50/50 transition-colors duration-200"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -277,34 +298,66 @@ const SidebarLayout = ({ children }) => {
             <SearchBar routes={routes} isAdmin={isAdmin} />
             <div className="flex-1 md:hidden"></div>
             <div className="flex items-center space-x-4">
-              <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+              <button className="relative p-2 rounded-full hover:bg-blue-50/50 transition-colors duration-200">
                 <Bell className="w-5 h-5 text-gray-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-      
-              <button 
-                onClick={navigateToSettings} 
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
-              >
-                <Settings className="w-5 h-5 text-gray-600" />
-              </button>
-            
-              <button 
-                onClick={navigateToProfile} 
-                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
-              >
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center transition-colors duration-200">
-                  <UserCircle className="h-5 w-5 text-blue-600" />
-                </div>
-                <span className="font-medium hidden sm:inline">
-                  Профайл
-                </span>
-              </button>
+              
+              {/* Profile Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={toggleDropdown}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full border border-[#2D6B9F] text-[#2D6B9F] ${
+                    isDropdownOpen ? 'bg-blue-50' : 'bg-transparent'
+                  } hover:bg-blue-50/50 hover:text-[#2D6B9F] transition-colors duration-200`}
+                  aria-expanded={isDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  {getFirstLetter()}
+                </button>
+                
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.Username || 'Хэрэглэгч'}</p>
+                      <p className="text-sm text-gray-500 truncate">{user?.Email || 'email@example.com'}</p>
+                    </div>
+                    
+                    <div className="py-1">
+                      <button
+                        onClick={navigateToProfile}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 flex items-center"
+                      >
+                        <UserCircle className="w-4 h-4 mr-3 text-gray-500" />
+                        Профайл
+                      </button>
+                      
+                      <button
+                        onClick={navigateToSettings}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 flex items-center"
+                      >
+                        <Settings className="w-4 h-4 mr-3 text-gray-500" />
+                        Тохиргоо
+                      </button>
+                      
+                      <hr className="my-1 border-gray-200" />
+                      
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 flex items-center"
+                      >
+                        <LogOut className="w-4 h-4 mr-3 text-gray-500" />
+                        Гарах
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto p-0 bg-gray-50 border-x-0 border-t-0 border-b-0 border-r border-gray-200">
+        <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto p-0 bg-gray-50 border-x-0 border-t-0 border-b-0 border-r border-[#2D6B9F]">
           {children}
         </main>
       </div>
