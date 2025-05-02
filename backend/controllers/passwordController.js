@@ -4,7 +4,6 @@ const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 const sendEmail = require('../utils/emailService');
 
-// Request password reset
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -12,12 +11,12 @@ exports.forgotPassword = async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: 'Имэйл хаяг оруулна уу' });
     }
-
+    
     const [users] = await pool.execute('SELECT * FROM UserAdmin WHERE Email = ?', [email]);
     
     if (!users.length) {
-      return res.status(200).json({ 
-        message: 'Нууц үг шинэчлэх зааврыг имэйлээр илгээлээ. Имэйлээ шалгана уу.' 
+      return res.status(200).json({
+        message: 'Нууц үг шинэчлэх зааврыг имэйлээр илгээлээ. Имэйлээ шалгана уу.'
       });
     }
     
@@ -62,7 +61,6 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// Reset password with token
 exports.resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
@@ -82,8 +80,8 @@ exports.resetPassword = async (req, res) => {
     );
     
     if (!users.length) {
-      return res.status(400).json({ 
-        message: 'Токен хүчингүй эсвэл хугацаа нь дууссан байна' 
+      return res.status(400).json({
+        message: 'Токен хүчингүй эсвэл хугацаа нь дууссан байна'
       });
     }
     
@@ -96,7 +94,8 @@ exports.resetPassword = async (req, res) => {
     }
     
     // Hash new password
-    const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     
     // Update user password and clear reset token
     await pool.execute(
@@ -107,5 +106,62 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: 'Нууц үг амжилттай шинэчлэгдлээ' });
   } catch (error) {
     handleError(res, error, 'Reset password');
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.userData.userId; 
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Одоогийн болон шинэ нууц үг оруулна уу' });
+    }
+    
+    // Validate password strength
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message: 'Нууц үг доод тал нь 6 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой'
+      });
+    }
+    
+    // Get current user
+    const [users] = await pool.execute(
+      'SELECT * FROM UserAdmin WHERE UserId = ?',
+      [userId]
+    );
+    
+    if (!users.length) {
+      return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
+    }
+    
+    const user = users[0];
+    
+    // Check if current password is correct
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.Password);
+    
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Одоогийн нууц үг буруу байна' });
+    }
+    
+    // Check if new password is different from the current one
+    const isSamePassword = await bcrypt.compare(newPassword, user.Password);
+    if (isSamePassword) {
+      return res.status(400).json({ message: 'Шинэ нууц үг өмнөх нууц үгтэй адилхан байна' });
+    }
+    
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update password in database
+    await pool.execute(
+      'UPDATE UserAdmin SET Password = ?, UpdatedAt = NOW() WHERE UserId = ?',
+      [hashedPassword, userId]
+    );
+    res.json({ message: 'Нууц үг амжилттай шинэчлэгдлээ' });
+  } catch (error) {
+    handleError(res, error, 'Change password');
   }
 };
