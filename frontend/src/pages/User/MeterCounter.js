@@ -3,6 +3,7 @@ import { Line } from 'react-chartjs-2';
 import api from "../../utils/api"; 
 import VerificationReminder from '../../components/common/verificationReminder';
 import NoApartments from '../../components/common/NoApartment';
+import Breadcrumb from '../../components/common/Breadcrumb';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -173,136 +174,143 @@ export function MeterCounter() {
   );
 
   return (
-    <div className="min-h-screen p-6 bg-white flex flex-col items-center">
-      {user && !user.IsVerified && (
-        <div className="w-full max-w-3xl mb-6">
-          <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
-        </div>
-      )}
-      
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 w-full max-w-3xl">
-          <p className="font-medium">Алдаа гарлаа</p>
-          <p>{error}</p>
-        </div>
-      ) : !hasApartments ? (
-        <NoApartments 
-          title="Таньд холбоотой байр байхгүй байна"
-          description="Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
-          buttonText="Байр нэмэх"
-          buttonHref="/user/profile/apartment"
-          iconColor="blue"
-        />
-      ) : !hasReadings ? (
-        <>
-          {/* Apartment Selector (only show if there are multiple apartments) */}
-          {apartments && apartments.length > 1 && (
-            <div className="border p-4 rounded-lg shadow w-full max-w-3xl mb-6">
-              <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Байр сонгох:
-              </label>
-              <select
-                id="apartment-select"
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                value={selectedApartmentId || ''}
-                onChange={handleApartmentChange}
-              >
-                {apartments.map(apt => (
-                  <option key={apt.id} value={apt.id}>{apt.displayName}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          <NoReadingsView />
-        </>
-      ) : (
-        <>
-          {/* Apartment Selector (only show if there are multiple apartments) */}
-          {apartments && apartments.length > 1 && (
-            <div className="border p-4 rounded-lg shadow w-full max-w-3xl mb-6">
-              <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Байр сонгох:
-              </label>
-              <select
-                id="apartment-select"
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                value={selectedApartmentId || ''}
-                onChange={handleApartmentChange}
-              >
-                {apartments.map(apt => (
-                  <option key={apt.id} value={apt.id}>{apt.displayName}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          <div className="border p-6 rounded-lg shadow w-full max-w-3xl mb-6">
-            <p className="text-lg font-semibold text-blue-600">Тоолуурын мэдээлэл</p>
-            <div className="mt-4 text-gray-700">
-              <p><strong>Нийт энэ сарын усны хэрэглээ:</strong></p>
-              <p>Халуун ус: <strong>{summary.hot}м³</strong> | Хүйтэн ус: <strong>{summary.cold}м³</strong></p>
-              <p className="mt-2">Нийт: <strong>{summary.total || (summary.hot + summary.cold)}м³</strong></p>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Breadcrumb navigation */}
+      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+        <Breadcrumb />
+      </div>
+
+      <div className="max-w-7xl mx-auto p-6">
+        {user && !user.IsVerified && (
+          <div className="w-full max-w-3xl mb-6">
+            <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl mb-6">
-            {summary.locationBreakdown && Object.entries(summary.locationBreakdown).map(([location, values]) => (
-              <div key={location} className="border p-4 rounded-lg shadow text-center">
-                <p className="text-lg font-semibold">{location}</p>
-                {values.hot !== undefined && <p>Халуун ус: <span className="font-medium">{values.hot}м³</span></p>}
-                {values.cold !== undefined && <p>Хүйтэн ус: <span className="font-medium">{values.cold}м³</span></p>}
-                <p className="mt-2 text-sm text-gray-500">
-                  Нийт: {(values.hot || 0) + (values.cold || 0)}м³
-                </p>
+        )}
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 w-full max-w-3xl">
+            <p className="font-medium">Алдаа гарлаа</p>
+            <p>{error}</p>
+          </div>
+        ) : !hasApartments ? (
+          <NoApartments 
+            title="Таньд холбоотой байр байхгүй байна"
+            description="Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
+            buttonText="Байр нэмэх"
+            buttonHref="/user/profile/apartment"
+            iconColor="blue"
+          />
+        ) : !hasReadings ? (
+          <>
+            {/* Apartment Selector (only show if there are multiple apartments) */}
+            {apartments && apartments.length > 1 && (
+              <div className="border p-4 rounded-lg shadow w-full max-w-3xl mb-6 bg-white">
+                <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  Байр сонгох:
+                </label>
+                <select
+                  id="apartment-select"
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  value={selectedApartmentId || ''}
+                  onChange={handleApartmentChange}
+                >
+                  {apartments.map(apt => (
+                    <option key={apt.id} value={apt.id}>{apt.displayName}</option>
+                  ))}
+                </select>
               </div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl mb-8">
-            <div className="border p-4 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Хүйтэн ус</h2>
-              <div className="h-64">
-                <Line 
-                  options={chartOptions} 
-                  data={getChartConfig('Хүйтэн ус', chartData.cold, 'rgb(53, 162, 235)')} 
-                />
+            )}
+            
+            <NoReadingsView />
+          </>
+        ) : (
+          <>
+            {/* Apartment Selector (only show if there are multiple apartments) */}
+            {apartments && apartments.length > 1 && (
+              <div className="border p-4 rounded-lg shadow w-full max-w-3xl mb-6 bg-white">
+                <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  Байр сонгох:
+                </label>
+                <select
+                  id="apartment-select"
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  value={selectedApartmentId || ''}
+                  onChange={handleApartmentChange}
+                >
+                  {apartments.map(apt => (
+                    <option key={apt.id} value={apt.id}>{apt.displayName}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            <div className="border p-6 rounded-lg shadow w-full max-w-3xl mb-6 bg-white">
+              <p className="text-lg font-semibold text-blue-600">Тоолуурын мэдээлэл</p>
+              <div className="mt-4 text-gray-700">
+                <p><strong>Нийт энэ сарын усны хэрэглээ:</strong></p>
+                <p>Халуун ус: <strong>{summary.hot}м³</strong> | Хүйтэн ус: <strong>{summary.cold}м³</strong></p>
+                <p className="mt-2">Нийт: <strong>{summary.total || (summary.hot + summary.cold)}м³</strong></p>
               </div>
             </div>
-            <div className="border p-4 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Халуун ус</h2>
-              <div className="h-64">
-                <Line 
-                  options={chartOptions} 
-                  data={getChartConfig('Халуун ус', chartData.hot, 'rgb(255, 99, 132)')} 
-                />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl mb-6">
+              {summary.locationBreakdown && Object.entries(summary.locationBreakdown).map(([location, values]) => (
+                <div key={location} className="border p-4 rounded-lg shadow text-center bg-white">
+                  <p className="text-lg font-semibold">{location}</p>
+                  {values.hot !== undefined && <p>Халуун ус: <span className="font-medium">{values.hot}м³</span></p>}
+                  {values.cold !== undefined && <p>Хүйтэн ус: <span className="font-medium">{values.cold}м³</span></p>}
+                  <p className="mt-2 text-sm text-gray-500">
+                    Нийт: {(values.hot || 0) + (values.cold || 0)}м³
+                  </p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl mb-8">
+              <div className="border p-4 rounded-lg shadow bg-white">
+                <h2 className="text-xl font-semibold mb-4">Хүйтэн ус</h2>
+                <div className="h-64">
+                  <Line 
+                    options={chartOptions} 
+                    data={getChartConfig('Хүйтэн ус', chartData.cold, 'rgb(53, 162, 235)')} 
+                  />
+                </div>
+              </div>
+              <div className="border p-4 rounded-lg shadow bg-white">
+                <h2 className="text-xl font-semibold mb-4">Халуун ус</h2>
+                <div className="h-64">
+                  <Line 
+                    options={chartOptions} 
+                    data={getChartConfig('Халуун ус', chartData.hot, 'rgb(255, 99, 132)')} 
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="border p-4 rounded-lg shadow w-full max-w-3xl text-center">
-            <p className="text-sm text-gray-600 mt-2">Та усны заалтаа сар бүрийн 1 - 20 ны хооронд өгнө үү.</p>
-            <div className="flex justify-center mt-4 space-x-4">
-              <a 
-                href="/user/metercounter/details"
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition inline-block"
-              >
-                Дэлгэрэнгүй
-              </a>
-              <a 
-                href="/user/metercounter/import"
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition inline-block"
-              >
-                Заалт өгөх
-              </a>
+            
+            <div className="border p-4 rounded-lg shadow w-full max-w-3xl text-center bg-white">
+              <p className="text-sm text-gray-600 mt-2">Та усны заалтаа сар бүрийн 1 - 20 ны хооронд өгнө үү.</p>
+              <div className="flex justify-center mt-4 space-x-4">
+                <a 
+                  href="/user/metercounter/details"
+                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition inline-block"
+                >
+                  Дэлгэрэнгүй
+                </a>
+                <a 
+                  href="/user/metercounter/import"
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition inline-block"
+                >
+                  Заалт өгөх
+                </a>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import ErrorAlert from '../../components/common/ErrorAlert';
 import PaymentsSummary from '../../components/payments/PaymentsSummary';
 import PaymentsList from '../../components/payments/PaymentsList';
 import PaymentStatistics from '../../components/payments/PaymentStatistics';
+import Breadcrumb from '../../components/common/Breadcrumb';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -197,85 +198,92 @@ const Payment = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {error && (
-        <ErrorAlert 
-          message={error} 
-          onClose={() => setError(null)} 
-        />
-      )}
-      
-      <div className="flex flex-col md:flex-row justify-between items-start mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Water Payments</h1>
-        
-        <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 w-full md:w-auto">
-          {apartments.length > 0 && (
-            <div className="w-full md:w-auto">
-              <select
-                value={selectedApartment || ''}
-                onChange={handleApartmentChange}
-                className="block w-full bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {apartments.map(apt => (
-                  <option key={apt.id} value={apt.id}>
-                    {apt.displayName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          <div className="flex space-x-2 w-full md:w-auto">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Breadcrumb navigation */}
+      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+        <Breadcrumb />
       </div>
-      
-      {apartments.length === 0 ? (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                You don't have any apartments assigned. Please contact your administrator.
-              </p>
+
+      <div className="container mx-auto px-4 py-6">
+        {error && (
+          <ErrorAlert 
+            message={error} 
+            onClose={() => setError(null)} 
+          />
+        )}
+        
+        <div className="flex flex-col md:flex-row justify-between items-start mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Water Payments</h1>
+          
+          <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 w-full md:w-auto">
+            {apartments.length > 0 && (
+              <div className="w-full md:w-auto">
+                <select
+                  value={selectedApartment || ''}
+                  onChange={handleApartmentChange}
+                  className="block w-full bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {apartments.map(apt => (
+                    <option key={apt.id} value={apt.id}>
+                      {apt.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            <div className="flex space-x-2 w-full md:w-auto">
+              <button
+                onClick={handleRefresh}
+                className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
             </div>
           </div>
         </div>
-      ) : (
-        <>
-          <PaymentsSummary summary={summary} />
-          
-          <div className="mt-8 mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Payments</h2>
-            <PaymentsList 
-              payments={payments} 
-              onViewPayment={handleViewPayment} 
-              onPayNow={handlePayNow}
-              loading={processingPayment}
-            />
+        
+        {apartments.length === 0 ? (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  You don't have any apartments assigned. Please contact your administrator.
+                </p>
+              </div>
+            </div>
           </div>
-          
-          <div className="mt-8">
-            <PaymentStatistics 
-              apartmentId={selectedApartment} 
-              refreshKey={refreshKey} 
-            />
-          </div>
-        </>
-      )}
+        ) : (
+          <>
+            <PaymentsSummary summary={summary} />
+            
+            <div className="mt-8 mb-8">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Payments</h2>
+              <PaymentsList 
+                payments={payments} 
+                onViewPayment={handleViewPayment} 
+                onPayNow={handlePayNow}
+                loading={processingPayment}
+              />
+            </div>
+            
+            <div className="mt-8">
+              <PaymentStatistics 
+                apartmentId={selectedApartment} 
+                refreshKey={refreshKey} 
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

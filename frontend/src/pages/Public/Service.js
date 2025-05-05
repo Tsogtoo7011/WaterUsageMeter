@@ -3,6 +3,7 @@ import api from "../../utils/api";
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search } from 'lucide-react';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
+import Breadcrumb from '../../components/common/Breadcrumb';
 
 const Service = () => {
   const [services, setServices] = useState([]);
@@ -365,16 +366,24 @@ const Service = () => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+          <Breadcrumb />
+        </div>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
       </div>
     );
   }
   
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-red-50 p-4 rounded-md max-w-md mx-4">
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+          <Breadcrumb />
+        </div>
+        <div className="bg-red-50 p-4 rounded-md max-w-md mx-auto mt-10">
           <p className="text-red-600">{error}</p>
           <button 
             onClick={() => window.location.reload()}
@@ -389,6 +398,11 @@ const Service = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Breadcrumb navigation */}
+      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+        <Breadcrumb />
+      </div>
+
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow rounded-lg p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">

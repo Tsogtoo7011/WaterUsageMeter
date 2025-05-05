@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from "../../utils/api"; 
+import Breadcrumb from '../../components/common/Breadcrumb'; 
 
 export default function AdminTariff() {
   const [tariff, setTariff] = useState({
@@ -11,7 +12,7 @@ export default function AdminTariff() {
     EffectiveTo: null,
     IsActive: 1
   });
-  
+  W
   const [tariffHistory, setTariffHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   
@@ -163,6 +164,11 @@ export default function AdminTariff() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Breadcrumb navigation */}
+      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+        <Breadcrumb />
+      </div>
+      
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Усны тарифын удирдлага</h1>
       
       {error && (

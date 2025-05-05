@@ -13,9 +13,9 @@ exports.createFeedback = async (req, res) => {
       });
     }
     
-    const type = parseInt(feedbackType, 10);
+    const type = String(feedbackType); // Convert to string to match ENUM('1', '2', '3')
     
-    if (![1, 2, 3].includes(type)) {
+    if (!['1', '2', '3'].includes(type)) {
       return res.status(400).json({
         success: false,
         message: 'Санал хүсэлтийн төрөл буруу байна.'
@@ -85,8 +85,8 @@ exports.getAllFeedback = async (req, res) => {
         f.AdminResponderId,
         IFNULL(a.Username, '') as ResponderUsername
       FROM Feedback f
-      LEFT JOIN useradmin u ON f.UserAdminId = u.UserId
-      LEFT JOIN useradmin a ON f.AdminResponderId = a.UserId
+      LEFT JOIN UserAdmin u ON f.UserAdminId = u.UserId
+      LEFT JOIN UserAdmin a ON f.AdminResponderId = a.UserId
       ORDER BY f.CreatedAt DESC`
     );
     
@@ -133,8 +133,8 @@ exports.getFeedbackById = async (req, res) => {
           f.AdminResponderId,
           IFNULL(a.Username, '') as ResponderUsername
         FROM Feedback f
-        LEFT JOIN useradmin u ON f.UserAdminId = u.UserId
-        LEFT JOIN useradmin a ON f.AdminResponderId = a.UserId
+        LEFT JOIN UserAdmin u ON f.UserAdminId = u.UserId
+        LEFT JOIN UserAdmin a ON f.AdminResponderId = a.UserId
         WHERE f.ApplicationId = ?
       `;
       params = [feedbackId];
@@ -200,8 +200,8 @@ exports.getAdminFeedbackById = async (req, res) => {
         f.AdminResponderId,
         IFNULL(a.Username, '') as ResponderUsername
       FROM Feedback f
-      LEFT JOIN useradmin u ON f.UserAdminId = u.UserId
-      LEFT JOIN useradmin a ON f.AdminResponderId = a.UserId
+      LEFT JOIN UserAdmin u ON f.UserAdminId = u.UserId
+      LEFT JOIN UserAdmin a ON f.AdminResponderId = a.UserId
       WHERE f.ApplicationId = ?`,
       [feedbackId]
     );
@@ -267,8 +267,15 @@ exports.updateFeedback = async (req, res) => {
       }
       
       if (adminResponse !== undefined) {
+        if (!adminResponse.trim() && (status === 'Хүлээн авсан' || status === 'Хүлээн авахаас татгалзсан')) {
+          return res.status(400).json({
+            success: false,
+            message: 'Админы хариу оруулна уу.'
+          });
+        }
+        
         updates.push('AdminResponse = ?');
-        params.push(adminResponse.trim());
+        params.push(adminResponse ? adminResponse.trim() : null);
         
         // Add admin responder ID
         updates.push('AdminResponderId = ?');
@@ -282,6 +289,7 @@ exports.updateFeedback = async (req, res) => {
         });
       }
       
+      updates.push('UpdatedAt = CURRENT_TIMESTAMP');
       params.push(feedbackId);
       
       await pool.execute(
@@ -318,9 +326,9 @@ exports.updateFeedback = async (req, res) => {
         });
       }
       
-      const type = parseInt(feedbackType, 10);
+      const type = String(feedbackType); // Convert to string to match ENUM('1', '2', '3')
       
-      if (isNaN(type) || ![1, 2, 3].includes(type)) {
+      if (!['1', '2', '3'].includes(type)) {
         return res.status(400).json({
           success: false,
           message: 'Санал хүсэлтийн төрөл буруу байна.'
@@ -328,7 +336,7 @@ exports.updateFeedback = async (req, res) => {
       }
       
       await pool.execute(
-        'UPDATE Feedback SET Type = ?, Description = ? WHERE ApplicationId = ?',
+        'UPDATE Feedback SET Type = ?, Description = ?, UpdatedAt = CURRENT_TIMESTAMP WHERE ApplicationId = ?',
         [type, description.trim(), feedbackId]
       );
       
@@ -370,7 +378,7 @@ exports.deleteFeedback = async (req, res) => {
     const feedback = checkFeedback[0];
     const isAdmin = req.userData.AdminRight === 1;
 
-    if (isAdmin) {
+    if (isAdmin || (feedback.UserAdminId === userId && feedback.Status === 'Хүлээгдэж байна')) {
       await pool.execute(
         'DELETE FROM Feedback WHERE ApplicationId = ?',
         [feedbackId]
@@ -380,30 +388,14 @@ exports.deleteFeedback = async (req, res) => {
         success: true,
         message: 'Санал хүсэлт амжилттай устгагдлаа.'
       });
-    }
-    else {
-      if (feedback.UserAdminId !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: 'Та зөвхөн өөрийн санал хүсэлтийг устгах боломжтой.'
-        });
-      }
-    
-      if (feedback.Status !== 'Хүлээгдэж байна') {
-        return res.status(400).json({
-          success: false,
-          message: 'Зөвхөн хүлээгдэж буй санал хүсэлтийг устгах боломжтой.'
-        });
-      }
-      
-      await pool.execute(
-        'DELETE FROM Feedback WHERE ApplicationId = ?',
-        [feedbackId]
-      );
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Санал хүсэлт амжилттай устгагдлаа.'
+    } else {
+      const message = feedback.UserAdminId !== userId ? 
+        'Та зөвхөн өөрийн санал хүсэлтийг устгах боломжтой.' : 
+        'Зөвхөн хүлээгдэж буй санал хүсэлтийг устгах боломжтой.';
+        
+      return res.status(403).json({
+        success: false,
+        message: message
       });
     }
     

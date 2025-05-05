@@ -25,6 +25,8 @@ const SidebarLayout = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollOpacity, setScrollOpacity] = useState(1);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,6 +77,31 @@ const SidebarLayout = ({ children }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const maxScroll = 200; // Adjust this value as needed
+      const scrollY = window.scrollY;
+      const opacity = Math.max(1 - scrollY / maxScroll, 0.5); // Minimum opacity of 0.5
+      setScrollOpacity(opacity);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -200,7 +227,7 @@ const SidebarLayout = ({ children }) => {
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
                       ? 'bg-blue-50 text-[#2D6B9F] font-medium' 
-                      : 'hover:bg-blue-50/50 text-gray-700'
+                      : 'hover:bg-blue-50/50 text-gray-600'
                   }`
                 }
               >
@@ -240,9 +267,9 @@ const SidebarLayout = ({ children }) => {
             </div>
             <button 
               onClick={toggleMobileSidebar}
-              className="p-1 rounded-md hover:bg-blue-50/50 text-gray-500 transition-colors duration-200"
+              className="p-1 rounded-md hover:bg-blue-50/50 text-gray-600 transition-colors duration-200"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-gray-600" />
             </button>
           </div>
           
@@ -257,7 +284,7 @@ const SidebarLayout = ({ children }) => {
                   `flex items-center p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out ${
                     isActive 
                       ? 'bg-blue-50 text-[#2D6B9F] font-medium' 
-                      : 'hover:bg-blue-50/50 text-gray-700'
+                      : 'hover:bg-blue-50/50 text-gray-600'
                   }`
                 }
               >
@@ -269,9 +296,9 @@ const SidebarLayout = ({ children }) => {
 
           <button 
             onClick={handleLogout}
-            className="mt-auto p-3 rounded-lg hover:bg-blue-50/50 text-gray-700 flex items-center transition-all duration-200 ease-in-out"
+            className="mt-auto p-3 rounded-lg hover:bg-blue-50/50 text-gray-600 flex items-center transition-all duration-200 ease-in-out"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-5 h-5 text-gray-600" />
             <span className="ml-3">Гарах</span>
           </button>
         </div>
@@ -284,14 +311,21 @@ const SidebarLayout = ({ children }) => {
         } transition-all duration-300 ease-in-out`}
       >
         {/* Top Navigation Bar */}
-        <header className="bg-white border-b border-[#2D6B9F] h-16 flex items-center px-4 sticky top-0 z-10">
+        <header 
+          className="h-16 flex items-center px-4 sticky top-0 z-10 transition-colors duration-300"
+          style={{
+            backgroundColor: `rgba(255, 255, 255, ${scrollOpacity})`,
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid #2D6B9F'
+          }}
+        >
           <div className="flex items-center justify-between w-full">
             {/* Mobile menu button */}
             <button 
               onClick={toggleMobileSidebar}
-              className="md:hidden p-2 rounded-md text-gray-500 hover:bg-blue-50/50 transition-colors duration-200"
+              className="md:hidden p-2 rounded-md text-gray-600 hover:bg-blue-50/50 transition-colors duration-200"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-5 h-5 text-gray-600" />
             </button>
 
             {/* SearchBar */}
@@ -326,17 +360,17 @@ const SidebarLayout = ({ children }) => {
                     <div className="py-1">
                       <button
                         onClick={navigateToProfile}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-blue-50/50 flex items-center"
                       >
-                        <UserCircle className="w-4 h-4 mr-3 text-gray-500" />
+                        <UserCircle className="w-4 h-4 mr-3 text-gray-600" />
                         Профайл
                       </button>
                       
                       <button
                         onClick={navigateToSettings}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-blue-50/50 flex items-center"
                       >
-                        <Settings className="w-4 h-4 mr-3 text-gray-500" />
+                        <Settings className="w-4 h-4 mr-3 text-gray-600" />
                         Тохиргоо
                       </button>
                       
@@ -344,9 +378,9 @@ const SidebarLayout = ({ children }) => {
                       
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50/50 flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-blue-50/50 flex items-center"
                       >
-                        <LogOut className="w-4 h-4 mr-3 text-gray-500" />
+                        <LogOut className="w-4 h-4 mr-3 text-gray-600" />
                         Гарах
                       </button>
                     </div>
@@ -357,7 +391,7 @@ const SidebarLayout = ({ children }) => {
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto p-0 bg-gray-50 border-x-0 border-t-0 border-b-0 border-r border-[#2D6B9F]">
+        <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto p-0 bg-white border-x-0 border-t-0 border-b-0 border-r border-[#2D6B9F]">
           {children}
         </main>
       </div>

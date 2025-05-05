@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import VerificationReminder from '../../components/common/verificationReminder';
+import Breadcrumb from '../../components/common/Breadcrumb';
 import api from "../../utils/api";
 
 function Home() {
@@ -74,12 +75,19 @@ function Home() {
   
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation component has been removed */}
+      
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {user && !user.IsVerified && (
           <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
         )}
         
-        <div className="px-4 py-6 sm:px-0">
+        {/* Add the Breadcrumb component for path-based navigation */}
+        <div className="px-4 pt-2 sm:px-0">
+          <Breadcrumb />
+        </div>
+        
+        <div className="px-4 py-4 sm:px-0">
           {isAdmin ? (
             // Admin content
             <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -92,21 +100,30 @@ function Home() {
                 <div className="mt-6">
                   <h3 className="text-xl font-medium text-gray-900">Admin Functions</h3>
                   <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100">
+                    <div 
+                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
+                      onClick={() => navigate('/admin/user')}
+                    >
                       <h4 className="font-medium">User Management</h4>
                       <p className="text-sm text-gray-500">Manage system users</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100">
-                      <h4 className="font-medium">System Settings</h4>
+                    <div 
+                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
+                      onClick={() => navigate('/admin/tarif')}
+                    >
+                      <h4 className="font-medium">Tariff Management</h4>
                       <p className="text-sm text-gray-500">Configure application settings</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100">
+                    <div 
+                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
+                      onClick={() => navigate('/admin/report')}
+                    >
                       <h4 className="font-medium">Reports</h4>
                       <p className="text-sm text-gray-500">View system reports and analytics</p>
                     </div>
                     <div 
                       className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
-                      onClick={() => navigate('/user/Profile')}
+                      onClick={() => navigate('/profile')}
                     >
                       <h4 className="font-medium">Admin Profile</h4>
                       <p className="text-sm text-gray-500">Manage your admin account</p>
@@ -126,20 +143,34 @@ function Home() {
                 
                 <div className="mt-6">
                   <h3 className="text-xl font-medium text-gray-900">Хэрэглэгчийн үйлдлүүд</h3>
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div 
                       className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
-                      onClick={() => navigate('/user/Profile')}
+                      onClick={() => navigate('/profile')}
                     >
                       <h4 className="font-medium">Хувийн мэдээлэл</h4>
                       <p className="text-sm text-gray-500">Өөрийн мэдээллийг хянах</p>
                     </div>
                     <div 
                       className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
-                      onClick={() => navigate('/user/Profile/Apartment')}
+                      onClick={() => navigate('/user/profile/apartment')}
                     >
                       <h4 className="font-medium">Орон сууц</h4>
                       <p className="text-sm text-gray-500">Орон сууц нэмэх</p>
+                    </div>
+                    <div 
+                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
+                      onClick={() => navigate('/user/metercounter')}
+                    >
+                      <h4 className="font-medium">Тоолуур</h4>
+                      <p className="text-sm text-gray-500">Тоолуурын үзүүлэлт</p>
+                    </div>
+                    <div 
+                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
+                      onClick={() => navigate('/user/payment-info')}
+                    >
+                      <h4 className="font-medium">Төлбөр</h4>
+                      <p className="text-sm text-gray-500">Төлбөрийн мэдээлэл</p>
                     </div>
                   </div>
                 </div>

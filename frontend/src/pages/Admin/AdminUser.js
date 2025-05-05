@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, User, Users, Shield, Edit, Trash2, Eye, ArrowLeft, X, Check, RefreshCw } from 'lucide-react';
 import api from "../../utils/api"; 
+import Breadcrumb from '../../components/common/Breadcrumb'; // Add Breadcrumb import
 
 export default function AdminUser() {
   const [users, setUsers] = useState([]);
@@ -96,6 +97,11 @@ export default function AdminUser() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Breadcrumb navigation */}
+      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
+        <Breadcrumb />
+      </div>
+      
       {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-md ${

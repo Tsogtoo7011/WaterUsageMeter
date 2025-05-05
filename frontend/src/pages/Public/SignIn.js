@@ -208,7 +208,7 @@ const SignIn = () => {
                   value={formData.username}
                   onChange={handleChange}
                   required
-                  style={{ color: '#2D6B9F', caretColor: '#2D6B9F', borderColor: '#2D6B9F' }}
+                  style={{ color: 'black', caretColor: '#2D6B9F', borderColor: '#2D6B9F' }}
                 />
               </div>
               
@@ -222,7 +222,7 @@ const SignIn = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  style={{ color: '#2D6B9F', caretColor: '#2D6B9F', borderColor: '#2D6B9F' }}
+                  style={{ color: 'black', caretColor: '#2D6B9F', borderColor: '#2D6B9F' }}
                 />
                 <button 
                   type="button"
