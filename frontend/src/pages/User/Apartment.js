@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { FaHome, FaEdit, FaTrash, FaShare, FaPlus, FaSave, FaTimes, FaSearch, FaInfoCircle } from "react-icons/fa";
+;import React, { useState, useEffect } from "react";
+import { FaTrash, FaShare, FaPlus, FaTimes, FaSearch, FaInfoCircle, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import VerificationReminder from '../../components/common/verificationReminder';
+import Breadcrumb from '../../components/common/Breadcrumb';
 import api from "../../utils/api"; 
 
 export function Apartment() {
-  const [apartmentData, setApartmentData] = useState({
-    ApartmentType: "",
-    ApartmentCode: "",  
+  const [searchCriteria, setSearchCriteria] = useState({
     City: "",
     District: "",
     SubDistrict: "",
@@ -18,19 +17,30 @@ export function Apartment() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [editingApartment, setEditingApartment] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [shareData, setShareData] = useState({
-    apartmentId: null,
-    email: "",
-    apartmentType: "түрээслэгч"
-  });
-  const [isSharing, setIsSharing] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [apartmentSelection, setApartmentSelection] = useState({
+    apartmentId: null,
+    apartmentCode: "",
+    apartmentType: "түрээслэгч",
+  });
+  const [isSelectingApartment, setIsSelectingApartment] = useState(false);
+  const [apartmentSelectionError, setApartmentSelectionError] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  const API_URL = "/user/Profile/Apartment"; // Updated URL without the base
+  const [shareData, setShareData] = useState({
+    apartmentId: null,
+    email: "",
+    apartmentType: "түрээслэгч",
+    apartmentCode: "",
+  });
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState(null); 
+
+  const API_URL = "/user/Profile/Apartment"; 
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -44,7 +54,6 @@ export function Apartment() {
     fetchUserApartments();
   }, []);
 
-  // Clear notification after 3 seconds
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => {
@@ -53,6 +62,7 @@ export function Apartment() {
       return () => clearTimeout(timer);
     }
   }, [notification]); 
+
   const handleVerificationSuccess = () => {
     setUser(prev => ({
       ...prev,
@@ -65,7 +75,6 @@ export function Apartment() {
     setLoading(true);
     setError(null);
     try {
-      // Using the API service instead of direct axios call
       const response = await api.get(API_URL);
       setUserApartments(response.data);
     } catch (error) {
@@ -76,17 +85,9 @@ export function Apartment() {
     }
   };
 
-  const handleApartmentInputChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setApartmentData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleShareInputChange = (e) => {
-    const { name, value } = e.target;
-    setShareData(prev => ({
+    setSearchCriteria(prev => ({
       ...prev,
       [name]: value
     }));
@@ -97,9 +98,8 @@ export function Apartment() {
     setLoading(true);
     setError(null);
     try {
-      // Using the API service with params
       const response = await api.get(`${API_URL}/search`, {
-        params: apartmentData
+        params: searchCriteria
       });
       setSearchResults(response.data);
       setIsSearching(true);
@@ -111,114 +111,39 @@ export function Apartment() {
     }
   };
 
-  const handleSelectApartment = async (apartment) => {
-    try {
-      setLoading(true);
-      // Using the API service for post request
-      const response = await api.post(
-        `${API_URL}/add-by-code`,
-        {
-          apartmentId: apartment.ApartmentId,
-          apartmentCode: apartment.ApartmentCode,
-          apartmentType: "түрээслэгч" 
-        }
-      );
-      
-      setUserApartments([...userApartments, response.data]);
-      setIsSearching(false);
-      setSearchResults([]);
-      resetForm();
-      showNotification("Байрны мэдээлэл амжилттай нэмэгдлээ", "success");
-    } catch (error) {
-      console.error("Error adding apartment:", error);
-      setError(error.response?.data?.message || "Байрны мэдээлэл нэмэх явцад алдаа гарлаа");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApartmentSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    
-    try {
-      if (editingApartment) {
-        // Update existing apartment using API service
-        const response = await api.put(
-          `${API_URL}/${editingApartment.ApartmentId}`, 
-          apartmentData
-        );
-        
-        setUserApartments(userApartments.map(apt => 
-          apt.ApartmentId === editingApartment.ApartmentId ? response.data : apt
-        ));
-        
-        setEditingApartment(null);
-        showNotification("Байрны мэдээлэл амжилттай шинэчлэгдлээ", "success");
-      } else {
-        // Create new apartment using API service
-        const response = await api.post(
-          API_URL, 
-          apartmentData
-        );
-        
-        setUserApartments([...userApartments, response.data]);
-        showNotification("Байрны мэдээлэл амжилттай хадгалагдлаа", "success");
-      }
-      
-      // Reset form and hide it
-      resetForm();
-      setShowForm(false);
-    } catch (error) {
-      console.error("Error saving apartment data:", error);
-      setError(error.response?.data?.message || "Байрны мэдээлэл хадгалах явцад алдаа гарлаа");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleShareSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      // Using the API service for sharing
-      await api.post(
-        `${API_URL}/share`, 
-        shareData
-      );
-      
-      setIsSharing(false);
-      setShareData({
-        apartmentId: null,
-        email: "",
-        apartmentType: "түрээслэгч"
-      });
-      
-      showNotification("Байр амжилттай хуваалцлаа", "success");
-    } catch (error) {
-      console.error("Error sharing apartment:", error);
-      setError(error.response?.data?.message || "Байр хуваалцах явцад алдаа гарлаа");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditApartment = (apartment) => {
-    setEditingApartment(apartment);
-    setApartmentData({
-      ApartmentType: apartment.ApartmentType,
-      ApartmentCode: apartment.ApartmentCode,
-      City: apartment.City,
-      District: apartment.District,
-      SubDistrict: apartment.SubDistrict,
-      AptName: apartment.AptName,
-      BlckNmbr: apartment.BlckNmbr,
-      UnitNmbr: apartment.UnitNmbr || ""
+  const handleSelectApartment = (apartment) => {
+    setApartmentSelection({
+      apartmentId: apartment.ApartmentId,
+      apartmentCode: "",
+      apartmentType: "түрээслэгч"
     });
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsSelectingApartment(true);
+  };
+
+  const handleApartmentSelectionSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setApartmentSelectionError(null); 
+    try {
+      const response = await api.post(`${API_URL}/add-by-code`, {
+        apartmentId: apartmentSelection.apartmentId,
+        apartmentCode: apartmentSelection.apartmentCode,
+        apartmentType: apartmentSelection.apartmentType,
+      });
+      setUserApartments([...userApartments, response.data]);
+      setIsSelectingApartment(false);
+      setApartmentSelection({ apartmentId: null, apartmentCode: "", apartmentType: "түрээслэгч" });
+      showNotification("Байр амжилттай сонгогдлоо", "success");
+    } catch (error) {
+      console.error("Error selecting apartment:", error);
+      if (error.response?.data?.code === "INVALID_CODE") {
+        setApartmentSelectionError("Байрны код буруу байна. Зөв код оруулна уу.");
+      } else {
+        setApartmentSelectionError(error.response?.data?.message || "Байр сонгох явцад алдаа гарлаа");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteApartment = async (apartmentId) => {
@@ -228,9 +153,7 @@ export function Apartment() {
     
     try {
       setLoading(true);
-      // Using API service for delete request
       await api.delete(`${API_URL}/${apartmentId}`);
-      
       setUserApartments(userApartments.filter(apt => apt.ApartmentId !== apartmentId));
       showNotification("Байрны мэдээлэл амжилттай устгагдлаа", "success");
     } catch (error) {
@@ -241,36 +164,78 @@ export function Apartment() {
     }
   };
 
+  // Share functions
   const handleShare = (apartment) => {
     setShareData({
-      ...shareData,
-      apartmentId: apartment.ApartmentId
+      apartmentId: apartment.ApartmentId,
+      email: "",
+      apartmentType: "түрээслэгч",
+      apartmentCode: "",
     });
     setIsSharing(true);
   };
 
-  const resetForm = () => {
-    setApartmentData({
-      ApartmentType: "",
-      ApartmentCode: "", 
-      City: "",
-      District: "",
-      SubDistrict: "",
-      AptName: "",     
-      BlckNmbr: "",     
-      UnitNmbr: ""      
-    });
-    setEditingApartment(null);
-  };
+  const handleShareSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setShareError(null); // Clear previous share errors
+    try {
+      // Validate apartment code before sharing
+      const validationResponse = await api.post(`${API_URL}/validate-code`, {
+        apartmentId: shareData.apartmentId,
+        apartmentCode: shareData.apartmentCode,
+      });
 
-  const cancelEdit = () => {
-    resetForm();
-    setShowForm(false);
-    setIsSearching(false);
+      if (!validationResponse.data.isValid) {
+        setShareError("Байрны код буруу байна. Зөв код оруулна уу.");
+        return;
+      }
+
+      await api.post(`${API_URL}/share`, shareData);
+      setIsSharing(false);
+      setShareData({
+        apartmentId: null,
+        email: "",
+        apartmentType: "түрээслэгч",
+        apartmentCode: "",
+      });Имэйл
+      showNotification("Байр амжилттай хуваалцлаа", "success");
+    } catch (error) {
+      console.error("Error sharing apartment:", error);
+      setShareError(error.response?.data?.message || "Байрны код эсвэл имэйл хаяг буруу байна");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const showNotification = (message, type = "info") => {
     setNotification({ message, type });
+  };
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
+  const sortedApartments = [...userApartments].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aValue = a[sortConfig.key] || '';
+    const bValue = b[sortConfig.key] || '';
+    
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+    
+    return sortConfig.direction === 'asc'
+      ? aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true })
+      : bValue.toString().localeCompare(aValue.toString(), undefined, { numeric: true });
+  });
+
+  const paginate = (array, page, perPage) => {
+    const startIndex = (page - 1) * perPage;
+    return array.slice(startIndex, startIndex + perPage);
   };
 
   return (
@@ -280,15 +245,18 @@ export function Apartment() {
         <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-[#2D6B9F]">Миний байрны мэдээлэл</h1>
+            <div className="px-4 pt-2 sm:px-0">
+              <Breadcrumb />
+            </div>
             <p className="text-gray-600 mt-2">Өөрийн эзэмшиж буй эсвэл түрээслэж буй байрны мэдээллийг удирдах</p>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="flex items-center px-6 py-3 border rounded-lg text-sm font-medium hover:bg-blue-50/50"
-            style={{ borderColor: "#2D6B9F", color: "#2D6B9F" }}
+            onClick={() => setIsSearching(!isSearching)}
+            className="flex items-center px-3 py-2 border rounded-md text-xs font-medium hover:bg-blue-50/50"
+            style={{ borderColor: "#2D6B9F", color: "#2D6B9F" }} 
           >
-            <FaPlus className="mr-2" />
-            {showForm ? "Байрны жагсаалт харах" : "Шинэ байр нэмэх"}
+            <FaPlus className="mr-1" />
+            {isSearching ? "Байрны бүртгэл харах" : "Байр хайх"}
           </button>
         </div>
 
@@ -341,105 +309,112 @@ export function Apartment() {
           </div>
         )}
 
-        {/* Apartment Form */}
-        {(showForm || isSearching) && (
+        {/* Search Form */}
+        {isSearching && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border border-gray-200 max-w-7xl mx-auto mt-6">
             <h2 className="text-2xl font-bold mb-6 text-[#2D6B9F] border-b pb-4">
-              {editingApartment ? "Байрны мэдээлэл засварлах" : "Байр хайх"}
+              Байр хайх
             </h2>
 
-            <form onSubmit={editingApartment ? handleApartmentSubmit : handleApartmentSearch}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <form onSubmit={handleApartmentSearch}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">            
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Эзэмшигч / Түрээслэгч</label>
-                  <select
-                    name="ApartmentType"
-                    value={apartmentData.ApartmentType || ""}
-                    onChange={handleApartmentInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
-                  >
-                    <option value="">Сонгох</option>
-                    <option value="эзэмшигч">Эзэмшигч</option>
-                    <option value="түрээслэгч">Түрээслэгч</option>
-                  </select>
-                </div>              
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Хот</label>
-                  <select
-                    name="City"
-                    value={apartmentData.City || ""}
-                    onChange={handleApartmentInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
-                  >
-                    <option value="">Сонгох</option>
-                    <option value="Улаанбаатар">Улаанбаатар</option>
-                  </select>
+                  <label className="block text-[#2D6B9F] font-medium mb-2">Хот</label>
+                  <div className="flex items-center">
+                    <select
+                      name="City"
+                      value={searchCriteria.City}
+                      onChange={handleInputChange}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                    >
+                      <option value="" disabled>Сонгох</option>
+                      <option value="Улаанбаатар">Улаанбаатар</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setSearchCriteria(prev => ({ ...prev, City: "" }))}
+                      className="ml-2 text-gray-500 hover:text-[#2D6B9F]"
+                      title="Арилгах"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Дүүрэг</label>
-                  <select
-                    name="District"
-                    value={apartmentData.District || ""}
-                    onChange={handleApartmentInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
-                  >
-                    <option value="">Сонгох</option>
-                    <option value="Багануур">Багануур</option>
-                    <option value="Багахангай">Багахангай</option>
-                    <option value="Баянгол">Баянгол</option>
-                    <option value="Баянзүрх">Баянзүрх</option>
-                    <option value="Налайх">Налайх</option>
-                    <option value="Сонгинохайрхан">Сонгинохайрхан</option>
-                    <option value="Сүхбаатар">Сүхбаатар</option>
-                    <option value="Хан-Уул">Хан-Уул</option>
-                    <option value="Чингэлтэй">Чингэлтэй</option>
-                  </select>
+                  <label className="block text-[#2D6B9F] font-medium mb-2">Дүүрэг</label>
+                  <div className="flex items-center">
+                    <select
+                      name="District"
+                      value={searchCriteria.District}
+                      onChange={handleInputChange}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                    >
+                      <option value="" disabled>Сонгох</option>
+                      <option value="Багануур">Багануур</option>
+                      <option value="Багахангай">Багахангай</option>
+                      <option value="Баянгол">Баянгол</option>
+                      <option value="Баянзүрх">Баянзүрх</option>
+                      <option value="Налайх">Налайх</option>
+                      <option value="Сонгинохайрхан">Сонгинохайрхан</option>
+                      <option value="Сүхбаатар">Сүхбаатар</option>
+                      <option value="Хан-Уул">Хан-Уул</option>
+                      <option value="Чингэлтэй">Чингэлтэй</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setSearchCriteria(prev => ({ ...prev, District: "" }))}
+                      className="ml-2 text-gray-500 hover:text-[#2D6B9F]"
+                      title="Арилгах"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Хороо</label>
+                  <label className="block text-[#2D6B9F] font-medium mb-2">Хороо</label>
                   <input
                     type="text"
                     name="SubDistrict"
-                    value={apartmentData.SubDistrict || ""}
-                    onChange={handleApartmentInputChange}
+                    value={searchCriteria.SubDistrict || ""}
+                    onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                     placeholder="Хороо"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Хороолол</label>
+                  <label className="block text-[#2D6B9F] font-medium mb-2">Хороолол</label>
                   <input
                     type="text"
                     name="AptName"
-                    value={apartmentData.AptName || ""}
-                    onChange={handleApartmentInputChange}
+                    value={searchCriteria.AptName || ""}
+                    onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                     placeholder="Хороолол эсвэл хотхоны нэр"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Байр</label>
+                  <label className="block text-[#2D6B9F] font-medium mb-2">Байр</label>
                   <input
                     type="number"
                     name="BlckNmbr"
-                    value={apartmentData.BlckNmbr || ""}
-                    onChange={handleApartmentInputChange}
+                    value={searchCriteria.BlckNmbr || ""}
+                    onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                     placeholder="Байрны дугаар"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">Тоот</label>
+                  <label className="block text-[#2D6B9F] font-medium mb-2">Тоот</label>
                   <input
                     type="text"
                     name="UnitNmbr" 
-                    value={apartmentData.UnitNmbr || ""}
-                    onChange={handleApartmentInputChange}
+                    value={searchCriteria.UnitNmbr || ""}
+                    onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                     placeholder="Тоот / Орц"
                   />
@@ -449,53 +424,32 @@ export function Apartment() {
               <div className="flex flex-col sm:flex-row justify-end gap-4 border-t pt-4">
                 <button
                   type="button"
-                  onClick={cancelEdit}
-                  className="flex items-center justify-center px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium order-2 sm:order-1"
+                  onClick={() => setIsSearching(false)}
+                  className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
+                  style={{ height: "40px", minWidth: "150px" }} 
                 >
                   <FaTimes className="mr-2" /> Цуцлах
                 </button>
-                
-                {editingApartment ? (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex items-center justify-center px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-sm order-1 sm:order-2"
-                  >
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Шинэчилж байна...
-                      </>
-                    ) : (
-                      <>
-                        <FaSave className="mr-2" /> Шинэчлэх
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex items-center justify-center px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-sm order-1 sm:order-2"
-                  >
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Хайж байна...
-                      </>
-                    ) : (
-                      <>
-                        <FaSearch className="mr-2" /> Хайх
-                      </>
-                    )}
-                  </button>
-                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center justify-center px-6 py-2.5 bg-[#2D6B9F]/90 text-white rounded-lg hover:bg-[#2D6B9F] transition font-medium shadow-sm order-1 sm:order-2"
+                  style={{ height: "40px", minWidth: "150px" }} 
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin mr-2 h-4 w-4  text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Хайж байна...
+                    </>
+                  ) : (
+                    <>
+                      <FaSearch className="mr-2" /> Хайх
+                    </>
+                  )}
+                </button>
               </div>
             </form>
 
@@ -503,42 +457,111 @@ export function Apartment() {
             {isSearching && searchResults.length > 0 && (
               <div className="mt-8">
                 <h3 className="font-bold text-lg mb-3 flex items-center">
-                  <FaInfoCircle className="mr-2 text-blue-500" /> Хайлтын үр дүн ({searchResults.length})
+                  <FaInfoCircle className="mr-2 text-[#2D6B9F]" /> 
+                  <span className="text-gray-600">Хайлтын үр дүн ({searchResults.length})</span>
                 </h3>
                 <div className="overflow-x-auto bg-gray-50 rounded-lg shadow">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хот</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дүүрэг</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Хороо</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Хороолол</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Байр</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тоот</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Үйлдэл</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Хот
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Дүүрэг
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Хороо
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Хороолол
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Байр
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Тоот
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                          Үйлдэл
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {searchResults.map((apartment) => (
+                      {paginate(searchResults, currentPage, 10).map((apartment) => (
                         <tr key={apartment.ApartmentId} className="hover:bg-blue-50 transition">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{apartment.City}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{apartment.District}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 hidden md:table-cell">{apartment.SubDistrict}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 hidden lg:table-cell">{apartment.AptName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{apartment.BlckNmbr}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{apartment.UnitNmbr}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">{apartment.City}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">{apartment.District}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center hidden md:table-cell">{apartment.SubDistrict}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center hidden lg:table-cell">{apartment.AptName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">{apartment.BlckNmbr}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">{apartment.UnitNmbr}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center flex justify-center">
                             <button
                               onClick={() => handleSelectApartment(apartment)}
-                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition shadow-sm"
+                              className="w-8 h-8 flex items-center justify-center rounded-full border border-[#2D6B9F] text-[#2D6B9F] hover:bg-[#2D6B9F] hover:text-white" 
+                              title="Сонгох"
                             >
-                              Сонгох
+                              <FaPlus />
                             </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                {/* Pagination for search results */}
+                <div className="flex justify-center mt-4 items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                      currentPage === 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                    } transition font-bold`}
+                    title="Өмнөх"
+                    disabled={currentPage === 1}
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  {Array.from({ length: Math.ceil(searchResults.length / 10) }, (_, index) => index + 1)
+                    .filter((page) => {
+                      const totalPages = Math.ceil(searchResults.length / 10);
+                      return (
+                        page <= 2 || 
+                        page > totalPages - 2 || 
+                        (page >= currentPage - 1 && page <= currentPage + 1) 
+                      );
+                    })
+                    .map((page, index, pages) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && page !== pages[index - 1] + 1 && (
+                          <span className="text-gray-500">...</span>
+                        )}
+                        <button
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                            currentPage === page
+                              ? "bg-[#2D6B9F] text-white"
+                              : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                          } transition`}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  <button
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                      currentPage * 10 >= searchResults.length
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                    } transition font-bold`}
+                    title="Дараах"
+                    disabled={currentPage * 10 >= searchResults.length}
+                  >
+                    <FaChevronRight />
+                  </button>
                 </div>
               </div>
             )}
@@ -562,57 +585,137 @@ export function Apartment() {
           </div>
         )}
 
-        {/* Share Apartment Modal */}
-        {isSharing && (
+        {/* Apartment Selection Modal */}
+        {isSelectingApartment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
               <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
-                <FaShare className="mr-2 text-blue-600" /> Байр хуваалцах
+                <FaInfoCircle className="mr-2 text-[#2D6B9F]" /> Байр сонгох
               </h3>
-              
-              <form onSubmit={handleShareSubmit}>
+              <form onSubmit={handleApartmentSelectionSubmit}>
                 <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2">И-мэйл</label>
+                  <label className="block text-gray-600 font-medium mb-2">Байрны код</label>
                   <input
-                    type="email"
-                    name="email"
-                    value={shareData.email}
-                    onChange={handleShareInputChange}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Хуваалцах хэрэглэгчийн имэйл хаяг"
+                    type="text"
+                    name="apartmentCode"
+                    value={apartmentSelection.apartmentCode}
+                    onChange={(e) =>
+                      setApartmentSelection((prev) => ({ ...prev, apartmentCode: e.target.value }))
+                    }
+                    className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                      apartmentSelectionError ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="Байрны код оруулна уу"
                     required
                   />
+                  {apartmentSelectionError && (
+                    <p className="text-red-500 text-sm mt-1">{apartmentSelectionError}</p>
+                  )}
                 </div>
-                
                 <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2">Эрх</label>
+                  <label className="block text-gray-600 font-medium mb-2">Төрөл</label>
                   <select
                     name="apartmentType"
-                    value={shareData.apartmentType}
-                    onChange={handleShareInputChange}
+                    value={apartmentSelection.apartmentType}
+                    onChange={(e) =>
+                      setApartmentSelection((prev) => ({ ...prev, apartmentType: e.target.value }))
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="эзэмшигч">Эзэмшигч</option>
                     <option value="түрээслэгч">Түрээслэгч</option>
                   </select>
                 </div>
-                
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsSelectingApartment(false)}
+                    className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
+                    style={{ height: "40px", minWidth: "150px" }} 
+                  >
+                    Цуцлах
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F] transition"
+                    style={{ height: "40px", minWidth: "150px" }} // Ensure consistent size
+                  >
+                    Сонгох
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Share Modal */}
+        {isSharing && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
+              <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
+                <FaShare className="mr-2 text-[#2D6B9F]" /> Байр хуваалцах
+              </h3>
+              <form onSubmit={handleShareSubmit}>
+                <div className="mb-4">
+                  <label className="block text-gray-600 font-medium mb-2">Имэйл хаяг</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={shareData.email}
+                    onChange={(e) => setShareData({ ...shareData, email: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Хуваалцах хэрэглэгчийн имэйл"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-600 font-medium mb-2">Байрны код</label>
+                  <input
+                    type="text"
+                    name="apartmentCode"
+                    value={shareData.apartmentCode || ""}
+                    onChange={(e) => setShareData({ ...shareData, apartmentCode: e.target.value })}
+                    className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                      shareError ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="Байрны код оруулна уу"
+                    required
+                  />
+                  {shareError && (
+                    <p className="text-red-500 text-sm mt-1">{shareError}</p>
+                  )}
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-600 font-medium mb-2">Төрөл</label>
+                  <select
+                    name="apartmentType"
+                    value={shareData.apartmentType}
+                    onChange={(e) => setShareData({ ...shareData, apartmentType: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="эзэмшигч">Эзэмшигч</option>
+                    <option value="түрээслэгч">Түрээслэгч</option>
+                  </select>
+                </div>
                 <div className="flex justify-end gap-4">
                   <button
                     type="button"
                     onClick={() => setIsSharing(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+                    className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
+                    style={{ height: "40px", minWidth: "150px" }} 
                   >
                     Цуцлах
                   </button>
-                  
                   <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-                  >
-                    Хуваалцах
-                  </button>
+                  type="submit"
+                  disabled={loading}
+                 className="flex items-center justify-center px-6 py-2.5 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F] transition"
+                    style={{ height: "40px", minWidth: "150px" }}
+                          >  
+                   <FaShare className="mr-2" /> Хуваалцах
+                </button>
+
                 </div>
               </form>
             </div>
@@ -620,13 +723,13 @@ export function Apartment() {
         )}
     
         {/* User's Apartments List */}
-        {!showForm && !isSearching && (
+        {!isSearching && (
           <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 max-w-7xl mx-auto mt-6">
-            <h2 className="text-2xl font-bold mb-6 text-[#2D6B9F]">Байрны жагсаалт</h2>
+            <h2 className="text-2xl font-bold mb-6 text-[#2D6B9F]">Байрны бүртгэл</h2>
     
             {loading && !userApartments.length ? (
               <div className="flex justify-center items-center py-12">
-                <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-8 w-8 text-[#2D6B9F]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -651,17 +754,34 @@ export function Apartment() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төрөл</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Код</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хаяг</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Үйлдэл</th>
+                      <th
+                        onClick={() => handleSort('ApartmentType')}
+                        className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                      >
+                        Төрөл {sortConfig.key === 'ApartmentType' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('ApartmentCode')}
+                        className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                      >
+                        Код {sortConfig.key === 'ApartmentCode' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('City')}
+                        className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                      >
+                        Хаяг {sortConfig.key === 'City' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                        Үйлдэл
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {userApartments.map((apartment) => (
+                    {paginate(sortedApartments, currentPage, itemsPerPage).map((apartment) => (
                       <tr key={apartment.ApartmentId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`px-2 inline-flex text-xs text-center leading-5 font-semibold rounded-full ${
                             apartment.ApartmentType === 'эзэмшигч' 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-blue-100 text-blue-800'
@@ -669,11 +789,11 @@ export function Apartment() {
                             {apartment.ApartmentType}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium text-gray-600">
                           {apartment.ApartmentCode}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
+                        <td className="px-6 py-4 text-center">
+                          <div className="text-sm text-gray-600">
                             {apartment.City}, {apartment.District}, {apartment.SubDistrict}
                           </div>
                           <div className="text-sm text-gray-500">
@@ -681,17 +801,10 @@ export function Apartment() {
                             {apartment.UnitNmbr && `, ${apartment.UnitNmbr}`}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEditApartment(apartment)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                            title="Засах"
-                          >
-                            <FaEdit />
-                          </button>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium flex items-center justify-center space-x-4">
                           <button
                             onClick={() => handleShare(apartment)}
-                            className="text-green-600 hover:text-green-900 mr-4"
+                            className="text-green-600 hover:text-green-900"
                             title="Хуваалцах"
                           >
                             <FaShare />
@@ -708,6 +821,59 @@ export function Apartment() {
                     ))}
                   </tbody>
                 </table>
+                {/* Pagination for user's apartments */}
+                <div className="flex justify-center mt-4 items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                      currentPage === 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                    } transition font-bold`}
+                    title="Өмнөх"
+                    disabled={currentPage === 1}
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  {Array.from({ length: Math.ceil(userApartments.length / itemsPerPage) }, (_, index) => index + 1)
+                    .filter((page) => {
+                      const totalPages = Math.ceil(userApartments.length / itemsPerPage);
+                      return (
+                        page <= 2 || // Always show the first two pages
+                        page > totalPages - 2 || // Always show the last two pages
+                        (page >= currentPage - 1 && page <= currentPage + 1) // Pages around the current page
+                      );
+                    })
+                    .map((page, index, pages) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && page !== pages[index - 1] + 1 && (
+                          <span className="text-gray-500">...</span>
+                        )}
+                        <button
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                            currentPage === page
+                              ? "bg-[#2D6B9F] text-white"
+                              : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                          } transition`}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  <button
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                      currentPage * itemsPerPage >= userApartments.length
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                    } transition font-bold`}
+                    title="Дараах"
+                    disabled={currentPage * itemsPerPage >= userApartments.length}
+                  >
+                    <FaChevronRight />
+                  </button>
+                </div>
               </div>
             )}
           </div>

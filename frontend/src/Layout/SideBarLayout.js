@@ -293,14 +293,6 @@ const SidebarLayout = ({ children }) => {
               </NavLink>
             ))}
           </nav>
-
-          <button 
-            onClick={handleLogout}
-            className="mt-auto p-3 rounded-lg hover:bg-blue-50/50 text-gray-600 flex items-center transition-all duration-200 ease-in-out"
-          >
-            <LogOut className="w-5 h-5 text-gray-600" />
-            <span className="ml-3">Гарах</span>
-          </button>
         </div>
       </div>
 

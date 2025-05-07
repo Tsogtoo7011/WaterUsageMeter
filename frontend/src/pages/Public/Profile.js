@@ -205,7 +205,7 @@ export function Profile() {
                   style={{ color: activeTab === "profile" ? "#2D6B9F" : undefined, borderColor: activeTab === "profile" ? "#2D6B9F" : undefined }}
                   onClick={() => setActiveTab("profile")}
                 >
-                  <span className="flex items-center">
+                  <span className="flex items-center hover:text-[#2D6B9F]">
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor"/>
                       <path d="M12 14C7.58172 14 4 17.5817 4 22H20C20 17.5817 16.4183 14 12 14Z" fill="currentColor"/>
@@ -218,7 +218,7 @@ export function Profile() {
                   style={{ color: activeTab === "security" ? "#2D6B9F" : undefined, borderColor: activeTab === "security" ? "#2D6B9F" : undefined }}
                   onClick={() => setActiveTab("security")}
                 >
-                  <span className="flex items-center">
+                  <span className="flex items-center hover:text-[#2D6B9F]">
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M19 11H5V21H19V11Z" fill="currentColor"/>
                       <path d="M17 11V7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7V11" stroke="currentColor" strokeWidth="2"/>
@@ -230,12 +230,20 @@ export function Profile() {
             </div>
             {userData.AdminRight == 0 && (
               <div>
-                <button 
-                  onClick={() => navigate('/user/Profile/Apartment')} 
-                  className="px-4 py-2 border rounded-md text-sm hover:bg-blue-50/50"
-                  style={{ borderColor: "#2D6B9F", color: "#2D6B9F" }}
+                <button
+                  className={`pb-2 px-4 ${activeTab === "apartment" ? "border-b-2" : "text-gray-600"}`}
+                  style={{ color: activeTab === "apartment" ? "#2D6B9F" : undefined, borderColor: activeTab === "apartment" ? "#2D6B9F" : undefined }}
+                  onClick={() => {
+                    setActiveTab("apartment");
+                    navigate('/Profile/Apartment');
+                  }}
                 >
-                  Орон сууц нэмэх
+                  <span className="flex items-center hover:text-[#2D6B9F]">
+                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 10L12 3L21 10V21H3V10Z" fill="currentColor"/>
+                    </svg>
+                    Орон сууц
+                  </span>
                 </button>
               </div>
             )}
@@ -345,7 +353,7 @@ export function Profile() {
                 
                 <form onSubmit={handlePasswordSubmit}>
                   <div className="mb-4">
-                    <label className="block mb-1" style={{ color: "#2D6B9F" }}>Одоогийн нууц үг</label>
+                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Одоогийн нууц үг</label>
                     <div className="relative">
                       <input 
                         type={showCurrentPassword ? "text" : "password"} 
@@ -372,7 +380,7 @@ export function Profile() {
                   </div>
                   
                   <div className="mb-4">
-                    <label className="block mb-1" style={{ color: "#2D6B9F" }}>Шинэ нууц үг</label>
+                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Шинэ нууц үг</label>
                     <div className="relative">
                       <input 
                         type={showNewPassword ? "text" : "password"} 
@@ -402,7 +410,7 @@ export function Profile() {
                   </div>
                   
                   <div className="mb-4">
-                    <label className="block mb-1" style={{ color: "#2D6B9F" }}>Шинэ нууц үг баталгаажуулах</label>
+                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Шинэ нууц үг баталгаажуулах</label>
                     <div className="relative">
                       <input 
                         type={showConfirmPassword ? "text" : "password"} 

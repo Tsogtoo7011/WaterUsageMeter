@@ -19,7 +19,6 @@ import AboutUs from './pages/User/About';
 import MeterCounterDetail from './pages/User/MeterCounterDetails';
 import MeterCounterImport from './pages/User/MeterCounterImport';
 import Apartment from './pages/User/Apartment';
-import NewApartment from './pages/User/NewApartment'
 import MeterCounter from './pages/User/MeterCounter';
 import PaymentInfo from './pages/User/Payment';
 import PaymentDetails from './pages/User/PaymentDetails';
@@ -83,8 +82,7 @@ function App() {
         <Route path="/admin/user" element={<AdminRoute><AdminUser /></AdminRoute>} />
         
         <Route path="/user" element={<Navigate to="/home" replace />} />
-        <Route path="/user/profile/apartment" element={<UserRoute><Apartment /></UserRoute>} />
-        <Route path="/user/profile/apartment/new" element={<UserRoute><NewApartment /></UserRoute>} />
+        <Route path="/profile/apartment" element={<UserRoute><Apartment /></UserRoute>} />
         <Route path="/user/metercounter/details" element={<UserRoute><MeterCounterDetail /></UserRoute>} />
         <Route path="/user/metercounter/import" element={<UserRoute><MeterCounterImport /></UserRoute>} />
         <Route path="/user/about-us" element={<UserRoute><AboutUs /></UserRoute>} />

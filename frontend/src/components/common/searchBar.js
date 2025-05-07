@@ -103,7 +103,7 @@ const SearchBar = ({ routes, isAdmin }) => {
       setSelectedIndex(prev => prev > 0 ? prev - 1 : 0);
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
-      navigateToRoute(searchResults[selectedIndex].path);
+      navigateToRoute(searchResults[selectedIndex]);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setIsSearchFocused(false);
@@ -112,13 +112,18 @@ const SearchBar = ({ routes, isAdmin }) => {
     }
   };
 
-  const saveToRecentSearches = (query, path) => {
-    if (!query.trim()) return;
+  const saveToRecentSearches = (route) => {
+    if (!route) return;
     
-    const newSearch = { query, path, timestamp: Date.now() };
+    const newSearch = { 
+      label: route.label, 
+      path: route.path, 
+      timestamp: Date.now()
+    };
+    
     const updatedSearches = [
       newSearch,
-      ...recentSearches.filter(item => item.query !== query)
+      ...recentSearches.filter(item => item.path !== route.path)
     ].slice(0, 5);
     
     setRecentSearches(updatedSearches);
@@ -130,9 +135,11 @@ const SearchBar = ({ routes, isAdmin }) => {
     localStorage.removeItem('recentSearches');
   };
 
-  const navigateToRoute = (path) => {
-    saveToRecentSearches(searchQuery, path);
-    navigate(path);
+  const navigateToRoute = (route) => {
+    if (!route) return;
+    
+    saveToRecentSearches(route);
+    navigate(route.path);
     setSearchQuery('');
     setSearchResults([]);
     setIsSearchFocused(false);
@@ -170,7 +177,7 @@ const SearchBar = ({ routes, isAdmin }) => {
               setShowSearch(false);
               setSearchQuery('');
             }}
-            className="p-2 mr-2"
+            className="p-2 mr-2 bg-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -192,7 +199,7 @@ const SearchBar = ({ routes, isAdmin }) => {
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-3"
+                className="absolute right-3 top-3 bg-white"
               >
                 <X className="w-4 h-4 text-gray-400" />
               </button>
@@ -255,7 +262,7 @@ const SearchBar = ({ routes, isAdmin }) => {
         return (
           <div 
             key={route.path}
-            onClick={() => navigateToRoute(route.path)}
+            onClick={() => navigateToRoute(route)}
             className={`p-3 hover:bg-blue-50/50 cursor-pointer transition-colors ${
               index === selectedIndex ? 'bg-blue-50' : ''
             }`}
@@ -295,12 +302,12 @@ const SearchBar = ({ routes, isAdmin }) => {
           return (
             <div 
               key={index}
-              onClick={() => navigateToRoute(item.path)}
+              onClick={() => navigate(item.path)}
               className="p-3 hover:bg-blue-50/50 cursor-pointer transition-colors flex items-center"
             >
               <Clock className="w-4 h-4 text-gray-400 mr-3" />
               <div className="flex-1">
-                <div className="font-medium text-gray-800">{item.query}</div>
+                <div className="font-medium text-gray-800">{item.label}</div>
                 <div className="text-sm text-gray-500">{item.path}</div>
               </div>
               <div className="ml-3 text-gray-400">
