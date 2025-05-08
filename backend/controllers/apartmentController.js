@@ -144,11 +144,11 @@ exports.addApartmentByCode = async (req, res) => {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
 
-    const { apartmentId, apartmentCode, apartmentType } = req.body;
+    const { apartmentId, apartmentCode } = req.body;
 
-    if (!apartmentId || !apartmentCode || !apartmentType) {
+    if (!apartmentId || !apartmentCode) {
       await connection.rollback();
-      return res.status(400).json({ message: 'Байрны ID, код болон төрөл заавал шаардлагатай' });
+      return res.status(400).json({ message: 'Байрны ID болон код заавал шаардлагатай' });
     }
 
     const [apartment] = await connection.execute(
@@ -169,7 +169,7 @@ exports.addApartmentByCode = async (req, res) => {
       return res.status(409).json({ message: 'Энэ байр аль хэдийн таны бүртгэлд нэмэгдсэн байна' });
     }
 
-    const userRole = apartmentType === 'эзэмшигч' ? 0 : 1;
+    const userRole = 0; // Always set to "эзэмшигч"
 
     await connection.execute(
       'INSERT INTO ApartmentUserAdmin (ApartmentId, UserId, UserRole) VALUES (?, ?, ?)',
@@ -190,7 +190,7 @@ exports.addApartmentByCode = async (req, res) => {
 
     const formattedApartment = {
       ...addedApartment[0],
-      ApartmentType: addedApartment[0].UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
+      ApartmentType: 'эзэмшигч'
     };
 
     res.status(201).json(formattedApartment);
@@ -288,10 +288,10 @@ exports.createApartment = async (req, res) => {
 exports.deleteApartment = async (req, res) => {
   const apartmentId = req.params.id;
   const connection = await pool.getConnection();
-
+  
   try {
     await connection.beginTransaction();
-
+    
     // Verify user exists
     const [users] = await connection.execute(
       'SELECT UserId FROM UserAdmin WHERE UserId = ?',
@@ -301,7 +301,7 @@ exports.deleteApartment = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
-
+    
     // Verify user has access to this apartment
     const [userApartment] = await connection.execute(
       `SELECT aua.ApartmentId 
@@ -309,45 +309,30 @@ exports.deleteApartment = async (req, res) => {
        WHERE aua.ApartmentId = ? AND aua.UserId = ?`,
       [apartmentId, req.userData.userId]
     );
-    
+        
     if (!userApartment.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
-
-    // Remove this user's association with the apartment
+    
+    // Remove this user's association with the apartment (only)
     await connection.execute(
       'DELETE FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
       [apartmentId, req.userData.userId]
     );
-
-    // Check if any other users are still associated with this apartment
-    const [remainingUsers] = await connection.execute(
-      'SELECT COUNT(*) AS count FROM ApartmentUserAdmin WHERE ApartmentId = ?',
-      [apartmentId]
-    );
-
-    // If no other users are associated, delete the apartment completely
-    if (remainingUsers[0].count === 0) {
-      await connection.execute(
-        'DELETE FROM Apartment WHERE ApartmentId = ?',
-        [apartmentId]
-      );
-    }
-
+    
     await connection.commit();
-    res.json({ 
+    res.json({
       success: true,
-      message: 'Байрны мэдээлэл амжилттай устгагдлаа', 
-      isFullyDeleted: remainingUsers[0].count === 0
+      message: 'Байрны мэдээлэл амжилттай хасагдлаа',
     });
   } catch (error) {
     await connection.rollback();
-    handleError(res, error, 'Байрны мэдээлэл устгах');
+    handleError(res, error, 'Байрны мэдээлэл хасах');
   } finally {
     connection.release();
   }
-};
+}; 
 exports.updateApartment = async (req, res) => {
   const apartmentId = req.params.id;
   const connection = await pool.getConnection();
@@ -452,12 +437,12 @@ exports.getApartmentById = async (req, res) => {
     if (!users.length) {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
-
+    
     const apartmentId = req.params.id;
-
+    
     const [apartments] = await pool.execute(
-      `SELECT a.ApartmentId, aua.UserRole, a.ApartmentCode as ApartmentCode, a.CityName as City, 
-              a.DistrictName as District, a.SubDistrictName as SubDistrict, a.ApartmentName as AptName, 
+      `SELECT a.ApartmentId, aua.UserRole, a.ApartmentCode as ApartmentCode, a.CityName as City,
+              a.DistrictName as District, a.SubDistrictName as SubDistrict, a.ApartmentName as AptName,
               a.BlockNumber as BlckNmbr, a.UnitNumber, a.UnitNumber as UnitNmbr
        FROM Apartment a
        JOIN ApartmentUserAdmin aua ON a.ApartmentId = aua.ApartmentId
@@ -467,12 +452,12 @@ exports.getApartmentById = async (req, res) => {
     if (!apartments.length) {
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
-
+    
     const formattedApartment = {
       ...apartments[0],
-      ApartmentType: apartments[0].UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
+      ApartmentType: apartments[0].UserRole === 0 ? 'Эзэмшигч' : 'Түрээслэгч'
     };
-
+    
     res.json(formattedApartment);
   } catch (error) {
     handleError(res, error, 'Байрны мэдээлэл авах');
@@ -496,7 +481,7 @@ exports.shareApartment = async (req, res) => {
     }
 
     const [apartments] = await connection.execute(
-      `SELECT a.ApartmentId, a.ApartmentCode FROM Apartment a
+      `SELECT a.ApartmentId, a.ApartmentCode, aua.UserRole FROM Apartment a
        JOIN ApartmentUserAdmin aua ON a.ApartmentId = aua.ApartmentId
        WHERE a.ApartmentId = ? AND aua.UserId = ?`,
       [apartmentId, req.userData.userId]
@@ -504,6 +489,12 @@ exports.shareApartment = async (req, res) => {
     if (!apartments.length) {
       await connection.rollback();
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
+    }
+
+    // Check if user is a renter (UserRole = 1)
+    if (apartments[0].UserRole === 1) {
+      await connection.rollback();
+      return res.status(403).json({ message: 'Түрээслэгч байр хуваалцах эрхгүй байна' });
     }
 
     if (apartments[0].ApartmentCode !== parseInt(apartmentCode)) {
@@ -549,6 +540,58 @@ exports.shareApartment = async (req, res) => {
   } catch (error) {
     await connection.rollback();
     handleError(res, error, 'Байр хуваалцах');
+  } finally {
+    connection.release();
+  }
+};
+
+exports.getApartmentUsers = async (req, res) => {
+  const apartmentId = req.params.id;
+
+  try {
+    const [users] = await pool.execute(
+      `SELECT ua.UserId, ua.Email 
+       FROM UserAdmin ua
+       JOIN ApartmentUserAdmin aua ON ua.UserId = aua.UserId
+       WHERE aua.ApartmentId = ?`,
+      [apartmentId]
+    );
+
+    res.json(users);
+  } catch (error) {
+    handleError(res, error, 'Байрны хэрэглэгчдийн мэдээлэл авах');
+  }
+};
+
+exports.removeUserFromApartment = async (req, res) => {
+  const { id: apartmentId, userId } = req.params;
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [apartments] = await connection.execute(
+      `SELECT aua.UserRole 
+       FROM ApartmentUserAdmin aua
+       WHERE aua.ApartmentId = ? AND aua.UserId = ?`,
+      [apartmentId, req.userData.userId]
+    );
+
+    if (!apartments.length || apartments[0].UserRole !== 0) {
+      await connection.rollback();
+      return res.status(403).json({ message: 'Та зөвхөн эзэмшигчийн хувьд хэрэглэгчийг хасах боломжтой' });
+    }
+
+    await connection.execute(
+      'DELETE FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
+      [apartmentId, userId]
+    );
+
+    await connection.commit();
+    res.json({ message: 'Хэрэглэгч амжилттай хасагдлаа' });
+  } catch (error) {
+    await connection.rollback();
+    handleError(res, error, 'Хэрэглэгчийг байраас хасах');
   } finally {
     connection.release();
   }

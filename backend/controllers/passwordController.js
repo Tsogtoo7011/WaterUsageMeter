@@ -118,15 +118,13 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Одоогийн болон шинэ нууц үг оруулна уу' });
     }
     
-    // Validate password strength
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        message: 'Нууц үг доод тал нь 6 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой'
+        message: 'Нууц үг доод тал нь 8 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой'
       });
     }
     
-    // Get current user
     const [users] = await pool.execute(
       'SELECT * FROM UserAdmin WHERE UserId = ?',
       [userId]

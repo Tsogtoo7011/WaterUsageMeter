@@ -1,4 +1,4 @@
-;import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FaTrash, FaShare, FaPlus, FaTimes, FaSearch, FaInfoCircle, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
@@ -16,7 +16,7 @@ export function Apartment() {
   const [userApartments, setUserApartments] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [apiError, setApiError] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -38,7 +38,11 @@ export function Apartment() {
     apartmentCode: "",
   });
   const [isSharing, setIsSharing] = useState(false);
-  const [shareError, setShareError] = useState(null); 
+  const [shareError, setShareError] = useState(null);
+
+  const [apartmentUsers, setApartmentUsers] = useState([]);
+  const [isViewingUsers, setIsViewingUsers] = useState(false);
+  const [selectedApartment, setSelectedApartment] = useState(null);
 
   const API_URL = "/user/Profile/Apartment"; 
 
@@ -61,7 +65,7 @@ export function Apartment() {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [notification]); 
+  }, [notification]);
 
   const handleVerificationSuccess = () => {
     setUser(prev => ({
@@ -73,13 +77,13 @@ export function Apartment() {
 
   const fetchUserApartments = async () => {
     setLoading(true);
-    setError(null);
+    setApiError(null);
     try {
       const response = await api.get(API_URL);
       setUserApartments(response.data);
     } catch (error) {
       console.error("Error fetching user apartments:", error);
-      setError(error.response?.data?.message || "Байрны мэдээлэл авах явцад алдаа гарлаа");
+      setApiError(error.response?.data?.message || "Байрны мэдээлэл авах явцад алдаа гарлаа");
     } finally {
       setLoading(false);
     }
@@ -96,16 +100,16 @@ export function Apartment() {
   const handleApartmentSearch = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setApiError(null);
     try {
       const response = await api.get(`${API_URL}/search`, {
         params: searchCriteria
       });
       setSearchResults(response.data);
       setIsSearching(true);
-    } catch (error) {
-      console.error("Error searching apartments:", error);
-      setError(error.response?.data?.message || "Байрны хайлтын явцад алдаа гарлаа");
+    } catch (err) {
+      console.error("Error searching apartments:", err);
+      setApiError(err.response?.data?.message || "Байрны хайлтын явцад алдаа гарлаа");
     } finally {
       setLoading(false);
     }
@@ -124,23 +128,26 @@ export function Apartment() {
     e.preventDefault();
     setLoading(true);
     setApartmentSelectionError(null); 
+
     try {
       const response = await api.post(`${API_URL}/add-by-code`, {
         apartmentId: apartmentSelection.apartmentId,
         apartmentCode: apartmentSelection.apartmentCode,
         apartmentType: apartmentSelection.apartmentType,
       });
+      
       setUserApartments([...userApartments, response.data]);
       setIsSelectingApartment(false);
       setApartmentSelection({ apartmentId: null, apartmentCode: "", apartmentType: "түрээслэгч" });
       showNotification("Байр амжилттай сонгогдлоо", "success");
-    } catch (error) {
-      console.error("Error selecting apartment:", error);
-      if (error.response?.data?.code === "INVALID_CODE") {
-        setApartmentSelectionError("Байрны код буруу байна. Зөв код оруулна уу.");
-      } else {
-        setApartmentSelectionError(error.response?.data?.message || "Байр сонгох явцад алдаа гарлаа");
-      }
+      
+    } catch (err) {
+      console.error("Error selecting apartment:", err);
+      const errorMessage = err.response?.data?.message || 
+                          (err.response?.data?.code === "INVALID_CODE" 
+                            ? "Байрны код буруу байна. Зөв код оруулна уу." 
+                            : "Байр сонгох явцад алдаа гарлаа");
+      setApartmentSelectionError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -156,12 +163,53 @@ export function Apartment() {
       await api.delete(`${API_URL}/${apartmentId}`);
       setUserApartments(userApartments.filter(apt => apt.ApartmentId !== apartmentId));
       showNotification("Байрны мэдээлэл амжилттай устгагдлаа", "success");
-    } catch (error) {
-      console.error("Error deleting apartment:", error);
-      setError(error.response?.data?.message || "Байрны мэдээлэл устгах явцад алдаа гарлаа");
+    } catch (err) {
+      console.error("Error deleting apartment:", err);
+      setApiError(err.response?.data?.message || "Байрны мэдээлэл устгах явцад алдаа гарлаа");
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchApartmentUsers = async (apartmentId) => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      const response = await api.get(`${API_URL}/${apartmentId}/users`);
+      setApartmentUsers(response.data);
+      setSelectedApartment(apartmentId);
+      setIsViewingUsers(true);
+    } catch (err) {
+      console.error("Error fetching apartment users:", err);
+      setApiError(err.response?.data?.message || "Байрны хэрэглэгчдийн мэдээлэл авах явцад алдаа гарлаа");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveUser = async (userId) => {
+    if (!window.confirm("Та энэ хэрэглэгчийг байраас хасахдаа итгэлтэй байна уу?")) {
+      return;
+    }
+
+    setLoading(true);
+    setApiError(null);
+    try {
+      await api.delete(`${API_URL}/${selectedApartment}/users/${userId}`);
+      setApartmentUsers(apartmentUsers.filter(user => user.UserId !== userId));
+      showNotification("Хэрэглэгч амжилттай хасагдлаа", "success");
+    } catch (err) {
+      console.error("Error removing user from apartment:", err);
+      setApiError(err.response?.data?.message || "Хэрэглэгчийг байраас хасах явцад алдаа гарлаа");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseUsersModal = () => {
+    setIsViewingUsers(false);
+    setApartmentUsers([]);
+    setSelectedApartment(null);
   };
 
   // Share functions
@@ -178,31 +226,32 @@ export function Apartment() {
   const handleShareSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setShareError(null); // Clear previous share errors
+    setShareError(null);
+    setApiError(null);
+    
     try {
-      // Validate apartment code before sharing
-      const validationResponse = await api.post(`${API_URL}/validate-code`, {
-        apartmentId: shareData.apartmentId,
-        apartmentCode: shareData.apartmentCode,
-      });
-
-      if (!validationResponse.data.isValid) {
-        setShareError("Байрны код буруу байна. Зөв код оруулна уу.");
-        return;
-      }
-
-      await api.post(`${API_URL}/share`, shareData);
+      const response = await api.post(`${API_URL}/share`, shareData);
       setIsSharing(false);
       setShareData({
         apartmentId: null,
         email: "",
         apartmentType: "түрээслэгч",
         apartmentCode: "",
-      });Имэйл
+      });
       showNotification("Байр амжилттай хуваалцлаа", "success");
-    } catch (error) {
-      console.error("Error sharing apartment:", error);
-      setShareError(error.response?.data?.message || "Байрны код эсвэл имэйл хаяг буруу байна");
+      
+    } catch (err) {
+      console.error("Error sharing apartment:", err);
+      
+      if (err.response?.data?.code === "INVALID_CODE") {
+        setShareError("Байрны код буруу байна. Зөв код оруулна уу.");
+      } else if (err.response?.data?.code === "USER_NOT_FOUND") {
+        setShareError("Хэрэглэгч олдсонгүй. Имэйл хаягийг шалгана уу.");
+      } else if (err.response?.data?.code === "ALREADY_SHARED") {
+        setShareError("Энэ байр аль хэдийн энэ хэрэглэгчтэй хуваалцсан байна");
+      } else {
+        setApiError(err.response?.data?.message || "Байр хуваалцах явцад алдаа гарлаа");
+      }
     } finally {
       setLoading(false);
     }
@@ -217,6 +266,14 @@ export function Apartment() {
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
     }));
+  };
+
+  const handleCloseModal = () => {
+    setIsSelectingApartment(false);
+    setIsSharing(false);
+    setApartmentSelectionError(null);
+    setShareError(null);
+    setApiError(null);
   };
 
   const sortedApartments = [...userApartments].sort((a, b) => {
@@ -294,7 +351,7 @@ export function Apartment() {
         )}
 
         {/* Error Message */}
-        {error && (
+        {apiError && !isSharing && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow max-w-7xl mx-auto">
             <div className="flex">
               <div className="flex-shrink-0">
@@ -303,7 +360,7 @@ export function Apartment() {
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium">{error}</p>
+                <p className="text-sm font-medium">{apiError}</p>
               </div>
             </div>
           </div>
@@ -599,9 +656,7 @@ export function Apartment() {
                     type="text"
                     name="apartmentCode"
                     value={apartmentSelection.apartmentCode}
-                    onChange={(e) =>
-                      setApartmentSelection((prev) => ({ ...prev, apartmentCode: e.target.value }))
-                    }
+                    onChange={(e) => setApartmentSelection({...apartmentSelection, apartmentCode: e.target.value})}
                     className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
                       apartmentSelectionError ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-blue-500"
                     }`}
@@ -612,24 +667,10 @@ export function Apartment() {
                     <p className="text-red-500 text-sm mt-1">{apartmentSelectionError}</p>
                   )}
                 </div>
-                <div className="mb-4">
-                  <label className="block text-gray-600 font-medium mb-2">Төрөл</label>
-                  <select
-                    name="apartmentType"
-                    value={apartmentSelection.apartmentType}
-                    onChange={(e) =>
-                      setApartmentSelection((prev) => ({ ...prev, apartmentType: e.target.value }))
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="эзэмшигч">Эзэмшигч</option>
-                    <option value="түрээслэгч">Түрээслэгч</option>
-                  </select>
-                </div>
                 <div className="flex justify-end gap-4">
                   <button
                     type="button"
-                    onClick={() => setIsSelectingApartment(false)}
+                    onClick={handleCloseModal}
                     className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
                     style={{ height: "40px", minWidth: "150px" }} 
                   >
@@ -698,26 +739,68 @@ export function Apartment() {
                     <option value="түрээслэгч">Түрээслэгч</option>
                   </select>
                 </div>
+                {apiError && (
+                  <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
+                    <p className="text-sm">{apiError}</p>
+                  </div>
+                )}
                 <div className="flex justify-end gap-4">
                   <button
                     type="button"
-                    onClick={() => setIsSharing(false)}
-                    className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
-                    style={{ height: "40px", minWidth: "150px" }} 
+                    onClick={handleCloseModal}
+                    className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium"
+                    style={{ height: "40px", minWidth: "150px" }}
                   >
                     Цуцлах
                   </button>
                   <button
-                  type="submit"
-                  disabled={loading}
-                 className="flex items-center justify-center px-6 py-2.5 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F] transition"
+                    type="submit"
+                    disabled={loading}
+                    className="flex items-center justify-center px-6 py-2.5 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F] transition"
                     style={{ height: "40px", minWidth: "150px" }}
-                          >  
-                   <FaShare className="mr-2" /> Хуваалцах
-                </button>
-
+                  >
+                    <FaShare className="mr-2" /> Хуваалцах
+                  </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Apartment Users Modal */}
+        {isViewingUsers && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
+              <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
+                <FaInfoCircle className="mr-2 text-[#2D6B9F]" /> Байрны хэрэглэгчид
+              </h3>
+              {apartmentUsers.length > 0 ? (
+                <ul className="mb-4">
+                  {apartmentUsers.map((user) => (
+                    <li key={user.UserId} className="flex justify-between items-center mb-2">
+                      <span>{user.Email}</span>
+                      <button
+                        onClick={() => handleRemoveUser(user.UserId)}
+                        className="text-red-600 hover:text-red-900 text-sm"
+                      >
+                        Хасах
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">Хэрэглэгчид олдсонгүй.</p>
+              )}
+              <div className="flex justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={handleCloseUsersModal}
+                  className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium"
+                  style={{ height: "40px", minWidth: "150px" }}
+                >
+                  Хаах
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -808,6 +891,13 @@ export function Apartment() {
                             title="Хуваалцах"
                           >
                             <FaShare />
+                          </button>
+                          <button
+                            onClick={() => fetchApartmentUsers(apartment.ApartmentId)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Хэрэглэгчид"
+                          >
+                            <FaInfoCircle />
                           </button>
                           <button
                             onClick={() => handleDeleteApartment(apartment.ApartmentId)}

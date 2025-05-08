@@ -20,5 +20,7 @@ router.put('/profile/apartment/:id', authMiddleware.verifiedOnly, apartmentContr
 router.delete('/profile/apartment/:id', authMiddleware.verifiedOnly, apartmentController.deleteApartment);
 router.get('/profile/apartment/:id', apartmentController.getApartmentById);
 router.post('/profile/apartment/share', authMiddleware.verifiedOnly, apartmentController.shareApartment);
+router.get('/profile/apartment/:id/users', authMiddleware.verifiedOnly, apartmentController.getApartmentUsers);
+router.delete('/profile/apartment/:id/users/:userId', authMiddleware.verifiedOnly, apartmentController.removeUserFromApartment);
 
 module.exports = router;
