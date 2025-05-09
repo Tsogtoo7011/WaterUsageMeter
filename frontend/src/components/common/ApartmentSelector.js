@@ -1,7 +1,7 @@
 import React from 'react';
 import { Home } from 'lucide-react';
 
-const ApartmentSelector = ({ apartments, selectedApartmentId, onChange }) => {
+const ApartmentSelector = ({ apartments, selectedApartment, onChange }) => {
   if (!apartments || apartments.length === 0) {
     return (
       <div className="text-yellow-600">
@@ -22,14 +22,14 @@ const ApartmentSelector = ({ apartments, selectedApartmentId, onChange }) => {
       </div>
       <select
         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={selectedApartmentId || ''}
+        value={selectedApartment || ''}
         onChange={handleChange}
         required
       >
-        <option value="">-- Select an apartment --</option>
+        <option value=""disabled>-- Select an apartment --</option>
         {apartments.map((apartment) => (
           <option key={apartment.id} value={apartment.id}>
-            {apartment.displayName}
+            {apartment.displayName || apartment.ApartmentName || `Apartment #${apartment.id}`}
           </option>
         ))}
       </select>

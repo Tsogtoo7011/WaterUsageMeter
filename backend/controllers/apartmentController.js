@@ -491,10 +491,9 @@ exports.shareApartment = async (req, res) => {
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
 
-    // Check if user is a renter (UserRole = 1)
-    if (apartments[0].UserRole === 1) {
+    if (apartments[0].UserRole !== 0) {
       await connection.rollback();
-      return res.status(403).json({ message: 'Түрээслэгч байр хуваалцах эрхгүй байна' });
+      return res.status(403).json({ message: 'Зөвхөн эзэмшигч байр хуваалцах эрхтэй' });
     }
 
     if (apartments[0].ApartmentCode !== parseInt(apartmentCode)) {
@@ -549,15 +548,43 @@ exports.getApartmentUsers = async (req, res) => {
   const apartmentId = req.params.id;
 
   try {
+    // First check if requesting user exists
     const [users] = await pool.execute(
-      `SELECT ua.UserId, ua.Email 
-       FROM UserAdmin ua
-       JOIN ApartmentUserAdmin aua ON ua.UserId = aua.UserId
+      'SELECT UserId FROM UserAdmin WHERE UserId = ?',
+      [req.userData.userId]
+    );
+    
+    if (!users.length) {
+      return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
+    }
+
+    // Check if requesting user is the owner of this apartment
+    const [ownerCheck] = await pool.execute(
+      `SELECT aua.UserRole 
+       FROM ApartmentUserAdmin aua
+       WHERE aua.ApartmentId = ? AND aua.UserId = ?`,
+      [apartmentId, req.userData.userId]
+    );
+
+    if (!ownerCheck.length || ownerCheck[0].UserRole !== 0) {
+      return res.status(403).json({ message: 'Зөвхөн эзэмшигч хэрэглэгчдийн жагсаалтыг харах боломжтой' });
+    }
+
+    // Get all users associated with this apartment
+    const [apartmentUsers] = await pool.execute(
+      `SELECT ua.UserId, ua.Username, ua.Firstname, ua.Lastname, ua.Email, aua.UserRole
+       FROM ApartmentUserAdmin aua
+       JOIN UserAdmin ua ON aua.UserId = ua.UserId
        WHERE aua.ApartmentId = ?`,
       [apartmentId]
     );
 
-    res.json(users);
+    const formattedUsers = apartmentUsers.map(user => ({
+      ...user,
+      UserType: user.UserRole === 0 ? 'эзэмшигч' : 'түрээслэгч'
+    }));
+
+    res.json(formattedUsers);
   } catch (error) {
     handleError(res, error, 'Байрны хэрэглэгчдийн мэдээлэл авах');
   }

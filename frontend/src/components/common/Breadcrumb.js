@@ -37,14 +37,12 @@ const Breadcrumb = () => {
     return nameMap[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
   };
 
-  // Get correct URL for navigation
   const getBreadcrumbUrl = (index) => {
     const segments = pathnames.slice(0, index + 1);
     
     return `/${segments.join('/')}`;
   };
 
-  // Handle breadcrumb click with navigation
   const handleBreadcrumbClick = (url, e) => {
     e.preventDefault();
     navigate(url);

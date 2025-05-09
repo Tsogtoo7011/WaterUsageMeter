@@ -43,6 +43,8 @@ export function Apartment() {
   const [apartmentUsers, setApartmentUsers] = useState([]);
   const [isViewingUsers, setIsViewingUsers] = useState(false);
   const [selectedApartment, setSelectedApartment] = useState(null);
+  const [currentUsersPage, setCurrentUsersPage] = useState(1);
+  const usersPerPage = 5;
 
   const API_URL = "/user/Profile/Apartment"; 
 
@@ -212,6 +214,11 @@ export function Apartment() {
     setSelectedApartment(null);
   };
 
+  const paginateUsers = (array, page, perPage) => {
+    const startIndex = (page - 1) * perPage;
+    return array.slice(startIndex, startIndex + perPage);
+  };
+
   // Share functions
   const handleShare = (apartment) => {
     setShareData({
@@ -309,10 +316,10 @@ export function Apartment() {
           </div>
           <button
             onClick={() => setIsSearching(!isSearching)}
-            className="flex items-center px-3 py-2 border rounded-md text-xs font-medium hover:bg-blue-50/50"
-            style={{ borderColor: "#2D6B9F", color: "#2D6B9F" }} 
+            className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
+            style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }} 
           >
-            <FaPlus className="mr-1" />
+            <FaPlus className="mr-1" size={15} />
             {isSearching ? "Байрны бүртгэл харах" : "Байр хайх"}
           </button>
         </div>
@@ -482,20 +489,20 @@ export function Apartment() {
                 <button
                   type="button"
                   onClick={() => setIsSearching(false)}
-                  className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
-                  style={{ height: "40px", minWidth: "150px" }} 
+                  className="flex items-center justify-center px-4 py-1.5 border border-[#2D6B9F] text-[#2D6B9F] rounded hover:bg-blue-50 transition font-medium text-sm"
+                  style={{ height: "34px", minWidth: "110px", fontSize: "14px" }} 
                 >
-                  <FaTimes className="mr-2" /> Цуцлах
+                  <FaTimes className="mr-2" size={15} /> Цуцлах
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex items-center justify-center px-6 py-2.5 bg-[#2D6B9F]/90 text-white rounded-lg hover:bg-[#2D6B9F] transition font-medium shadow-sm order-1 sm:order-2"
-                  style={{ height: "40px", minWidth: "150px" }} 
+                  className="flex items-center justify-center px-5 py-1.5 bg-[#2D6B9F]/90 text-white rounded hover:bg-[#2D6B9F] transition font-medium shadow-sm order-1 sm:order-2 text-sm"
+                  style={{ height: "34px", minWidth: "110px", fontSize: "14px" }} 
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin mr-2 h-4 w-4  text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -503,7 +510,7 @@ export function Apartment() {
                     </>
                   ) : (
                     <>
-                      <FaSearch className="mr-2" /> Хайх
+                      <FaSearch className="mr-2" size={15} /> Хайх
                     </>
                   )}
                 </button>
@@ -556,10 +563,10 @@ export function Apartment() {
                           <td className="px-6 py-4 whitespace-nowrap text-center flex justify-center">
                             <button
                               onClick={() => handleSelectApartment(apartment)}
-                              className="w-8 h-8 flex items-center justify-center rounded-full border border-[#2D6B9F] text-[#2D6B9F] hover:bg-[#2D6B9F] hover:text-white" 
+                              className="w-8 h-8 flex items-center justify-center rounded-full border border-[#2D6B9F] text-[#2D6B9F] hover:bg-[#2D6B9F] hover:text-white text-sm"
                               title="Сонгох"
                             >
-                              <FaPlus />
+                              <FaPlus size={13} />
                             </button>
                           </td>
                         </tr>
@@ -575,11 +582,11 @@ export function Apartment() {
                       currentPage === 1
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold`}
+                    } transition font-bold text-sm`}
                     title="Өмнөх"
                     disabled={currentPage === 1}
                   >
-                    <FaChevronLeft />
+                    <FaChevronLeft size={13} />
                   </button>
                   {Array.from({ length: Math.ceil(searchResults.length / 10) }, (_, index) => index + 1)
                     .filter((page) => {
@@ -597,7 +604,7 @@ export function Apartment() {
                         )}
                         <button
                           onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
                             currentPage === page
                               ? "bg-[#2D6B9F] text-white"
                               : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
@@ -613,11 +620,11 @@ export function Apartment() {
                       currentPage * 10 >= searchResults.length
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold`}
+                    } transition font-bold text-sm`}
                     title="Дараах"
                     disabled={currentPage * 10 >= searchResults.length}
                   >
-                    <FaChevronRight />
+                    <FaChevronRight size={13} />
                   </button>
                 </div>
               </div>
@@ -671,16 +678,16 @@ export function Apartment() {
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium "
-                    style={{ height: "40px", minWidth: "150px" }} 
+                    className="flex items-center justify-center px-4 py-1.5 border border-[#2D6B9F] text-[#2D6B9F] rounded hover:bg-blue-50 transition font-medium text-sm"
+                    style={{ height: "34px", minWidth: "110px", fontSize: "14px" }} 
                   >
                     Цуцлах
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F] transition"
-                    style={{ height: "40px", minWidth: "150px" }} // Ensure consistent size
+                    className="px-5 py-1.5 bg-[#2D6B9F]/90 text-white rounded hover:bg-[#2D6B9F] transition text-sm"
+                    style={{ height: "34px", minWidth: "110px", fontSize: "14px" }}
                   >
                     Сонгох
                   </button>
@@ -748,18 +755,18 @@ export function Apartment() {
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium"
-                    style={{ height: "40px", minWidth: "150px" }}
+                    className="flex items-center justify-center px-4 py-1.5 border border-[#2D6B9F] text-[#2D6B9F] rounded hover:bg-blue-50 transition font-medium text-sm"
+                    style={{ height: "34px", minWidth: "110px", fontSize: "14px" }}
                   >
                     Цуцлах
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex items-center justify-center px-6 py-2.5 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F] transition"
-                    style={{ height: "40px", minWidth: "150px" }}
+                    className="flex items-center justify-center px-5 py-1.5 bg-[#2D6B9F]/90 text-white rounded hover:bg-[#2D6B9F] transition text-sm"
+                    style={{ height: "34px", minWidth: "110px", fontSize: "14px" }}
                   >
-                    <FaShare className="mr-2" /> Хуваалцах
+                    <FaShare className="mr-2" size={15} /> Хуваалцах
                   </button>
                 </div>
               </form>
@@ -770,33 +777,103 @@ export function Apartment() {
         {/* Apartment Users Modal */}
         {isViewingUsers && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl mx-4"> {/* Increased max width */}
               <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
                 <FaInfoCircle className="mr-2 text-[#2D6B9F]" /> Байрны хэрэглэгчид
               </h3>
               {apartmentUsers.length > 0 ? (
-                <ul className="mb-4">
-                  {apartmentUsers.map((user) => (
-                    <li key={user.UserId} className="flex justify-between items-center mb-2">
-                      <span>{user.Email}</span>
-                      <button
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+  <thead className="bg-gray-50">
+    <tr>
+      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Хэрэглэгчийн нэр
+      </th>
+      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Имэйл
+      </th>
+      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Төрөл
+      </th>
+      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Үйлдэл
+      </th>
+    </tr>
+  </thead>
+  <tbody className="bg-white divide-y divide-gray-200">
+    {paginateUsers(apartmentUsers, currentUsersPage, usersPerPage).map((user) => (
+      <tr key={user.UserId}>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600">{user.Username}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600">{user.Email}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600">
+          {user.UserType === 'эзэмшигч' ? 'Эзэмшигч' : 'Түрээслэгч'}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-center">
+          <div className="flex justify-center w-full">
+                        <button
                         onClick={() => handleRemoveUser(user.UserId)}
-                        className="text-red-600 hover:text-red-900 text-sm"
+                        className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center text-sm"
                       >
-                        Хасах
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                        <FaTrash className="w-4 h-4" />
+                     </button>
+                   </div>
+                  </td>
+                </tr>
+                 ))}
+                </tbody>
+               </table>
+                  {/* Pagination Controls */}
+                  <div className="flex justify-center mt-4 items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentUsersPage((prev) => Math.max(prev - 1, 1))}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                        currentUsersPage === 1
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                      } transition font-bold text-sm`}
+                      title="Өмнөх"
+                      disabled={currentUsersPage === 1}
+                    >
+                      <FaChevronLeft size={13} />
+                    </button>
+                    {Array.from({ length: Math.ceil(apartmentUsers.length / usersPerPage) }, (_, index) => index + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentUsersPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
+                            currentUsersPage === page
+                              ? "bg-[#2D6B9F] text-white"
+                              : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                          } transition`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
+                    <button
+                      onClick={() => setCurrentUsersPage((prev) => prev + 1)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                        currentUsersPage * usersPerPage >= apartmentUsers.length
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                      } transition font-bold text-sm`}
+                      title="Дараах"
+                      disabled={currentUsersPage * usersPerPage >= apartmentUsers.length}
+                    >
+                      <FaChevronRight size={13} />
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <p className="text-gray-600">Хэрэглэгчид олдсонгүй.</p>
               )}
-              <div className="flex justify-end gap-4">
+              <div className="flex justify-end gap-4 mt-4">
                 <button
                   type="button"
                   onClick={handleCloseUsersModal}
-                  className="flex items-center justify-center px-5 py-2.5 border border-[#2D6B9F] text-[#2D6B9F] rounded-lg hover:bg-blue-50 transition font-medium"
-                  style={{ height: "40px", minWidth: "150px" }}
+                  className="flex items-center justify-center px-4 py-1.5 border border-[#2D6B9F] text-[#2D6B9F] rounded hover:bg-blue-50 transition font-medium text-sm"
+                  style={{ height: "34px", minWidth: "110px", fontSize: "14px" }}
                 >
                   Хаах
                 </button>
@@ -885,26 +962,30 @@ export function Apartment() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium flex items-center justify-center space-x-4">
-                          <button
-                            onClick={() => handleShare(apartment)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Хуваалцах"
-                          >
-                            <FaShare />
-                          </button>
-                          <button
-                            onClick={() => fetchApartmentUsers(apartment.ApartmentId)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Хэрэглэгчид"
-                          >
-                            <FaInfoCircle />
-                          </button>
+                          {apartment.ApartmentType === 'эзэмшигч' && (
+                            <>
+                              <button
+                                onClick={() => handleShare(apartment)}
+                                className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center text-sm"
+                                title="Хуваалцах"
+                              >
+                                <FaShare size={15} />
+                              </button>
+                              <button
+                                onClick={() => fetchApartmentUsers(apartment.ApartmentId)}
+                                className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center text-sm"
+                                title="Хэрэглэгчид"
+                              >
+                                <FaInfoCircle size={15} />
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={() => handleDeleteApartment(apartment.ApartmentId)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center text-sm"
                             title="Устгах"
                           >
-                            <FaTrash />
+                            <FaTrash size={15} />
                           </button>
                         </td>
                       </tr>
@@ -919,11 +1000,11 @@ export function Apartment() {
                       currentPage === 1
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold`}
+                    } transition font-bold text-sm`}
                     title="Өмнөх"
                     disabled={currentPage === 1}
                   >
-                    <FaChevronLeft />
+                    <FaChevronLeft size={13} />
                   </button>
                   {Array.from({ length: Math.ceil(userApartments.length / itemsPerPage) }, (_, index) => index + 1)
                     .filter((page) => {
@@ -941,7 +1022,7 @@ export function Apartment() {
                         )}
                         <button
                           onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
                             currentPage === page
                               ? "bg-[#2D6B9F] text-white"
                               : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
@@ -957,11 +1038,11 @@ export function Apartment() {
                       currentPage * itemsPerPage >= userApartments.length
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold`}
+                    } transition font-bold text-sm`}
                     title="Дараах"
                     disabled={currentPage * itemsPerPage >= userApartments.length}
                   >
-                    <FaChevronRight />
+                    <FaChevronRight size={13} />
                   </button>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from "../../utils/api";
 import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import { Search } from 'lucide-react';
 
 export function Feedback() {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -11,6 +12,8 @@ export function Feedback() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(true); 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const navigate = useNavigate();
 
   const feedbackTypeNames = {
@@ -141,7 +144,6 @@ export function Feedback() {
     navigate(`/feedback/${feedbackId}`);
   };
 
-  // Handle verification success - update the user state like in Home.js
   const handleVerificationSuccess = () => {
     setUser(prev => ({
       ...prev,
@@ -151,7 +153,7 @@ export function Feedback() {
   };
 
   const canEditFeedback = (status, feedback) => {
-    if (isAdmin) return false; // Admins don't edit, they respond
+    if (isAdmin) return false; 
     
     const currentUserId = user?.UserId;
     const feedbackUserId = feedback.UserAdminId;
@@ -163,7 +165,7 @@ export function Feedback() {
   };
   
   const canDeleteFeedback = (status, feedback) => {
-    if (isAdmin) return true; // Admins can delete any feedback
+    if (isAdmin) return true; 
     
     const currentUserId = user?.UserId;
     const feedbackUserId = feedback.UserAdminId;
@@ -174,39 +176,55 @@ export function Feedback() {
            Number(currentUserId) === Number(feedbackUserId);
   };
 
+  const filteredFeedbacks = feedbacks.filter(feedback => {
+    const matchesSearch =
+      (feedback.Description && feedback.Description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (feedback.AdminResponse && feedback.AdminResponse.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (feedback.Username && feedback.Username.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (feedbackTypeNames[feedback.Type] && feedbackTypeNames[feedback.Type].toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = statusFilter === 'all' || feedback.Status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Add breadcrumb for navigation instead of the blue menu bar */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 pt-2 sm:px-0">
-          <Breadcrumb />
+    <div className="min-h-screen bg-white">
+      <div className="px-4 sm:px-8 pt-4">
+        <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2D6B9F]">
+              {isAdmin ? 'Санал хүсэлтийн удирдлага' : 'Санал хүсэлтийн жагсаалт'}
+            </h1>
+            <div className="px-4 pt-2 sm:px-0">
+              <Breadcrumb />
+            </div>
+            <p className="text-gray-600 mt-2">
+              {isAdmin
+                ? 'Бүх хэрэглэгчийн санал хүсэлтийг хянах, удирдах'
+                : 'Өөрийн илгээсэн санал, хүсэлт, гомдлын жагсаалт'}
+            </p>
+          </div>
+          <div className="flex space-x-2 self-end sm:self-auto">
+            <button
+              onClick={() => navigate('/home')}
+              className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-gray-100"
+              style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
+            >
+              Буцах
+            </button>
+            {!isAdmin && (
+              <button
+                onClick={handleCreateFeedback}
+                className="flex items-center px-3 py-1.5 bg-[#2D6B9F]/90 border rounded text-sm font-medium hover:bg-[#2D6B9F]"
+                style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "110px", fontSize: "14px" }}
+              >
+                Бичих
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-center p-4">
-          <div className="w-full max-w-5xl p-6 bg-white rounded-lg shadow-lg">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <h1 className="text-2xl md:text-3xl font-bold">
-                {isAdmin ? 'Санал хүсэлтийн удирдлага' : 'Санал хүсэлтийн жагсаалт'}
-              </h1>
-              <div className="flex space-x-2 self-end sm:self-auto">
-                <button
-                  onClick={() => navigate('/home')}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-3 md:px-4 rounded-lg text-sm md:text-base transition duration-200"
-                >
-                  Буцах
-                </button>
-                {!isAdmin && (
-                  <button
-                    onClick={handleCreateFeedback}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 md:px-4 rounded-lg text-sm md:text-base transition duration-200"
-                  >
-                    Бичих
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Display verification reminder if email is not verified */}
+        <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
+          <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-200">
             {user && !isEmailVerified && (
               <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
             )}
@@ -216,11 +234,40 @@ export function Feedback() {
                 <p>{error}</p>
               </div>
             )}
+
+            {/* Search and Filter Bar */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="relative flex-grow">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Санал хүсэлт хайх..."
+                  className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="w-full md:w-auto">
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] text-sm"
+                >
+                  <option value="all">Бүгд</option>
+                  <option value="Хүлээгдэж байна">Хүлээгдэж байна</option>
+                  <option value="Хүлээн авсан">Хүлээн авсан</option>
+                  <option value="Хүлээн авахаас татгалзсан">Хүлээн авахаас татгалзсан</option>
+                </select>
+              </div>
+            </div>
+
             {loading ? (
               <div className="flex justify-center items-center py-10">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               </div>
-            ) : feedbacks.length === 0 ? (
+            ) : filteredFeedbacks.length === 0 ? (
               <div className="bg-gray-100 p-8 rounded-lg text-center">
                 <p className="text-lg text-gray-600">
                   {isAdmin ? 'Одоогоор бүртгэлтэй санал хүсэлт байхгүй байна.' : 
@@ -229,7 +276,8 @@ export function Feedback() {
                 {!isAdmin && (
                   <button
                     onClick={handleCreateFeedback}
-                    className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+                    className="mt-4 bg-[#2D6B9F]/90 border rounded text-white font-medium py-2 px-4 hover:bg-[#2D6B9F] transition duration-200"
+                    style={{ borderColor: "#2D6B9F" }}
                   >
                     Санал хүсэлт үүсгэх
                   </button>
@@ -238,52 +286,51 @@ export function Feedback() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white rounded-lg overflow-hidden">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Дугаар</th>
                       {isAdmin && (
-                        <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хэрэглэгч</th>
+                        <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Хэрэглэгч</th>
                       )}
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төрөл</th>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тайлбар</th>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хариу</th>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төлөв</th>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Огноо</th>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Үйлдэл</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Төрөл</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Тайлбар</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Хариу</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Төлөв</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Огноо</th>
+                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Үйлдэл</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {feedbacks.map((feedback, index) => {
+                    {filteredFeedbacks.map((feedback, index) => {
                       const shouldShowEdit = canEditFeedback(feedback.Status, feedback);
                       const shouldShowDelete = canDeleteFeedback(feedback.Status, feedback);
-                      
                       return (
-                        <tr key={feedback.ApplicationId} className="hover:bg-gray-50">
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">{index + 1}</td>
+                        <tr key={feedback.ApplicationId} className="hover:bg-blue-50 transition group">
+                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900 text-center">{index + 1}</td>
                           {isAdmin && (
-                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900 text-center">
                               {feedback.Username || 'Хэрэглэгч'}
                             </td>
                           )}
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900 text-center">
                             {feedbackTypeNames[feedback.Type] || 'Тодорхойгүй'}
                           </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-900">
+                          <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-900 text-center">
                             <div className="max-w-xs overflow-hidden text-ellipsis">
                               {feedback.Description}
                             </div>
                           </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-900">
+                          <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-900 text-center">
                             <div className="max-w-xs overflow-hidden text-ellipsis">
                               {feedback.AdminResponse || '-'}
                             </div>
                           </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm">
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(feedback.Status)}`}>
+                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-center">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(feedback.Status)}`}>
                               {statusNames[feedback.Status] || 'Тодорхойгүй'}
                             </span>
                           </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900 text-center">
                             {formatDate(feedback.CreatedAt)}
                           </td>
                           <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-center text-xs md:text-sm font-medium">
@@ -294,7 +341,6 @@ export function Feedback() {
                               >
                                 {isAdmin ? "Хянах" : "Дэлгэрэнгүй"}
                               </button>
-                              
                               {shouldShowEdit && (
                                 <button 
                                   onClick={() => handleEditFeedback(feedback.ApplicationId)}
@@ -303,7 +349,6 @@ export function Feedback() {
                                   Засах
                                 </button>
                               )}
-                              
                               {shouldShowDelete && (
                                 <button 
                                   onClick={() => handleDeleteFeedback(feedback.ApplicationId)}

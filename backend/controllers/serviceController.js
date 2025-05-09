@@ -26,6 +26,10 @@ exports.getServiceById = async (req, res) => {
   try {
     const serviceId = req.params.id;
     
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ error: 'Invalid service ID' });
+    }
+    
     const query = `
       SELECT s.*, u.Username, a.ApartmentName, a.UnitNumber, a.BlockNumber,
              ps.Amount, ps.PaidDay, ps.PayDay 
@@ -49,6 +53,9 @@ exports.getServiceById = async (req, res) => {
   }
 };
 
+/**
+ * Create a new service request
+ */
 exports.createServiceRequest = async (req, res) => {
   try {
     const { description, apartmentId } = req.body;
@@ -58,8 +65,12 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(400).json({ message: 'Service description is required' });
     }
     
-    // Validate that the user has access to this apartment
+    // Validate that the user has access to this apartment if apartmentId is provided
     if (apartmentId) {
+      if (isNaN(parseInt(apartmentId))) {
+        return res.status(400).json({ message: 'Invalid apartment ID' });
+      }
+      
       const accessQuery = `
         SELECT * FROM ApartmentUserAdmin 
         WHERE UserId = ? AND ApartmentId = ? AND (EndDate IS NULL OR EndDate > NOW())
@@ -72,9 +83,10 @@ exports.createServiceRequest = async (req, res) => {
       }
     }
     
+    // Create new service request with empty response and default status
     const query = `
-      INSERT INTO Service (UserAdminId, Description, Respond, ApartmentId)
-      VALUES (?, ?, '', ?)
+      INSERT INTO Service (UserAdminId, Description, Respond, ApartmentId, Status)
+      VALUES (?, ?, '', ?, 'Хүлээгдэж буй')
     `;
     
     const [results] = await db.query(query, [userId, description, apartmentId || null]);
@@ -89,32 +101,58 @@ exports.createServiceRequest = async (req, res) => {
   }
 };
 
+/**
+ * Update a service response and optionally create payment record
+ */
 exports.updateServiceResponse = async (req, res) => {
+  const connection = await db.getConnection();
+  
   try {
     const serviceId = req.params.id;
     const { respond, status, amount } = req.body;
     
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ message: 'Invalid service ID' });
+    }
+    
+    // Validate status is one of the allowed enum values
+    const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Явагдаж буй', 'Дууссан', 'Цуцлагдсан'];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ 
+        message: 'Invalid status. Must be one of: ' + allowedStatuses.join(', ')
+      });
+    }
+    
+    await connection.beginTransaction();
+    
+    // Check if service exists
     const checkQuery = 'SELECT * FROM Service WHERE ServiceId = ?';
-    const [checkResults] = await db.query(checkQuery, [serviceId]);
+    const [checkResults] = await connection.query(checkQuery, [serviceId]);
     
     if (checkResults.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
     
-    await db.query('START TRANSACTION');
-    
+    // Update service record
     const updateQuery = `
       UPDATE Service
       SET Respond = ?, Status = ?, SubmitDate = NOW()
       WHERE ServiceId = ?
     `;
     
-    await db.query(updateQuery, [respond, status, serviceId]);
+    await connection.query(
+      updateQuery, 
+      [respond || checkResults[0].Respond, status || checkResults[0].Status, serviceId]
+    );
     
-    // Check if a payment record already exists for this service
+    // Handle payment record if amount is provided
+    let paymentUpdated = false;
+    
     if (amount !== undefined) {
+      // Check if a payment record exists
       const checkPaymentQuery = 'SELECT * FROM PaymentService WHERE ServiceId = ?';
-      const [paymentResults] = await db.query(checkPaymentQuery, [serviceId]);
+      const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
       
       if (paymentResults.length > 0) {
         // Update existing payment record
@@ -124,34 +162,45 @@ exports.updateServiceResponse = async (req, res) => {
           WHERE ServiceId = ?
         `;
         
-        await db.query(updatePaymentQuery, [amount, serviceId]);
+        await connection.query(updatePaymentQuery, [amount, serviceId]);
+        paymentUpdated = true;
       } else if (amount && amount > 0) {
-        // Create new payment record only if one doesn't exist
+        // Create new payment record
         const paymentServiceQuery = `
           INSERT INTO PaymentService (ServiceId, Amount, PaidDay)
           VALUES (?, ?, NULL)
         `;
         
-        await db.query(paymentServiceQuery, [serviceId, amount]);
+        await connection.query(paymentServiceQuery, [serviceId, amount]);
+        paymentUpdated = true;
       }
     }
 
-    await db.query('COMMIT');
+    await connection.commit();
     
     res.status(200).json({ 
       message: 'Service updated successfully',
-      paymentUpdated: amount !== undefined
+      paymentUpdated
     });
   } catch (err) {
-    await db.query('ROLLBACK');
+    await connection.rollback();
     console.error('Error updating service:', err);
     res.status(500).json({ message: 'Failed to update service: ' + err.message });
+  } finally {
+    connection.release();
   }
 };
 
+/**
+ * Get service requests for the current user
+ */
 exports.getUserServiceRequests = async (req, res) => {
   try {
     const userId = req.userData.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
     
     const query = `
       SELECT s.ServiceId, s.Description, s.Respond, s.RequestDate, s.SubmitDate, s.Status,
@@ -173,9 +222,20 @@ exports.getUserServiceRequests = async (req, res) => {
   }
 };
 
+/**
+ * Get service requests filtered by status
+ */
 exports.getServicesByStatus = async (req, res) => {
   try {
     const { status } = req.params;
+    
+    // Validate status is one of the allowed enum values
+    const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Явагдаж буй', 'Дууссан', 'Цуцлагдсан'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ 
+        message: 'Invalid status. Must be one of: ' + allowedStatuses.join(', ')
+      });
+    }
     
     const query = `
       SELECT s.ServiceId, s.Description, s.Respond, s.RequestDate, s.SubmitDate, s.Status, 
@@ -198,9 +258,16 @@ exports.getServicesByStatus = async (req, res) => {
   }
 };
 
+/**
+ * Get apartments accessible to the current user
+ */
 exports.getUserApartments = async (req, res) => {
   try {
     const userId = req.userData.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
     
     const query = `
       SELECT a.ApartmentId as id, 
@@ -220,67 +287,100 @@ exports.getUserApartments = async (req, res) => {
   }
 };
 
+/**
+ * Delete a service request if it doesn't have paid payments
+ */
 exports.deleteServiceRequest = async (req, res) => {
+  const connection = await db.getConnection();
+  
   try {
     const serviceId = req.params.id;
     
-    // Check if there are any related payment records with payment already made
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ message: 'Invalid service ID' });
+    }
+    
+    await connection.beginTransaction();
+    
+    // Check if service exists
+    const checkServiceQuery = 'SELECT * FROM Service WHERE ServiceId = ?';
+    const [serviceResults] = await connection.query(checkServiceQuery, [serviceId]);
+    
+    if (serviceResults.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Service not found' });
+    }
+    
+    // Check if service has paid payments
     const checkPaymentQuery = `
       SELECT * FROM PaymentService WHERE ServiceId = ? AND PaidDay IS NOT NULL
     `;
     
-    const [paymentResults] = await db.query(checkPaymentQuery, [serviceId]);
+    const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
     
     if (paymentResults.length > 0) {
+      await connection.rollback();
       return res.status(400).json({ 
         message: 'Cannot delete service request with associated paid payment records'
       });
     }
     
-    // First delete any unpaid payment records
+    // Delete any unpaid payment records
     const deletePaymentQuery = `
       DELETE FROM PaymentService WHERE ServiceId = ? AND PaidDay IS NULL
     `;
     
-    await db.query(deletePaymentQuery, [serviceId]);
+    await connection.query(deletePaymentQuery, [serviceId]);
     
-    // Then delete the service
-    const query = 'DELETE FROM Service WHERE ServiceId = ?';
+    // Delete the service
+    const deleteServiceQuery = 'DELETE FROM Service WHERE ServiceId = ?';
+    const [deleteResults] = await connection.query(deleteServiceQuery, [serviceId]);
     
-    const [results] = await db.query(query, [serviceId]);
-    
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ message: 'Service not found' });
-    }
+    await connection.commit();
     
     res.status(200).json({ message: 'Service deleted successfully' });
   } catch (err) {
+    await connection.rollback();
     console.error('Error deleting service:', err);
     res.status(500).json({ message: 'Failed to delete service: ' + err.message });
+  } finally {
+    connection.release();
   }
 };
 
-// New function to handle payment for a service
+/**
+ * Process payment for a service request
+ */
 exports.processServicePayment = async (req, res) => {
+  const connection = await db.getConnection();
+  
   try {
     const serviceId = req.params.id;
     const { payDay } = req.body;
     
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ message: 'Invalid service ID' });
+    }
+    
+    await connection.beginTransaction();
+    
     // Check if service exists
     const checkServiceQuery = 'SELECT * FROM Service WHERE ServiceId = ?';
-    const [serviceResults] = await db.query(checkServiceQuery, [serviceId]);
+    const [serviceResults] = await connection.query(checkServiceQuery, [serviceId]);
     
     if (serviceResults.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
-    
-    // Check if payment record exists
+  
     const checkPaymentQuery = 'SELECT * FROM PaymentService WHERE ServiceId = ?';
-    const [paymentResults] = await db.query(checkPaymentQuery, [serviceId]);
+    const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
     
     if (paymentResults.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ message: 'No payment record found for this service' });
     }
+
 
     const updateQuery = `
       UPDATE PaymentService
@@ -288,11 +388,26 @@ exports.processServicePayment = async (req, res) => {
       WHERE ServiceId = ?
     `;
     
-    await db.query(updateQuery, [payDay || null, serviceId]);
+    await connection.query(updateQuery, [payDay || null, serviceId]);
+    
+    if (serviceResults[0].Status !== 'Дууссан') {
+      const updateServiceQuery = `
+        UPDATE Service
+        SET Status = 'Дууссан'
+        WHERE ServiceId = ?
+      `;
+      
+      await connection.query(updateServiceQuery, [serviceId]);
+    }
+    
+    await connection.commit();
     
     res.status(200).json({ message: 'Payment processed successfully' });
   } catch (err) {
+    await connection.rollback();
     console.error('Error processing payment:', err);
     res.status(500).json({ message: 'Failed to process payment: ' + err.message });
+  } finally {
+    connection.release();
   }
 };

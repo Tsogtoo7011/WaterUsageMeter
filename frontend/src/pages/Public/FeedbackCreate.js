@@ -139,23 +139,23 @@ export function FeedbackCreate() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Add breadcrumb for navigation */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 pt-2 sm:px-0">
-          <Breadcrumb />
-        </div>
-        
-        <div className="flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-lg">
-            <div className="flex items-center justify-between mb-6">    
-              <h1 className="text-2xl font-bold text-center">Санал хүсэлт бичих</h1>
+    <div className="min-h-screen bg-white">
+      <div className="px-4 sm:px-8 pt-4">
+        <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2D6B9F]">Санал хүсэлт бичих</h1>
+            <div className="px-4 pt-2 sm:px-0">
+              <Breadcrumb />
             </div>
-            
+            <p className="text-gray-600 mt-2">Санал, хүсэлт, гомдлоо илгээх</p>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
+          <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-200 w-full max-w-2xl mx-auto">
+            {/* Verification reminder */}
             {user && !user.IsVerified && (
               <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
             )}
-            
             {isSubmitted ? (
               <div className="p-6 mb-6 bg-green-100 text-green-700 rounded-lg text-center">
                 <div className="flex justify-center mb-3">
@@ -173,7 +173,6 @@ export function FeedbackCreate() {
                     <p>{submitError}</p>
                   </div>
                 )}
-                
                 <div>
                   <label className="block text-gray-800 font-medium mb-2">
                     Хэлбэр <span className="text-red-400">*</span>
@@ -190,7 +189,6 @@ export function FeedbackCreate() {
                       />
                       <span className="ml-3 text-gray-800">Санал</span>
                     </label>
-                    
                     <label className={`flex items-center p-3 border ${parseInt(formData.feedbackType) === 2 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
                       <input
                         type="radio"
@@ -202,7 +200,6 @@ export function FeedbackCreate() {
                       />
                       <span className="ml-3 text-gray-800">Хүсэлт</span>
                     </label>
-                    
                     <label className={`flex items-center p-3 border ${parseInt(formData.feedbackType) === 3 ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-100`}>
                       <input
                         type="radio"
@@ -216,7 +213,6 @@ export function FeedbackCreate() {
                     </label>
                   </div>
                 </div>
-
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-gray-800 font-medium" htmlFor="description">
@@ -236,29 +232,28 @@ export function FeedbackCreate() {
                   ></textarea>
                   {errors.description && <p className="mt-1 text-sm text-red-400">Дэлгэрэнгүй мэдээлэл заавал шаардлагатай</p>}
                 </div>
-
-                <div className="flex justify-between">
+                <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
                   <button
                     type="button"
                     onClick={handleBackToList}
-                    className="text-gray-600 hover:text-gray-800 font-medium py-3 px-6 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200"
+                    className="flex items-center justify-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-gray-100"
+                    style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
                   >
                     Цуцлах
                   </button>
-                  
                   <button
                     className={`${user?.IsVerified 
-                      ? 'bg-blue-600 hover:bg-blue-700' 
-                      : 'bg-gray-400 cursor-not-allowed'} 
-                      text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center`}
+                      ? 'bg-[#2D6B9F]/90 border text-white hover:bg-[#2D6B9F]'
+                      : 'bg-gray-400 border-gray-400 text-white cursor-not-allowed'} flex items-center justify-center px-3 py-1.5 border rounded text-sm font-medium transition duration-200`}
                     type="submit"
                     disabled={isSubmitting || !user?.IsVerified}
+                    style={{ borderColor: user?.IsVerified ? "#2D6B9F" : "#d1d5db", minWidth: "110px", fontSize: "14px" }}
                   >
                     {isSubmitting ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         Илгээж байна...
                       </>
