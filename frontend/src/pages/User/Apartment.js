@@ -30,6 +30,7 @@ export function Apartment() {
   const [isSelectingApartment, setIsSelectingApartment] = useState(false);
   const [apartmentSelectionError, setApartmentSelectionError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [searchSortConfig, setSearchSortConfig] = useState({ key: null, direction: 'asc' });
 
   const [shareData, setShareData] = useState({
     apartmentId: null,
@@ -68,6 +69,32 @@ export function Apartment() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+  useEffect(() => {
+    if (apiError) {
+      const timer = setTimeout(() => {
+        setApiError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [apiError]);
+
+  useEffect(() => {
+    if (apartmentSelectionError) {
+      const timer = setTimeout(() => {
+        setApartmentSelectionError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [apartmentSelectionError]);
+
+  useEffect(() => {
+    if (shareError) {
+      const timer = setTimeout(() => {
+        setShareError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [shareError]);
 
   const handleVerificationSuccess = () => {
     setUser(prev => ({
@@ -275,6 +302,13 @@ export function Apartment() {
     }));
   };
 
+  const handleSearchSort = (key) => {
+    setSearchSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
   const handleCloseModal = () => {
     setIsSelectingApartment(false);
     setIsSharing(false);
@@ -293,6 +327,18 @@ export function Apartment() {
     }
     
     return sortConfig.direction === 'asc'
+      ? aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true })
+      : bValue.toString().localeCompare(aValue.toString(), undefined, { numeric: true });
+  });
+
+  const sortedSearchResults = [...searchResults].sort((a, b) => {
+    if (!searchSortConfig.key) return 0;
+    const aValue = a[searchSortConfig.key] || '';
+    const bValue = b[searchSortConfig.key] || '';
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return searchSortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+    return searchSortConfig.direction === 'asc'
       ? aValue.toString().localeCompare(bValue.toString(), undefined, { numeric: true })
       : bValue.toString().localeCompare(aValue.toString(), undefined, { numeric: true });
   });
@@ -375,7 +421,7 @@ export function Apartment() {
 
         {/* Search Form */}
         {isSearching && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border border-gray-200 max-w-7xl mx-auto mt-6">
+          <div className="bg-white rounded-lg p-6 mb-8 max-w-7xl mx-auto mt-6">
             <h2 className="text-2xl font-bold mb-6 text-[#2D6B9F] border-b pb-4">
               Байр хайх
             </h2>
@@ -487,14 +533,6 @@ export function Apartment() {
               
               <div className="flex flex-col sm:flex-row justify-end gap-4 border-t pt-4">
                 <button
-                  type="button"
-                  onClick={() => setIsSearching(false)}
-                  className="flex items-center justify-center px-4 py-1.5 border border-[#2D6B9F] text-[#2D6B9F] rounded hover:bg-blue-50 transition font-medium text-sm"
-                  style={{ height: "34px", minWidth: "110px", fontSize: "14px" }} 
-                >
-                  <FaTimes className="mr-2" size={15} /> Цуцлах
-                </button>
-                <button
                   type="submit"
                   disabled={loading}
                   className="flex items-center justify-center px-5 py-1.5 bg-[#2D6B9F]/90 text-white rounded hover:bg-[#2D6B9F] transition font-medium shadow-sm order-1 sm:order-2 text-sm"
@@ -528,23 +566,41 @@ export function Apartment() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
-                          Хот
+                        <th
+                          onClick={() => handleSearchSort('City')}
+                          className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                        >
+                          Хот {searchSortConfig.key === 'City' && (searchSortConfig.direction === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
-                          Дүүрэг
+                        <th
+                          onClick={() => handleSearchSort('District')}
+                          className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                        >
+                          Дүүрэг {searchSortConfig.key === 'District' && (searchSortConfig.direction === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
-                          Хороо
+                        <th
+                          onClick={() => handleSearchSort('SubDistrict')}
+                          className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                        >
+                          Хороо {searchSortConfig.key === 'SubDistrict' && (searchSortConfig.direction === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
-                          Хороолол
+                        <th
+                          onClick={() => handleSearchSort('AptName')}
+                          className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                        >
+                          Хороолол {searchSortConfig.key === 'AptName' && (searchSortConfig.direction === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
-                          Байр
+                        <th
+                          onClick={() => handleSearchSort('BlckNmbr')}
+                          className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                        >
+                          Байр {searchSortConfig.key === 'BlckNmbr' && (searchSortConfig.direction === 'asc' ? '▲' : '▼')}
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
-                          Тоот
+                        <th
+                          onClick={() => handleSearchSort('UnitNmbr')}
+                          className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer"
+                        >
+                          Тоот {searchSortConfig.key === 'UnitNmbr' && (searchSortConfig.direction === 'asc' ? '▲' : '▼')}
                         </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
                           Үйлдэл
@@ -552,7 +608,7 @@ export function Apartment() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {paginate(searchResults, currentPage, 10).map((apartment) => (
+                      {paginate(sortedSearchResults, currentPage, 10).map((apartment) => (
                         <tr key={apartment.ApartmentId} className="hover:bg-blue-50 transition">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">{apartment.City}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">{apartment.District}</td>
@@ -651,7 +707,7 @@ export function Apartment() {
 
         {/* Apartment Selection Modal */}
         {isSelectingApartment && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
               <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
                 <FaInfoCircle className="mr-2 text-[#2D6B9F]" /> Байр сонгох
@@ -699,7 +755,7 @@ export function Apartment() {
 
         {/* Share Modal */}
         {isSharing && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
               <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
                 <FaShare className="mr-2 text-[#2D6B9F]" /> Байр хуваалцах
@@ -776,7 +832,7 @@ export function Apartment() {
 
         {/* Apartment Users Modal */}
         {isViewingUsers && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl mx-4"> {/* Increased max width */}
               <h3 className="text-xl font-bold mb-4 flex items-center text-[#2D6B9F] border-b pb-3">
                 <FaInfoCircle className="mr-2 text-[#2D6B9F]" /> Байрны хэрэглэгчид
@@ -786,16 +842,16 @@ export function Apartment() {
                   <table className="min-w-full divide-y divide-gray-200">
   <thead className="bg-gray-50">
     <tr>
-      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <th className="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">
         Хэрэглэгчийн нэр
       </th>
-      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <th className="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">
         Имэйл
       </th>
-      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <th className="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">
         Төрөл
       </th>
-      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <th className="px-6 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">
         Үйлдэл
       </th>
     </tr>
@@ -884,7 +940,7 @@ export function Apartment() {
     
         {/* User's Apartments List */}
         {!isSearching && (
-          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 max-w-7xl mx-auto mt-6">
+          <div className="bg-white rounded-lg p-6 max-w-7xl mx-auto mt-6">
             <h2 className="text-2xl font-bold mb-6 text-[#2D6B9F]">Байрны бүртгэл</h2>
     
             {loading && !userApartments.length ? (

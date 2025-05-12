@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api";
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search, Check, X, Pencil } from 'lucide-react';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
 import Breadcrumb from '../../components/common/Breadcrumb';
 
@@ -31,7 +31,7 @@ const Service = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   
-  const servicesPerPage = 10;
+  const servicesPerPage = 5;
   
   useEffect(() => {
     fetchCsrfToken();
@@ -437,11 +437,11 @@ const Service = () => {
         {/* Page Header */}
         <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D6B9F]">Үйлчилгээний хүсэлтүүд</h1>
+            <h1 className="text-2xl font-bold text-[#2D6B9F]">Үйлчилгээний жагсаалт</h1>
             <div className="px-4 pt-2 sm:px-0">
               <Breadcrumb />
             </div>
-            <p className="text-gray-600 mt-2">Өөрийн илгээсэн болон хүлээн авсан үйлчилгээний хүсэлтүүдийг удирдах</p>
+            <p className="text-gray-600 mt-2">Өөрийн илгээсэн болон хүлээн авсан үйлчилгээний жагсаалт</p>
           </div>
           <button
             onClick={() => handleOpenModal('create')}
@@ -454,7 +454,6 @@ const Service = () => {
         </div>
 
         <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
-          <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-200">
             {/* Search and Filter Bar */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-grow">
@@ -518,16 +517,16 @@ const Service = () => {
                         </th>
                       )}
                       <th
-                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
-                        onClick={() => handleSort('Status')}
-                      >
-                        Төлөв{renderSortArrow('Status')}
-                      </th>
-                      <th
                         className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider hidden md:table-cell cursor-pointer select-none"
                         onClick={() => handleSort('Amount')}
                       >
                         Дүн{renderSortArrow('Amount')}
+                      </th>
+                      <th
+                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                        onClick={() => handleSort('Status')}
+                      >
+                        Төлөв{renderSortArrow('Status')}
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider sticky right-0 bg-gray-50 z-10">
                         Үйлдэл
@@ -562,15 +561,15 @@ const Service = () => {
                               <div className="truncate max-w-[100px] mx-auto">{service.Username}</div>
                             </td>
                           )}
-                          <td className="px-4 py-4 whitespace-nowrap text-center">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(service.Status)}`}>
-                              {formatStatus(service.Status)}
-                            </span>
-                          </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell text-center">
                             {service.Amount !== null && service.Amount !== undefined
                               ? `$${parseFloat(service.Amount).toFixed(2)}`
                               : '-'}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(service.Status)}`}>
+                              {formatStatus(service.Status)}
+                            </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium sticky right-0 bg-white z-10 border-l border-gray-100 group-hover:bg-blue-50 transition">
                             <div className="flex justify-center gap-1">
@@ -579,7 +578,8 @@ const Service = () => {
                                 className="text-[#2D6B9F] hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
                                 title="Дэлгэрэнгүй"
                               >
-                                <Eye size={16} />
+                                <Eye size={16} className="mr-0.5" />
+                                <span className="sr-only">Дэлгэрэнгүй</span>
                               </button>
                               {isUserAdmin() && (
                                 <>
@@ -588,14 +588,16 @@ const Service = () => {
                                     className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
                                     title="Хариу өгөх"
                                   >
-                                    <MessageSquare size={16} />
+                                    <MessageSquare size={16} className="mr-0.5" />
+                                    <span className="sr-only">Хариу өгөх</span>
                                   </button>
                                   <button
                                     onClick={() => handleDelete(service.ServiceId)}
                                     className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
                                     title="Устгах"
                                   >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={16} className="mr-0.5" />
+                                    <span className="sr-only">Устгах</span>
                                   </button>
                                 </>
                               )}
@@ -606,14 +608,16 @@ const Service = () => {
                                     className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
                                     title="Засах"
                                   >
-                                    <Edit size={16} />
+                                    <Edit size={16} className="mr-0.5" />
+                                    <span className="sr-only">Засах</span>
                                   </button>
                                   <button
                                     onClick={() => handleDelete(service.ServiceId)}
                                     className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
                                     title="Устгах"
                                   >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={16} className="mr-0.5" />
+                                    <span className="sr-only">Устгах</span>
                                   </button>
                                 </>
                               )}
@@ -635,134 +639,144 @@ const Service = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
-                <div className="text-sm text-gray-500">
-                  {indexOfFirstService + 1} - {Math.min(indexOfLastService, filteredServices.length)} / {filteredServices.length} хүсэлт
-                </div>
-                <nav className="flex items-center gap-1">
-                  <button
-                    onClick={() => paginate(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
-                      currentPage === 1
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold text-sm`}
-                    title="Өмнөх"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = index + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = index + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + index;
-                    } else {
-                      pageNum = currentPage - 2 + index;
-                    }
+              <div className="flex justify-center mt-4 items-center space-x-2">
+                <button
+                  onClick={() => paginate(Math.max(1, currentPage - 1))}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                    currentPage === 1
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                  } transition font-bold text-sm`}
+                  title="Өмнөх"
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .filter((page) => {
                     return (
+                      page <= 2 ||
+                      page > totalPages - 2 ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    );
+                  })
+                  .map((page, index, pages) => (
+                    <React.Fragment key={page}>
+                      {index > 0 && page !== pages[index - 1] + 1 && (
+                        <span className="text-gray-500">...</span>
+                      )}
                       <button
-                        key={pageNum}
-                        onClick={() => paginate(pageNum)}
+                        onClick={() => paginate(page)}
                         className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
-                          currentPage === pageNum
+                          currentPage === page
                             ? "bg-[#2D6B9F] text-white"
                             : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
                         } transition`}
                       >
-                        {pageNum}
+                        {page}
                       </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
-                      currentPage === totalPages
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold text-sm`}
-                    title="Дараах"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </nav>
-                <div className="text-sm text-gray-500">
-                  Хуудас {currentPage} / {totalPages}
-                </div>
+                    </React.Fragment>
+                  ))}
+                <button
+                  onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                    currentPage === totalPages
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                  } transition font-bold text-sm`}
+                  title="Дараах"
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
             )}
+            {/* End Pagination */}
           </div>
         </div>
 
-        {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110]">
               <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold text-[#2D6B9F]">
+                    {formMode === 'create' && 'Үйлчилгээний хүсэлт үүсгэх'}
+                    {formMode === 'edit' && (isUserAdmin() ? 'Хариу өгөх' : 'Үйлчилгээний хүсэлт засах')}
+                    {formMode === 'view' && 'Үйлчилгээний дэлгэрэнгүй'}
+                  </h2>
+                  <button
+                    onClick={handleCloseModal}
+                    className="text-gray-400 hover:text-[#2D6B9F]"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
                 {formMode === 'view' ? (
                   <div>
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold mb-1">Тайлбар</h3>
-                      <p className="text-gray-700 max-h-40 overflow-y-auto break-words p-3 bg-gray-50 rounded-md">
+                    <div className="mb-5">
+                      <h3 className="text-sm font-semibold mb-2 text-[#2D6B9F] flex items-center">
+                        <MessageSquare size={16} className="mr-2" />
+                        Тайлбар
+                      </h3>
+                      <div
+                        className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-gray-700 shadow-sm max-h-56 overflow-y-auto break-words leading-relaxed scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50"
+                        style={{ scrollbarWidth: 'thin', maxHeight: '14rem' }}
+                      >
                         {selectedService.Description}
-                      </p>
+                      </div>
                     </div>
-                    
                     {selectedService.Respond && (
-                      <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-1">Хариу</h3>
-                        <p className="text-gray-700 p-3 bg-gray-50 rounded-md">{selectedService.Respond}</p>
+                      <div className="mb-5">
+                        <h3 className="text-sm font-semibold mb-2 text-green-700 flex items-center">
+                          <Check size={18} className="mr-2" />
+                          Хариу
+                        </h3>
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-gray-800 shadow-sm max-h-56 overflow-y-auto break-words leading-relaxed">
+                          {selectedService.Respond}
+                        </div>
                       </div>
                     )}
-
-                    <div className="mb-4">
-                      <h3 className="text-lg font-semibold mb-1">Байр</h3>
-                      <p className="text-gray-700">
-                        {selectedService.ApartmentId ? getApartmentDisplay(selectedService) : 'Тодорхойгүй'}
-                      </p>
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Байр</h3>
+                        <p className="text-gray-700">
+                          {selectedService.ApartmentId ? getApartmentDisplay(selectedService) : 'Тодорхойгүй'}
+                        </p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлөв</h3>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(selectedService.Status)}`}>
+                          {formatStatus(selectedService.Status)}
+                        </span>
+                      </div>
                     </div>
-
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Хүсэлт илгээсэн огноо</h3>
+                        <p className="text-gray-700">{new Date(selectedService.RequestDate).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Сүүлд шинэчилсэн</h3>
+                        <p className="text-gray-700">
+                          {selectedService.SubmitDate ? new Date(selectedService.SubmitDate).toLocaleString() : 'Шинэчлэгдээгүй'}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedService.PaidDay && (
+                      <div className="mb-4">
+                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлбөр төлсөн огноо</h3>
+                        <p className="text-gray-700">{new Date(selectedService.PaidDay).toLocaleString()}</p>
+                      </div>
+                    )}
                     <div className="mb-4">
-                      <h3 className="text-lg font-semibold mb-1">Төлбөр</h3>
+                      <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлбөр</h3>
                       <p className="text-gray-700">
                         {selectedService.Amount !== null && selectedService.Amount !== undefined && !isNaN(parseFloat(selectedService.Amount))
                           ? `$${parseFloat(selectedService.Amount).toFixed(2)}`
                           : '-'}
                       </p>
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <h3 className="text-sm font-semibold mb-1">Төлөв</h3>
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(selectedService.Status)}`}>
-                          {formatStatus(selectedService.Status)}
-                        </span>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-semibold mb-1">Хүсэлт илгээсэн огноо</h3>
-                        <p className="text-gray-700">{new Date(selectedService.RequestDate).toLocaleString()}</p>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-semibold mb-1">Сүүлд шинэчилсэн</h3>
-                        <p className="text-gray-700">
-                          {selectedService.SubmitDate ? new Date(selectedService.SubmitDate).toLocaleString() : 'Шинэчлэгдээгүй'}
-                        </p>
-                      </div>
-                      
-                      {selectedService.PaidDay && (
-                        <div>
-                          <h3 className="text-sm font-semibold mb-1">Төлбөр төлсөн огноо</h3>
-                          <p className="text-gray-700">{new Date(selectedService.PaidDay).toLocaleString()}</p>
-                        </div>
-                      )}
-                    </div>
-                    
                     <div className="flex flex-col sm:flex-row justify-end mt-4 gap-2">
                       {isUserAdmin() && (
                         <button
@@ -776,13 +790,13 @@ const Service = () => {
                               apartmentId: selectedService.ApartmentId || '',
                             });
                           }}
-                          className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
-                          style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
+                          className="flex items-center justify-center px-3 py-1.5 rounded text-sm font-medium bg-[#2D6B9F] text-white hover:bg-[#1e4e73]"
+                          style={{ minWidth: "110px", fontSize: "14px", border: "none" }}
                         >
-                          Хариу өгөх
+                          <Pencil size={15} className="mr-1" />
+                          <span>Хариу өгөх</span>
                         </button>
                       )}
-                      
                       {canUserEditService(selectedService) && (
                         <button
                           onClick={() => {
@@ -795,42 +809,40 @@ const Service = () => {
                               apartmentId: selectedService.ApartmentId || '',
                             });
                           }}
-                          className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
-                          style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
+                          className="flex items-center justify-center px-3 py-1.5 rounded text-sm font-medium bg-[#2D6B9F]/90 text-white hover:bg-[#2D6B9F]"
+                          style={{ minWidth: "110px", fontSize: "14px", border: "none" }}
                         >
-                          Засах
+                          <Pencil size={15} className="mr-1" />
+                          <span>Засварлах</span>
                         </button>
                       )}
-                      
-                      <button
-                        onClick={handleCloseModal}
-                        className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-gray-100"
-                        style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
-                      >
-                        Хаах
-                      </button>
                     </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit}>
                     {formMode === 'create' || (!isUserAdmin() && formMode === 'edit') ? (
                       <>
-                        <div className="mb-4">
-                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                        <div className="mb-5">
+                          <label className="text-[#2D6B9F] text-sm font-bold mb-2 flex items-center">
+                            <MessageSquare size={16} className="mr-2 text-[#2D6B9F]" />
                             Тайлбар
                           </label>
-                          <textarea
-                            name="description"
-                            value={formData.description}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] h-32"
-                            placeholder="Хүсэлтийнхээ дэлгэрэнгүйг бичнэ үү..."
-                            required
-                          />
+                          <div className="relative">
+                            <textarea
+                              name="description"
+                              value={formData.description}
+                              onChange={handleInputChange}
+                              className="w-full p-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-40 shadow-sm bg-blue-50/30 transition-all"
+                              placeholder="Хүсэлтийнхээ дэлгэрэнгүйг бичнэ үү..."
+                              required
+                            />
+                            <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                              {formData.description.length} тэмдэгт
+                            </div>
+                          </div>
                         </div>
-                        
                         <div className="mb-4">
-                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                          <label className="block text-[#2D6B9F] text-sm font-bold mb-2">
                             Байр сонгох
                           </label>
                           {apartments.length > 0 ? (
@@ -846,30 +858,40 @@ const Service = () => {
                       </>
                     ) : isUserAdmin() && formMode === 'edit' ? (
                       <>
-                        <div className="mb-4">
-                          <h3 className="text-lg font-semibold mb-1">Тайлбар</h3>
-                          <p className="text-gray-700 mb-4 p-3 bg-gray-50 rounded-md">
+                        <div className="mb-5">
+                          <h3 className="text-sm font-semibold mb-2 text-[#2D6B9F] flex items-center">
+                            <MessageSquare size={16} className="mr-2" />
+                            Тайлбар
+                          </h3>
+                          <div
+                            className="text-gray-800 mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm max-h-40 overflow-y-auto break-words leading-relaxed scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50"
+                            style={{ scrollbarWidth: 'thin', maxHeight: '10rem' }}
+                          >
                             {formData.description}
-                          </p>
+                          </div>
                         </div>
-
-                        <div className="mb-4">
-                          <label className="block text-gray-700 text-sm font-bold mb-2">
+                        <div className="mb-5">
+                          <label className="text-sm text-green-700 font-bold mb-2 flex items-center">
+                            <Check size={16} className="mr-2" />
                             Хариу
                           </label>
-                          <textarea
-                            name="respond"
-                            value={formData.respond}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] h-32"
-                            placeholder="Хариу бичнэ үү..."
-                            required
-                          />
+                          <div className="relative">
+                            <textarea
+                              name="respond"
+                              value={formData.respond}
+                              onChange={handleInputChange}
+                              className="w-full p-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 h-40 shadow-sm bg-green-50/30 transition-all"
+                              placeholder="Хариу бичнэ үү..."
+                              required
+                            />
+                            <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                              {formData.respond.length} тэмдэгт
+                            </div>
+                          </div>
                         </div>
-
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">
+                            <label className="block text-sm text-gray-700 font-bold mb-2">
                               Төлөв
                             </label>
                             <select
@@ -886,9 +908,8 @@ const Service = () => {
                               <option value="cancelled">Цуцлагдсан</option>
                             </select>
                           </div>
-
                           <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">
+                            <label className="block text-sm text-gray-700 font-bold mb-2">
                               Төлбөр ($)
                             </label>
                             <input
@@ -905,22 +926,23 @@ const Service = () => {
                         </div>
                       </>
                     ) : null}
-
                     <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCloseModal}
-                        className="flex items-center justify-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50"
-                        style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
-                      >
-                        Болих
-                      </button>
                       <button
                         type="submit"
                         className="flex items-center justify-center px-3 py-1.5 bg-[#2D6B9F]/90 border rounded text-sm font-medium hover:bg-[#2D6B9F]"
                         style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "110px", fontSize: "14px" }}
                       >
-                        {formMode === 'create' ? 'Илгээх' : 'Хадгалах'}
+                        {formMode === 'create' ? (
+                          <>
+                            <Check size={15} className="mr-1" />
+                            <span>Илгээх</span>
+                          </>
+                        ) : (
+                          <>
+                            <Pencil size={15} className="mr-1" />
+                            <span>Хадгалах</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </form>
@@ -930,7 +952,6 @@ const Service = () => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 

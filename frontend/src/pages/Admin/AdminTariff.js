@@ -12,7 +12,7 @@ export default function AdminTariff() {
     EffectiveTo: null,
     IsActive: 1
   });
-  W
+
   const [tariffHistory, setTariffHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   

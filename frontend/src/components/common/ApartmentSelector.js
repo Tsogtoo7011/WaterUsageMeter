@@ -18,15 +18,15 @@ const ApartmentSelector = ({ apartments, selectedApartment, onChange }) => {
   return (
     <div className="relative">
       <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <Home size={16} className="text-gray-500" />
+        <Home size={16} className="text-[#2D6B9F]" />
       </div>
       <select
-        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full pl-10 pr-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] bg-blue-50/30 text-sm shadow-sm transition-all"
         value={selectedApartment || ''}
         onChange={handleChange}
         required
       >
-        <option value=""disabled>-- Select an apartment --</option>
+        <option value="" disabled>-- Байр сонгох --</option>
         {apartments.map((apartment) => (
           <option key={apartment.id} value={apartment.id}>
             {apartment.displayName || apartment.ApartmentName || `Apartment #${apartment.id}`}

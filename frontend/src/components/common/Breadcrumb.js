@@ -22,7 +22,6 @@ const Breadcrumb = () => {
     'payment': 'Payment',
     'about-us': 'About Us',
     'feedback': 'Feedback',
-    'create': 'Create',
     'edit': 'Edit',
     'news': 'News',
     'service': 'Services',

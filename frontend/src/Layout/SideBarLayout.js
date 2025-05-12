@@ -123,15 +123,10 @@ const SidebarLayout = ({ children }) => {
     { path: `/user/about-us`, label: 'Бидний тухай', component: 'AboutUs' },
     { path: `/user/metercounter`, label: 'Тоолуурын заалт', component: 'MeterCounter' },
     { path: `/user/payment-info`, label: 'Төлбөрийн мэдээлэл', component: 'PaymentInfo' },
-    { path: `/user/payment/:id`, label: 'Төлбөрийн дэлгэрэнгүй', component: 'PaymentDetails' },
-    { path: `/user/services`, label: 'Үйлчилгээ', component: 'Services' },
     { path: `/profile`, label: 'Профайл', component: 'Profile' },
     { path: `/settings`, label: 'Тохиргоо', component: 'Settings' },
     { path: `/news`, label: 'Мэдээ мэдээлэл', component: 'News' },
-    { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' },
-    { path: `/feedback/create`, label: 'Санал хүсэлт явуулах', component: 'FeedbackCreate' },
-    { path: `/feedback/:id`, label: 'Санал дэлгэрэнгүй', component: 'FeedbackDetail' },
-    { path: `/feedback/edit/:id`, label: 'Санал засварлах', component: 'FeedbackEdit' }
+    { path: `/feedback`, label: 'Санал хүсэлт', component: 'Feedback' }
   ];
 
   const adminMenuItems = [
@@ -200,7 +195,7 @@ const SidebarLayout = ({ children }) => {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div 
-        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full transition-all duration-300 ease-in-out z-20`}
+        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full transition-all duration-300 ease-in-out z-40`}
       >
         <div className="flex flex-col h-full p-4">  
           {/* Logo */}
@@ -246,14 +241,14 @@ const SidebarLayout = ({ children }) => {
       {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden transition-opacity duration-300 ease-in-out"
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden transition-opacity duration-300 ease-in-out"
           onClick={toggleMobileSidebar}
         ></div>
       )}
 
       {/* Mobile Sidebar */}
       <div 
-        className={`md:hidden fixed top-0 left-0 h-full bg-white border-r border-[#2D6B9F] shadow-sm transform transition-transform duration-300 ease-in-out z-40 ${
+        className={`md:hidden fixed top-0 left-0 h-full bg-white border-r border-[#2D6B9F] shadow-sm transform transition-transform duration-300 ease-in-out z-50 ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } w-64`}
       >
@@ -304,7 +299,7 @@ const SidebarLayout = ({ children }) => {
       >
         {/* Top Navigation Bar */}
         <header 
-          className="h-16 flex items-center px-4 sticky top-0 z-10 transition-colors duration-300"
+          className="h-16 flex items-center px-4 sticky top-0 z-[60]"
           style={{
             backgroundColor: `rgba(255, 255, 255, ${scrollOpacity})`,
             backdropFilter: 'blur(10px)',

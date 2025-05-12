@@ -58,14 +58,6 @@ const passwordResetLimiter = rateLimit({
   }
 });
 
-const contentCreationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 20, 
-  message: {
-    message: 'Хэт олон удаа контент үүсгэх оролдлого хийсэн байна. 15 минутын дараа дахин оролдоно уу.'
-  }
-});
-
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true 
@@ -81,7 +73,6 @@ app.use('/api/auth/signup', signupLimiter);
 app.use('/api/verification', verificationLimiter);
 app.use('/api/password/forgot', passwordResetLimiter);
 app.use('/api/password/reset', passwordResetLimiter);
-app.use('/api/news', contentCreationLimiter); 
 
 app.use('/api/auth', authRoutes);
 app.use('/api/verification', verificationRoutes);

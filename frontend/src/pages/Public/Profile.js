@@ -205,7 +205,7 @@ export function Profile() {
                   style={{ color: activeTab === "profile" ? "#2D6B9F" : undefined, borderColor: activeTab === "profile" ? "#2D6B9F" : undefined }}
                   onClick={() => setActiveTab("profile")}
                 >
-                  <span className="flex items-center hover:text-[#2D6B9F]">
+                  <span className="flex items-center font-medium hover:text-[#2D6B9F]">
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor"/>
                       <path d="M12 14C7.58172 14 4 17.5817 4 22H20C20 17.5817 16.4183 14 12 14Z" fill="currentColor"/>
@@ -218,7 +218,7 @@ export function Profile() {
                   style={{ color: activeTab === "security" ? "#2D6B9F" : undefined, borderColor: activeTab === "security" ? "#2D6B9F" : undefined }}
                   onClick={() => setActiveTab("security")}
                 >
-                  <span className="flex items-center hover:text-[#2D6B9F]">
+                  <span className="flex items-center font-medium hover:text-[#2D6B9F]">
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M19 11H5V21H19V11Z" fill="currentColor"/>
                       <path d="M17 11V7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7V11" stroke="currentColor" strokeWidth="2"/>
@@ -238,7 +238,7 @@ export function Profile() {
                     navigate('/Profile/Apartment');
                   }}
                 >
-                  <span className="flex items-center hover:text-[#2D6B9F]">
+                  <span className="flex items-center font-medium hover:text-[#2D6B9F]">
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M3 10L12 3L21 10V21H3V10Z" fill="currentColor"/>
                     </svg>
@@ -259,7 +259,7 @@ export function Profile() {
               <div className="w-full max-w-4xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Хэрэглэгчийн нэр</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: "#2D6B9F" }}>Хэрэглэгчийн нэр</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -279,7 +279,7 @@ export function Profile() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Овог</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: "#2D6B9F" }}>Овог</label>
                     <input
                       type="text"
                       name="Lastname"
@@ -289,7 +289,7 @@ export function Profile() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Нэр</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: "#2D6B9F" }}>Нэр</label>
                     <input
                       type="text"
                       name="Firstname"
@@ -299,7 +299,7 @@ export function Profile() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Имэйл хаяг</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: "#2D6B9F" }}>Имэйл хаяг</label>
                     <input
                       type="email"
                       name="Email"
@@ -309,7 +309,7 @@ export function Profile() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1" style={{ color: "#2D6B9F" }}>Утасны дугаар</label>
+                    <label className="block text-sm font-medium mb-1" style={{ color: "#2D6B9F" }}>Утасны дугаар</label>
                     <input
                       type="text"
                       name="Phonenumber"

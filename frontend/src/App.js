@@ -7,9 +7,6 @@ import Profile from './pages/Public/Profile';
 import News from './pages/Public/News';
 import Home from './pages/Public/Home';
 import Feedback from './pages/Public/Feedback';
-import FeedbackCreate from './pages/Public/FeedbackCreate';
-import FeedbackDetail from './pages/Public/FeedbackDetail';
-import FeedbackEdit from './pages/Public/FeedbackEdit';
 import Services from './pages/Public/Service';
 import ForgetPassword from './pages/Public/forgetPassword';
 import AdminReport from './pages/Admin/AdminReport';
@@ -71,9 +68,6 @@ function App() {
         <Route path="/profile" element={<SharedLayout><Profile /></SharedLayout>} />
         <Route path="/news" element={<SharedLayout><News /></SharedLayout>} />
         <Route path="/feedback" element={<SharedLayout><Feedback /></SharedLayout>} />
-        <Route path="/feedback/create" element={<SharedLayout><FeedbackCreate /></SharedLayout>} />
-        <Route path="/feedback/:id" element={<SharedLayout><FeedbackDetail /></SharedLayout>} />
-        <Route path="/feedback/edit/:id" element={<SharedLayout><FeedbackEdit /></SharedLayout>} />
         <Route path="/service" element={<SharedLayout><Services /></SharedLayout>} />
         
         <Route path="/admin" element={<Navigate to="/home" replace />} />
