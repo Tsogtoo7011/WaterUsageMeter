@@ -8,6 +8,7 @@ router.use(authMiddleware.authenticate);
 // Admin routes 
 router.get('/admin/all', authMiddleware.verifiedOnly, authMiddleware.adminOnly, feedbackController.getAllFeedback);
 router.get('/admin/:id', authMiddleware.verifiedOnly, authMiddleware.adminOnly, feedbackController.getAdminFeedbackById);
+router.put('/admin/:id', authMiddleware.verifiedOnly, authMiddleware.adminOnly, feedbackController.updateFeedback);
 
 // User routes
 router.post('/', authMiddleware.verifiedOnly, feedbackController.createFeedback);

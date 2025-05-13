@@ -251,10 +251,12 @@ exports.updateFeedback = async (req, res) => {
     const isAdmin = req.userData.AdminRight === 1;
 
     if (isAdmin) {
+      // Key fix: Extract both status and adminResponse from request body
       const { status, adminResponse } = req.body;
       const updates = [];
       const params = [];
       
+      // If status is provided, validate and add to updates
       if (status !== undefined) {
         if (!['Хүлээгдэж байна', 'Хүлээн авсан', 'Хүлээн авахаас татгалзсан'].includes(status)) {
           return res.status(400).json({
@@ -266,8 +268,11 @@ exports.updateFeedback = async (req, res) => {
         params.push(status);
       }
       
+      // If adminResponse is provided, validate and add to updates
       if (adminResponse !== undefined) {
-        if (!adminResponse.trim() && (status === 'Хүлээн авсан' || status === 'Хүлээн авахаас татгалзсан')) {
+        // Make sure adminResponse is not empty when status indicates action taken
+        const currentStatus = status || feedback.Status;
+        if (!adminResponse.trim() && (currentStatus === 'Хүлээн авсан' || currentStatus === 'Хүлээн авахаас татгалзсан')) {
           return res.status(400).json({
             success: false,
             message: 'Админы хариу оруулна уу.'
@@ -280,6 +285,12 @@ exports.updateFeedback = async (req, res) => {
         // Add admin responder ID
         updates.push('AdminResponderId = ?');
         params.push(userId);
+        
+        // If status wasn't provided but we have a response, update status to 'Хүлээн авсан'
+        if (status === undefined && feedback.Status === 'Хүлээгдэж байна') {
+          updates.push('Status = ?');
+          params.push('Хүлээн авсан');
+        }
       }
       
       if (updates.length === 0) {

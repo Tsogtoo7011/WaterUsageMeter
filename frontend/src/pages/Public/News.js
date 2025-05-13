@@ -74,7 +74,7 @@ const News = () => {
   };
   
   const handleOpenModal = (mode, newsItem = null) => {
-    if (mode !== 'view' && !isUserAdmin()) {
+    if (!isUserAdmin()) {
       alert('You must be an admin to perform this action');
       return;
     }
@@ -88,6 +88,7 @@ const News = () => {
         coverImage: null,
       });
       setSelectedNews(newsItem);
+      setPreviewUrl('');
     } else if (mode === 'create') {
       setFormData({
         title: '',
@@ -96,8 +97,6 @@ const News = () => {
       });
       setPreviewUrl('');
       setSelectedNews(null);
-    } else if (mode === 'view' && newsItem) {
-      setSelectedNews(newsItem);
     }
     
     setShowModal(true);
@@ -209,18 +208,6 @@ const News = () => {
       
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to delete news';
       alert(errorMessage);
-    }
-  };
-  
-  const handleViewDetails = async (newsId) => {
-    try {
-      const response = await api.get(`/news/${newsId}`);
-      setSelectedNews(response.data);
-      setShowModal(true);
-      setFormMode('view');
-    } catch (err) {
-      console.error('Error fetching news details:', err);
-      alert('Failed to fetch news details');
     }
   };
   
@@ -355,7 +342,7 @@ const News = () => {
                   <div className="flex justify-between items-center mt-auto">
                     <span className="text-xs text-gray-500">By {item.Username}</span>
                     <button
-                      onClick={() => handleViewDetails(item.NewsId)}
+                      onClick={() => navigate(`/news/${item.NewsId}`)}
                       className="text-[#2D6B9F]/90 hover:text-[#2D6B9F] font-medium text-xs rounded px-2 py-1 transition"
                     >
                       Дэлгэрэнгүй
@@ -428,9 +415,7 @@ const News = () => {
                     <h2 className="text-m font-bold text-[#2D6B9F]">
                       {formMode === 'create'
                         ? 'Мэдээ нэмэх'
-                        : formMode === 'edit'
-                        ? 'Мэдээ засах'
-                        : 'Мэдээ дэлгэрэнгүй'}
+                        : 'Мэдээ засах'}
                     </h2>
                     <button
                       onClick={handleCloseModal}
@@ -439,99 +424,79 @@ const News = () => {
                       <X size={20} />
                     </button>
                   </div>
-
-                  {formMode === 'view' ? (
+                  <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                      <div className="mb-6">
-                        <img
-                          src={`${API_URL}/news/${selectedNews.NewsId}/image`}
-                          alt={selectedNews.Title}
-                          className="w-full h-64 object-cover rounded-lg border border-gray-200"
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/800x400?text=No+Image';
-                          }}
-                        />
-                      </div>
-                      <h3 className="text-xl font-bold mb-2 text-[#2D6B9F]">{selectedNews.Title}</h3>
-                      <p className="text-gray-700 mb-4">{selectedNews.NewsDescription}</p>
-                      <div className="text-sm text-gray-500">
-                        Нийтэлсэн: {selectedNews.Username}
-                      </div>
+                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                        Гарчиг <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                        required
+                      />
                     </div>
-                  ) : (
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      <div>
-                        <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                          Гарчиг <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="title"
-                          value={formData.title}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                          Тайлбар <span className="text-red-400">*</span>
-                        </label>
-                        <textarea
-                          name="description"
-                          value={formData.description}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                          Зураг <span className="text-red-400">{formMode === 'create' ? '*' : ''}</span>
-                        </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                          required={formMode === 'create'}
-                        />
-                        {(previewUrl || (formMode === 'edit' && selectedNews)) && (
-                          <div className="mt-2">
-                            <img
-                              src={
-                                previewUrl ||
-                                `${API_URL}/news/${selectedNews.NewsId}/image`
-                              }
-                              alt="Preview"
-                              className="w-full h-40 object-cover rounded-md border border-gray-200"
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
-                        <button
-                          type="button"
-                          onClick={handleCloseModal}
-                          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
-                        >
-                          Болих
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
-                        >
-                          {formMode === 'create' ? 'Нэмэх' : 'Шинэчлэх'}
-                        </button>
-                      </div>
-                    </form>
-                  )}
+                    <div>
+                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                        Тайлбар <span className="text-red-400">*</span>
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                        Зураг <span className="text-red-400">{formMode === 'create' ? '*' : ''}</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                        required={formMode === 'create'}
+                      />
+                      {(previewUrl || (formMode === 'edit' && selectedNews)) && (
+                        <div className="mt-2">
+                          <img
+                            src={
+                              previewUrl ||
+                              `${API_URL}/news/${selectedNews.NewsId}/image`
+                            }
+                            alt="Preview"
+                            className="w-full h-40 object-cover rounded-md border border-gray-200"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+                      >
+                        Болих
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
+                      >
+                        {formMode === 'create' ? 'Нэмэх' : 'Шинэчлэх'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+       <div style={{ width: "96.5vw", height: 50, background: "#2D6B9F", marginLeft: "calc(50% - 50vw)" }}></div>
     </div>
   );
 };

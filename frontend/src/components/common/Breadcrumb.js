@@ -6,7 +6,6 @@ const Breadcrumb = () => {
   const navigate = useNavigate();
   const pathnames = location.pathname.split('/').filter(x => x);
 
-  // More comprehensive name mapping
   const nameMap = {
     'home': 'Home',
     'profile': 'Profile',
@@ -28,17 +27,22 @@ const Breadcrumb = () => {
     'settings': 'Settings'
   };
 
-  const getDisplayName = (segment) => {
+  const getDisplayName = (segment, idx) => {
     if (segment.match(/^\d+$/)) {
-      return `ID: ${segment}`;
+      const prev = pathnames[idx - 1];
+      if (
+        prev === 'details' ||
+        prev === 'news' ||
+        prev === 'feedback' ||
+        prev === 'services'
+      ) return 'Details';
+      return null;
     }
-
     return nameMap[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
   };
 
   const getBreadcrumbUrl = (index) => {
     const segments = pathnames.slice(0, index + 1);
-    
     return `/${segments.join('/')}`;
   };
 
@@ -78,37 +82,16 @@ const Breadcrumb = () => {
         
         {pathnames.filter(name => name !== 'home').map((name, index) => {
           const url = getBreadcrumbUrl(index);
-          const isLast = index === pathnames.length - 1;
-          const displayName = getDisplayName(name);
-          
+          // Find the real index in pathnames (since we filtered out 'home')
+          const realIdx = location.pathname.split('/').filter(x => x).indexOf(name);
+          const isLast = index === pathnames.filter(n => n !== 'home').length - 1;
+          const displayName = getDisplayName(name, realIdx);
+
+          if (displayName === null) return null;
           if ((name === 'admin' || name === 'user') && pathnames.length > 1) {
             return null;
           }
-          
-          if (name.match(/^\d+$/)) {
-            return (
-              <li key={index} className="flex items-center">
-                <span className="text-gray-500">{displayName}</span>
-                {!isLast && (
-                  <svg
-                    className="w-4 h-4 mx-2 text-gray-400"
-                    fill="none" 
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                )}
-              </li>
-            );
-          }
-          
+
           return (
             <li key={index} className="flex items-center">
               {isLast ? (

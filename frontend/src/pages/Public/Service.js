@@ -154,17 +154,10 @@ const Service = () => {
   
   const handleOpenModal = (mode, serviceItem = null) => {
     setFormMode(mode);
-    
-    if (mode === 'edit' && serviceItem) {
-      setFormData({
-        description: serviceItem.Description,
-        respond: serviceItem.Respond || '',
-        status: serviceItem.Status,
-        amount: serviceItem.Amount ? serviceItem.Amount.toString() : '',
-        apartmentId: serviceItem.ApartmentId || '',
-      });
-      setSelectedService(serviceItem);
-      setShowModal(true);
+
+    if ((mode === 'edit' || mode === 'respond') && serviceItem) {
+      // Navigate to ServiceDetails with edit/respond mode
+      navigate(`/services/${serviceItem.ServiceId}?mode=${mode}`);
     } else if (mode === 'create') {
       setFormData({
         description: '',
@@ -176,17 +169,7 @@ const Service = () => {
       setSelectedService(null);
       setShowModal(true);
     } else if (mode === 'view' && serviceItem) {
-      handleViewDetails(serviceItem.ServiceId);
-    } else if (mode === 'respond' && serviceItem) {
-      setFormData({
-        description: serviceItem.Description,
-        respond: serviceItem.Respond || '',
-        status: serviceItem.Status,
-        amount: serviceItem.Amount ? serviceItem.Amount.toString() : '',
-        apartmentId: serviceItem.ApartmentId || '',
-      });
-      setSelectedService(serviceItem);
-      setShowModal(true);
+      navigate(`/services/${serviceItem.ServiceId}`);
     }
   };
   
@@ -443,14 +426,16 @@ const Service = () => {
             </div>
             <p className="text-gray-600 mt-2">Өөрийн илгээсэн болон хүлээн авсан үйлчилгээний жагсаалт</p>
           </div>
-          <button
-            onClick={() => handleOpenModal('create')}
-            className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
-            style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
-          >
-            <PlusCircle size={15} className="mr-1" />
-            Шинэ хүсэлт
-          </button>
+          {!isUserAdmin() && (
+            <button
+              onClick={() => handleOpenModal('create')}
+              className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
+              style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
+            >
+              <PlusCircle size={15} className="mr-1" />
+              Шинэ хүсэлт
+            </button>
+          )}
         </div>
 
         <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
@@ -695,7 +680,7 @@ const Service = () => {
           </div>
         </div>
 
-        {showModal && (
+        {showModal && formMode !== 'view' && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
             <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110]">
               <div className="p-4 sm:p-6">
@@ -703,7 +688,6 @@ const Service = () => {
                   <h2 className="text-lg font-bold text-[#2D6B9F]">
                     {formMode === 'create' && 'Үйлчилгээний хүсэлт үүсгэх'}
                     {formMode === 'edit' && (isUserAdmin() ? 'Хариу өгөх' : 'Үйлчилгээний хүсэлт засах')}
-                    {formMode === 'view' && 'Үйлчилгээний дэлгэрэнгүй'}
                   </h2>
                   <button
                     onClick={handleCloseModal}
@@ -712,245 +696,138 @@ const Service = () => {
                     <X size={20} />
                   </button>
                 </div>
-                {formMode === 'view' ? (
-                  <div>
-                    <div className="mb-5">
-                      <h3 className="text-sm font-semibold mb-2 text-[#2D6B9F] flex items-center">
-                        <MessageSquare size={16} className="mr-2" />
-                        Тайлбар
-                      </h3>
-                      <div
-                        className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-gray-700 shadow-sm max-h-56 overflow-y-auto break-words leading-relaxed scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50"
-                        style={{ scrollbarWidth: 'thin', maxHeight: '14rem' }}
-                      >
-                        {selectedService.Description}
-                      </div>
-                    </div>
-                    {selectedService.Respond && (
+                <form onSubmit={handleSubmit}>
+                  {formMode === 'create' || (!isUserAdmin() && formMode === 'edit') ? (
+                    <>
                       <div className="mb-5">
-                        <h3 className="text-sm font-semibold mb-2 text-green-700 flex items-center">
-                          <Check size={18} className="mr-2" />
-                          Хариу
-                        </h3>
-                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-gray-800 shadow-sm max-h-56 overflow-y-auto break-words leading-relaxed">
-                          {selectedService.Respond}
+                        <label className="text-[#2D6B9F] text-sm font-bold mb-2 flex items-center">
+                          <MessageSquare size={16} className="mr-2 text-[#2D6B9F]" />
+                          Тайлбар
+                        </label>
+                        <div className="relative">
+                          <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-40 shadow-sm bg-blue-50/30 transition-all"
+                            placeholder="Хүсэлтийнхээ дэлгэрэнгүйг бичнэ үү..."
+                            required
+                          />
+                          <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                            {formData.description.length} тэмдэгт
+                          </div>
                         </div>
                       </div>
-                    )}
-                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Байр</h3>
-                        <p className="text-gray-700">
-                          {selectedService.ApartmentId ? getApartmentDisplay(selectedService) : 'Тодорхойгүй'}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлөв</h3>
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(selectedService.Status)}`}>
-                          {formatStatus(selectedService.Status)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Хүсэлт илгээсэн огноо</h3>
-                        <p className="text-gray-700">{new Date(selectedService.RequestDate).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Сүүлд шинэчилсэн</h3>
-                        <p className="text-gray-700">
-                          {selectedService.SubmitDate ? new Date(selectedService.SubmitDate).toLocaleString() : 'Шинэчлэгдээгүй'}
-                        </p>
-                      </div>
-                    </div>
-                    {selectedService.PaidDay && (
                       <div className="mb-4">
-                        <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлбөр төлсөн огноо</h3>
-                        <p className="text-gray-700">{new Date(selectedService.PaidDay).toLocaleString()}</p>
+                        <label className="block text-[#2D6B9F] text-sm font-bold mb-2">
+                          Байр сонгох
+                        </label>
+                        {apartments.length > 0 ? (
+                          <ApartmentSelector 
+                            apartments={apartments}
+                            selectedApartment={formData.apartmentId}
+                            onChange={handleApartmentChange}
+                          />
+                        ) : (
+                          <p className="text-gray-500 italic">Байр олдсонгүй. Админтай холбогдоно уу.</p>
+                        )}
                       </div>
-                    )}
-                    <div className="mb-4">
-                      <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлбөр</h3>
-                      <p className="text-gray-700">
-                        {selectedService.Amount !== null && selectedService.Amount !== undefined && !isNaN(parseFloat(selectedService.Amount))
-                          ? `$${parseFloat(selectedService.Amount).toFixed(2)}`
-                          : '-'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row justify-end mt-4 gap-2">
-                      {isUserAdmin() && (
-                        <button
-                          onClick={() => {
-                            setFormMode('edit');
-                            setFormData({
-                              description: selectedService.Description,
-                              respond: selectedService.Respond || '',
-                              status: selectedService.Status,
-                              amount: selectedService.Amount ? selectedService.Amount.toString() : '',
-                              apartmentId: selectedService.ApartmentId || '',
-                            });
-                          }}
-                          className="flex items-center justify-center px-3 py-1.5 rounded text-sm font-medium bg-[#2D6B9F] text-white hover:bg-[#1e4e73]"
-                          style={{ minWidth: "110px", fontSize: "14px", border: "none" }}
+                    </>
+                  ) : isUserAdmin() && formMode === 'edit' ? (
+                    <>
+                      <div className="mb-5">
+                        <h3 className="text-sm font-semibold mb-2 text-[#2D6B9F] flex items-center">
+                          <MessageSquare size={16} className="mr-2" />
+                          Тайлбар
+                        </h3>
+                        <div
+                          className="text-gray-800 mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm max-h-40 overflow-y-auto break-words leading-relaxed scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50"
+                          style={{ scrollbarWidth: 'thin', maxHeight: '10rem' }}
                         >
-                          <Pencil size={15} className="mr-1" />
-                          <span>Хариу өгөх</span>
-                        </button>
-                      )}
-                      {canUserEditService(selectedService) && (
-                        <button
-                          onClick={() => {
-                            setFormMode('edit');
-                            setFormData({
-                              description: selectedService.Description,
-                              respond: selectedService.Respond || '',
-                              status: selectedService.Status,
-                              amount: selectedService.Amount ? selectedService.Amount.toString() : '',
-                              apartmentId: selectedService.ApartmentId || '',
-                            });
-                          }}
-                          className="flex items-center justify-center px-3 py-1.5 rounded text-sm font-medium bg-[#2D6B9F]/90 text-white hover:bg-[#2D6B9F]"
-                          style={{ minWidth: "110px", fontSize: "14px", border: "none" }}
-                        >
-                          <Pencil size={15} className="mr-1" />
-                          <span>Засварлах</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit}>
-                    {formMode === 'create' || (!isUserAdmin() && formMode === 'edit') ? (
-                      <>
-                        <div className="mb-5">
-                          <label className="text-[#2D6B9F] text-sm font-bold mb-2 flex items-center">
-                            <MessageSquare size={16} className="mr-2 text-[#2D6B9F]" />
-                            Тайлбар
-                          </label>
-                          <div className="relative">
-                            <textarea
-                              name="description"
-                              value={formData.description}
-                              onChange={handleInputChange}
-                              className="w-full p-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-40 shadow-sm bg-blue-50/30 transition-all"
-                              placeholder="Хүсэлтийнхээ дэлгэрэнгүйг бичнэ үү..."
-                              required
-                            />
-                            <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-                              {formData.description.length} тэмдэгт
-                            </div>
+                          {formData.description}
+                        </div>
+                      </div>
+                      <div className="mb-5">
+                        <label className="text-sm text-green-700 font-bold mb-2 flex items-center">
+                          <Check size={16} className="mr-2" />
+                          Хариу
+                        </label>
+                        <div className="relative">
+                          <textarea
+                            name="respond"
+                            value={formData.respond}
+                            onChange={handleInputChange}
+                            className="w-full p-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 h-40 shadow-sm bg-green-50/30 transition-all"
+                            placeholder="Хариу бичнэ үү..."
+                            required
+                          />
+                          <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                            {formData.respond.length} тэмдэгт
                           </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="mb-4">
+                          <label className="block text-sm text-gray-700 font-bold mb-2">
+                            Төлөв
+                          </label>
+                          <select
+                            name="status"
+                            value={formData.status}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
+                            required
+                          >
+                            <option value="pending">Хүлээгдэж буй</option>
+                            <option value="scheduled">Төлөвлөгдсөн</option>
+                            <option value="in_progress">Явагдаж буй</option>
+                            <option value="completed">Дууссан</option>
+                            <option value="cancelled">Цуцлагдсан</option>
+                          </select>
                         </div>
                         <div className="mb-4">
-                          <label className="block text-[#2D6B9F] text-sm font-bold mb-2">
-                            Байр сонгох
+                          <label className="block text-sm text-gray-700 font-bold mb-2">
+                            Төлбөр ($)
                           </label>
-                          {apartments.length > 0 ? (
-                            <ApartmentSelector 
-                              apartments={apartments}
-                              selectedApartment={formData.apartmentId}
-                              onChange={handleApartmentChange}
-                            />
-                          ) : (
-                            <p className="text-gray-500 italic">Байр олдсонгүй. Админтай холбогдоно уу.</p>
-                          )}
+                          <input
+                            type="number"
+                            name="amount"
+                            value={formData.amount}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:[#2D6B9F]"
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                          />
                         </div>
-                      </>
-                    ) : isUserAdmin() && formMode === 'edit' ? (
-                      <>
-                        <div className="mb-5">
-                          <h3 className="text-sm font-semibold mb-2 text-[#2D6B9F] flex items-center">
-                            <MessageSquare size={16} className="mr-2" />
-                            Тайлбар
-                          </h3>
-                          <div
-                            className="text-gray-800 mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm max-h-40 overflow-y-auto break-words leading-relaxed scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-blue-50"
-                            style={{ scrollbarWidth: 'thin', maxHeight: '10rem' }}
-                          >
-                            {formData.description}
-                          </div>
-                        </div>
-                        <div className="mb-5">
-                          <label className="text-sm text-green-700 font-bold mb-2 flex items-center">
-                            <Check size={16} className="mr-2" />
-                            Хариу
-                          </label>
-                          <div className="relative">
-                            <textarea
-                              name="respond"
-                              value={formData.respond}
-                              onChange={handleInputChange}
-                              className="w-full p-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 h-40 shadow-sm bg-green-50/30 transition-all"
-                              placeholder="Хариу бичнэ үү..."
-                              required
-                            />
-                            <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-                              {formData.respond.length} тэмдэгт
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="mb-4">
-                            <label className="block text-sm text-gray-700 font-bold mb-2">
-                              Төлөв
-                            </label>
-                            <select
-                              name="status"
-                              value={formData.status}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
-                              required
-                            >
-                              <option value="pending">Хүлээгдэж буй</option>
-                              <option value="scheduled">Төлөвлөгдсөн</option>
-                              <option value="in_progress">Явагдаж буй</option>
-                              <option value="completed">Дууссан</option>
-                              <option value="cancelled">Цуцлагдсан</option>
-                            </select>
-                          </div>
-                          <div className="mb-4">
-                            <label className="block text-sm text-gray-700 font-bold mb-2">
-                              Төлбөр ($)
-                            </label>
-                            <input
-                              type="number"
-                              name="amount"
-                              value={formData.amount}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:[#2D6B9F]"
-                              placeholder="0.00"
-                              step="0.01"
-                              min="0"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    ) : null}
-                    <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
-                      <button
-                        type="submit"
-                        className="flex items-center justify-center px-3 py-1.5 bg-[#2D6B9F]/90 border rounded text-sm font-medium hover:bg-[#2D6B9F]"
-                        style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "110px", fontSize: "14px" }}
-                      >
-                        {formMode === 'create' ? (
-                          <>
-                            <Check size={15} className="mr-1" />
-                            <span>Илгээх</span>
-                          </>
-                        ) : (
-                          <>
-                            <Pencil size={15} className="mr-1" />
-                            <span>Хадгалах</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                )}
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                    <button
+                      type="submit"
+                      className="flex items-center justify-center px-3 py-1.5 bg-[#2D6B9F]/90 border rounded text-sm font-medium hover:bg-[#2D6B9F]"
+                      style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "110px", fontSize: "14px" }}
+                    >
+                      {formMode === 'create' ? (
+                        <>
+                          <Check size={15} className="mr-1" />
+                          <span>Илгээх</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pencil size={15} className="mr-1" />
+                          <span>Хадгалах</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         )}
+         <div style={{ width: "96.5vw", height: 50, background: "#2D6B9F", marginLeft: "calc(50% - 50vw)" }}></div>
       </div>
   );
 };

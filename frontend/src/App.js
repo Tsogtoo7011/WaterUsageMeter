@@ -5,9 +5,12 @@ import SignUp from './pages/Public/SignUp';
 import Settings from './pages/Public/Settings';
 import Profile from './pages/Public/Profile';
 import News from './pages/Public/News';
+import NewsDetails from './pages/Public/NewsDetails';
 import Home from './pages/Public/Home';
 import Feedback from './pages/Public/Feedback';
+import FeedbackDetails from './pages/Public/FeedbackDetails';
 import Services from './pages/Public/Service';
+import ServiceDetails from './pages/Public/ServiceDetails';
 import ForgetPassword from './pages/Public/forgetPassword';
 import AdminReport from './pages/Admin/AdminReport';
 import AdminTarif from './pages/Admin/AdminTariff';
@@ -67,8 +70,11 @@ function App() {
         <Route path="/settings" element={<SharedLayout><Settings /></SharedLayout>} />
         <Route path="/profile" element={<SharedLayout><Profile /></SharedLayout>} />
         <Route path="/news" element={<SharedLayout><News /></SharedLayout>} />
+        <Route path='/news/:id' element={<SharedLayout><NewsDetails /></SharedLayout>} />
         <Route path="/feedback" element={<SharedLayout><Feedback /></SharedLayout>} />
+        <Route path="/feedback/:id" element={<SharedLayout><FeedbackDetails /></SharedLayout>} />
         <Route path="/service" element={<SharedLayout><Services /></SharedLayout>} />
+        <Route path="/services/:id" element={<SharedLayout><ServiceDetails /></SharedLayout>} />
         
         <Route path="/admin" element={<Navigate to="/home" replace />} />
         <Route path="/admin/tarif" element={<AdminRoute><AdminTarif /></AdminRoute>} />
