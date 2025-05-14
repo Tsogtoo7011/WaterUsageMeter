@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api"; 
-import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
 
 const News = () => {
@@ -9,21 +9,25 @@ const News = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedNews, setSelectedNews] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [formMode, setFormMode] = useState('create'); 
   const [csrfToken, setCsrfToken] = useState(null);
-  
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     coverImage: null,
   });
-  
   const [previewUrl, setPreviewUrl] = useState('');
   const [user, setUser] = useState(null);
+  const [editingNews, setEditingNews] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   const navigate = useNavigate();
-  
+  const location = useLocation();
+  const params = useParams();
+  const queryParams = new URLSearchParams(location.search);
+  const mode = queryParams.get('mode');
+  const editId = params.id || null;
+
   const newsPerPage = 6;
 
   useEffect(() => {
@@ -32,18 +36,39 @@ const News = () => {
 
     const userData = localStorage.getItem('user');
     const token = localStorage.getItem('token');
-    
     if (userData && token) {
       try {
         const parsedUser = JSON.parse(userData);
         setUser({ ...parsedUser, token });
-        console.log("User loaded:", parsedUser);
       } catch (err) {
         console.error("Error parsing user data:", err);
       }
     }
   }, []);
-  
+
+  useEffect(() => {
+    if (mode === 'edit' && editId && news.length > 0) {
+      const found = news.find(n => String(n.NewsId) === String(editId));
+      if (found) {
+        setEditingNews(found);
+        setFormData({
+          title: found.Title,
+          description: found.NewsDescription,
+          coverImage: null,
+        });
+        setPreviewUrl('');
+      }
+    } else {
+      setEditingNews(null);
+      setFormData({
+        title: '',
+        description: '',
+        coverImage: null,
+      });
+      setPreviewUrl('');
+    }
+  }, [mode, editId, news]);
+
   const fetchCsrfToken = async () => {
     try {
       const response = await api.get('/csrf-token');
@@ -55,7 +80,7 @@ const News = () => {
       setError('Failed to fetch CSRF token. Please reload the page.');
     }
   };
-  
+
   const fetchNews = async () => {
     try {
       setLoading(true);
@@ -68,51 +93,30 @@ const News = () => {
       console.error('Error fetching news:', err);
     }
   };
-  
+
   const isUserAdmin = () => {
     return user && (user.isAdmin === true || user.AdminRight === 1);
   };
-  
-  const handleOpenModal = (mode, newsItem = null) => {
+
+  const handleEditClick = (newsItem) => {
     if (!isUserAdmin()) {
       alert('You must be an admin to perform this action');
       return;
     }
-    
-    setFormMode(mode);
-    
-    if (mode === 'edit' && newsItem) {
-      setFormData({
-        title: newsItem.Title,
-        description: newsItem.NewsDescription,
-        coverImage: null,
-      });
-      setSelectedNews(newsItem);
-      setPreviewUrl('');
-    } else if (mode === 'create') {
-      setFormData({
-        title: '',
-        description: '',
-        coverImage: null,
-      });
-      setPreviewUrl('');
-      setSelectedNews(null);
-    }
-    
-    setShowModal(true);
+    navigate(`/news/${newsItem.NewsId}?mode=edit`);
   };
-  
-  const handleCloseModal = () => {
-    setShowModal(false);
+
+  const handleCancelEdit = () => {
+    setEditingNews(null);
     setFormData({
       title: '',
       description: '',
       coverImage: null,
     });
     setPreviewUrl('');
-    setSelectedNews(null);
+    navigate('/news');
   };
-  
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -120,7 +124,7 @@ const News = () => {
         ...formData,
         coverImage: file,
       });
-      
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
@@ -128,7 +132,7 @@ const News = () => {
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -136,95 +140,105 @@ const News = () => {
       [name]: value,
     });
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!csrfToken) {
       alert('CSRF token is missing. Please reload the page.');
       fetchCsrfToken();
       return;
     }
-    
     try {
       const formPayload = new FormData();
       formPayload.append('title', formData.title);
       formPayload.append('description', formData.description);
-      
       if (formData.coverImage) {
         formPayload.append('coverImage', formData.coverImage);
       }
-      
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
-      
-      if (formMode === 'create') {
-        const response = await api.post('/news', formPayload);
-        console.log('Create response:', response.data);
-      } else if (formMode === 'edit') {
-        const response = await api.put(`/news/${selectedNews.NewsId}`, formPayload);
-        console.log('Update response:', response.data);
+      if (editingNews) {
+        await api.put(`/news/${editingNews.NewsId}`, formPayload);
+      } else {
+        await api.post('/news', formPayload);
       }
-      
-      handleCloseModal();
+      handleCancelEdit();
       fetchNews();
     } catch (err) {
       console.error('Error submitting form:', err);
-      
       if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
         alert('CSRF token is invalid. Please reload the page.');
         fetchCsrfToken();
         return;
       }
-      
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to save news';
       alert(errorMessage);
     }
   };
-  
+
   const handleDelete = async (newsId) => {
     if (!window.confirm('Are you sure you want to delete this news item?')) {
       return;
     }
-    
     if (!csrfToken) {
       alert('CSRF token is missing. Please reload the page.');
       fetchCsrfToken();
       return;
     }
-    
     try {
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
-      
       await api.delete(`/news/${newsId}`);
       fetchNews();
     } catch (err) {
       console.error('Error deleting news:', err);
-      
       if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
         alert('CSRF token is invalid. Please reload the page.');
         fetchCsrfToken();
         return;
       }
-      
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to delete news';
       alert(errorMessage);
     }
   };
-  
+
+  const handleOpenCreateModal = () => {
+    setShowCreateModal(true);
+    setFormData({
+      title: '',
+      description: '',
+      coverImage: null,
+    });
+    setPreviewUrl('');
+  };
+
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
+    setFormData({
+      title: '',
+      description: '',
+      coverImage: null,
+    });
+    setPreviewUrl('');
+  };
+
+  const filteredNews = news.filter(item =>
+    (item.Title && item.Title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (item.NewsDescription && item.NewsDescription.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const indexOfLastNews = currentPage * newsPerPage;
   const indexOfFirstNews = indexOfLastNews - newsPerPage;
-  const currentNews = news.slice(indexOfFirstNews, indexOfLastNews);
-  const totalPages = Math.ceil(news.length / newsPerPage);
-  
+  const currentNews = filteredNews.slice(indexOfFirstNews, indexOfLastNews);
+  const totalPages = Math.ceil(filteredNews.length / newsPerPage);
+
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  
+
   const API_URL = api.defaults.baseURL;
 
   const truncateText = (text) => {
     if (!text) return '';
     return text.length > 10 ? text.slice(0, 10) + '...' : text;
   };
-  
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -274,7 +288,7 @@ const News = () => {
           <div className="flex space-x-2 self-end sm:self-auto">
             {isUserAdmin() && (
               <button
-                onClick={() => handleOpenModal('create')}
+                onClick={handleOpenCreateModal}
                 className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
                 style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "110px", fontSize: "14px" }}
               >
@@ -285,9 +299,224 @@ const News = () => {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="max-w-7xl mx-auto mt-4 mb-6">
+          <div className="relative w-full md:w-1/2">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Мэдээ хайх..."
+              className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+        </div>
+
         <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
+          {/* Edit form (inline) */}
+          {(mode === 'edit' && editingNews) ? (
+            <form onSubmit={handleSubmit} className="space-y-6 bg-white border border-gray-200 rounded-lg shadow-md p-6 mb-8 max-w-2xl mx-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-[#2D6B9F]">
+                  Мэдээ засах
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-gray-400 hover:text-[#2D6B9F]"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div>
+                <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                  Гарчиг <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                  Тайлбар <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                  Зураг <span className="text-red-400"></span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                />
+                {(previewUrl || (mode === 'edit' && editingNews)) && (
+                  <div className="mt-2">
+                    <img
+                      src={
+                        previewUrl ||
+                        (editingNews ? `${API_URL}/news/${editingNews.NewsId}/image` : '')
+                      }
+                      alt="Preview"
+                      className="w-full h-40 object-cover rounded-md border border-gray-200"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+                >
+                  Болих
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
+                >
+                  Шинэчлэх
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {/* Create modal */}
+          {showCreateModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+              <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110]">
+                <div className="p-4 sm:p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-[#2D6B9F]">
+                      Мэдээ нэмэх
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={handleCloseCreateModal}
+                      className="text-gray-400 hover:text-[#2D6B9F]"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!csrfToken) {
+                        alert('CSRF token is missing. Please reload the page.');
+                        fetchCsrfToken();
+                        return;
+                      }
+                      try {
+                        const formPayload = new FormData();
+                        formPayload.append('title', formData.title);
+                        formPayload.append('description', formData.description);
+                        if (formData.coverImage) {
+                          formPayload.append('coverImage', formData.coverImage);
+                        }
+                        api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+                        await api.post('/news', formPayload);
+                        handleCloseCreateModal();
+                        fetchNews();
+                      } catch (err) {
+                        if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
+                          alert('CSRF token is invalid. Please reload the page.');
+                          fetchCsrfToken();
+                          return;
+                        }
+                        const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to save news';
+                        alert(errorMessage);
+                      }
+                    }}
+                    className="space-y-6"
+                  >
+                    <div>
+                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                        Гарчиг <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                        Тайлбар <span className="text-red-400">*</span>
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
+                        Зураг <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                        required
+                      />
+                      {previewUrl && (
+                        <div className="mt-2">
+                          <img
+                            src={previewUrl}
+                            alt="Preview"
+                            className="w-full h-40 object-cover rounded-md border border-gray-200"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCloseCreateModal}
+                        className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
+                      >
+                        Болих
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
+                      >
+                        Нэмэх
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentNews.map((item) => (
+            {currentNews.length > 0 ? currentNews.map((item) => (
               <div
                 key={item.NewsId}
                 className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group flex flex-col"
@@ -306,7 +535,7 @@ const News = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenModal('edit', item);
+                          handleEditClick(item);
                         }}
                         className="bg-white p-2 rounded-full shadow hover:bg-blue-50 border border-gray-200"
                         title="Засах"
@@ -350,7 +579,11 @@ const News = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="col-span-full text-center text-gray-500 py-10">
+                Мэдээ олдсонгүй
+              </div>
+            )}
           </div>
 
           {totalPages > 1 && (
@@ -406,97 +639,9 @@ const News = () => {
               </button>
             </div>
           )}
-
-          {showModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
-              <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110]">
-                <div className="p-4 sm:p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-m font-bold text-[#2D6B9F]">
-                      {formMode === 'create'
-                        ? 'Мэдээ нэмэх'
-                        : 'Мэдээ засах'}
-                    </h2>
-                    <button
-                      onClick={handleCloseModal}
-                      className="text-gray-400 hover:text-[#2D6B9F]"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                        Гарчиг <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="title"
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                        Тайлбар <span className="text-red-400">*</span>
-                      </label>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                        Зураг <span className="text-red-400">{formMode === 'create' ? '*' : ''}</span>
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                        required={formMode === 'create'}
-                      />
-                      {(previewUrl || (formMode === 'edit' && selectedNews)) && (
-                        <div className="mt-2">
-                          <img
-                            src={
-                              previewUrl ||
-                              `${API_URL}/news/${selectedNews.NewsId}/image`
-                            }
-                            alt="Preview"
-                            className="w-full h-40 object-cover rounded-md border border-gray-200"
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCloseModal}
-                        className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
-                      >
-                        Болих
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
-                      >
-                        {formMode === 'create' ? 'Нэмэх' : 'Шинэчлэх'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-       <div style={{ width: "96.5vw", height: 50, background: "#2D6B9F", marginLeft: "calc(50% - 50vw)" }}></div>
+      <div style={{ width: "96.5vw", height: 50, background: "#2D6B9F", marginLeft: "calc(50% - 50vw)" }}></div>
     </div>
   );
 };

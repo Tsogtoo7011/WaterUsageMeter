@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api";
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Edit, Trash2, Pencil, X } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
 
 const NewsDetails = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const mode = queryParams.get('mode');
+
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [csrfToken, setCsrfToken] = useState(null);
   const [user, setUser] = useState(null);
 
@@ -40,6 +43,20 @@ const NewsDetails = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (news && mode === 'edit') {
+      setIsEditing(true);
+      setFormData({
+        title: news.Title,
+        description: news.NewsDescription,
+        coverImage: null,
+      });
+      setPreviewUrl(`${API_URL}/news/${id}/image`);
+    } else {
+      setIsEditing(false);
+    }
+  }, [news, mode, id, API_URL]);
+
   const fetchCsrfToken = async () => {
     try {
       const response = await api.get('/csrf-token');
@@ -64,32 +81,6 @@ const NewsDetails = () => {
 
   const isUserAdmin = () => {
     return user && (user.isAdmin === true || user.AdminRight === 1);
-  };
-
-  const handleOpenModal = () => {
-    if (!isUserAdmin()) {
-      alert('You must be an admin to perform this action');
-      return;
-    }
-    setIsEditing(true);
-    setFormData({
-      title: news.Title,
-      description: news.NewsDescription,
-      coverImage: null,
-    });
-    setPreviewUrl(`${API_URL}/news/${id}/image`);
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setIsEditing(false);
-    setFormData({
-      title: '',
-      description: '',
-      coverImage: null,
-    });
-    setPreviewUrl('');
   };
 
   const handleFileChange = (e) => {
@@ -131,9 +122,10 @@ const NewsDetails = () => {
       }
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
       await api.put(`/news/${id}`, formPayload);
-      handleCloseModal();
+      setIsEditing(false);
       fetchNewsDetail();
       alert('Амжилттай хадгаллаа');
+      navigate(`/news/${id}`);
     } catch (err) {
       if (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF')) {
         alert('CSRF token is invalid. Please reload the page.');
@@ -227,7 +219,7 @@ const NewsDetails = () => {
   if (!news) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="px-1 sm:px-1 pt-4">
+        <div className="px-1 sm:px-1 pt-2">
           <div className="max-w-5xl mx-auto pt-4">
             <Breadcrumb />
           </div>
@@ -239,7 +231,6 @@ const NewsDetails = () => {
             className="mt-4 flex items-center mx-auto px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
           >
             <ChevronLeft size={16} className="mr-1" />
-            Back to News List
           </button>
         </div>
         <div className="flex justify-end p-4">
@@ -251,8 +242,8 @@ const NewsDetails = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="px-0.5 sm:px-0.5 pt-4">
-        <div className="max-w-5xl mx-auto pt-4 flex justify-between items-center">
+      <div className="px-4 sm:px-8 py-3">
+        <div className="flex mb-4 justify-between items-center">
           <div className="flex items-center">
             <button
               onClick={() => navigate('/news')}
@@ -264,182 +255,168 @@ const NewsDetails = () => {
             </button>
             <span className="text-2xl font-bold text-[#2D6B9F] ml-3 select-none">Мэдээ мэдээлэл</span>
           </div>
-          {isUserAdmin() && (
-            <div className="flex space-x-2">
-              <button
-                onClick={handleOpenModal}
-                className="flex items-center px-3 py-1.5 border rounded text-sm font-medium hover:bg-blue-50/50"
-                style={{ borderColor: "#2D6B9F", color: "#2D6B9F" }}
-              >
-                <Edit size={15} className="mr-1" />
-                Засах
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center px-3 py-1.5 border border-red-500 rounded text-sm font-medium text-red-500 hover:bg-red-50/50"
-              >
-                <Trash2 size={15} className="mr-1" />
-                Устгах
-              </button>
-            </div>
-          )}
         </div>
-        <div className="max-w-5xl mx-auto px-1 pt-2 sm:px-0">
+        <div className="px-4 pt-2 sm:px-0">
           <Breadcrumb />
         </div>
 
-        <div className="max-w-5xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
-          <div className="bg-white rounded-lg p-4 w-full">
-            <h1 className="text-xl font-bold text-[#2D6B9F] mb-3">{news.Title}</h1>
-            <div className="h-px bg-[#2D6B9F] w-full mb-2"></div>
-            <div className="flex items-center text-sm text-gray-500 mb-4">
-              <span>Нийтэлсэн: {news.Username}</span>
-              <span className="mx-2">•</span>
-              <span>{formatDate(news.CreatedDate)}</span>
-            </div>
-            {news.UpdatedDate && news.UpdatedDate !== news.CreatedDate && (
-              <div className="text-xs text-gray-500 mb-2">
-                Сүүлд засварласан: {formatDate(news.UpdatedDate)}
-              </div>
-            )}
-          </div>
-
-          <div className="mb-5">
-            <div className="float-left ml-4 mr-4 mt-4 mb-4 w-full md:w-2/5">
-              <div
-                className="p-2 bg-white rounded-lg shadow-md"
-                style={{
-                  borderLeft: "4px solid #e5e7eb"
-                }}
-              >
-                <img
-                  src={`${API_URL}/news/${id}/image`}
-                  alt={news.Title}
-                  className="w-full h-auto rounded"
-                  style={{
-                    maxHeight: "300px",
-                    objectFit: "contain"
-                  }}
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/1200x600?text=No+Image';
-                  }}
+        <div className="w-full flex flex-col md:flex-row bg-white rounded-lg shadow-sm p-4 md:p-6 mt-2">
+          <div className="md:w-2/5 pr-0 md:pr-8 pb-4 md:pb-0 flex flex-col items-center md:items-start pt-2 md:pt-4 pl-1 md:pl-6 min-w-[320px] max-w-[600px]">
+            {isEditing ? (
+              <>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="text-xl font-bold text-[#2D6B9F] mb-2 text-center md:text-left w-full border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                  required
+                  style={{ fontSize: "1.25rem" }}
                 />
-              </div>
-            </div>
-            <div
-              className="hidden md:block"
-              style={{
-                float: "left",
-                height: "185px",
-                width: "1px",
-                background: "#e5e7eb",
-                marginTop: "40px",
-                marginRight: "8px"
-              }}
-            ></div>
-            
-            <div 
-              className="bg-white p-3"
-              style={{
-                borderLeft: "4px solid #2D6B9F",
-                borderRight: "4px solid #2D6B9F",
-                minHeight: "300px" 
-              }}
-            >
-              <div className="text-gray-700 break-words whitespace-normal leading-relaxed">
-                {news.NewsDescription}
-              </div>
-            </div>
-            {/* Clearfix to handle float */}
-            <div className="clear-both"></div>
-          </div>
-        </div>
-
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
-            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110]">
-              <div className="p-4 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-[#2D6B9F]">
-                    Мэдээ засах
-                  </h2>
-                  <button
-                    onClick={handleCloseModal}
-                    className="text-gray-400 hover:text-[#2D6B9F]"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                      Гарчиг <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                      Тайлбар <span className="text-red-400">*</span>
-                    </label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#2D6B9F] text-sm font-medium mb-2">
-                      Зураг
-                    </label>
+                <div className="w-full mt-2 flex flex-col gap-2">
+                  <div className="p-1 bg-white rounded-lg shadow-md border border-gray-100 w-full">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleFileChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
+                      className="mb-2"
                     />
-                    {(previewUrl || news) && (
-                      <div className="mt-2">
+                    <img
+                      src={
+                        previewUrl ||
+                        `${API_URL}/news/${news.NewsId || news.id || news._id || news.Id || news.id}/image`
+                      }
+                      alt="Preview"
+                      className="w-full max-h-[420px] min-h-[220px] object-contain rounded"
+                      style={{
+                        objectFit: "contain",
+                        background: "#fff"
+                      }}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 className="text-xl font-bold text-[#2D6B9F] mb-2 text-center md:text-left">{news.Title}</h1>
+                <div className="flex items-center text-sm text-gray-500 mb-1">
+                  <span>Нийтэлсэн: {news.Username}</span>
+                  <span className="mx-2">•</span>
+                  <span>{formatDate(news.CreatedDate)}</span>
+                </div>
+                {news.UpdatedDate && news.UpdatedDate !== news.CreatedDate && (
+                  <div className="text-xs text-gray-500 mb-1">
+                    Сүүлд засварласан: {formatDate(news.UpdatedDate)}
+                  </div>
+                )}
+                <div className="w-full mt-2 flex flex-col gap-2">
+                  {Array.isArray(news.Images) && news.Images.length > 0 ? (
+                    news.Images.map((imgUrl, idx) => (
+                      <div key={idx} className="p-1 bg-white rounded-lg shadow-md border border-gray-100 w-full">
                         <img
-                          src={
-                            previewUrl ||
-                            `${API_URL}/news/${id}/image`
-                          }
-                          alt="Preview"
-                          className="w-full h-40 object-cover rounded-md"
+                          src={imgUrl}
+                          alt={news.Title}
+                          className="w-full max-h-[420px] min-h-[220px] object-contain rounded"
+                          style={{
+                            objectFit: "contain",
+                            background: "#fff"
+                          }}
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/1200x600?text=No+Image';
+                          }}
                         />
                       </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCloseModal}
-                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
-                    >
-                      Болих
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex items-center px-4 py-2 bg-[#2D6B9F]/90 text-white rounded-md hover:bg-[#2D6B9F]"
-                    >
-                      <Pencil size={15} className="mr-1" />
-                      Шинэчлэх
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+                    ))
+                  ) : (
+                    <div className="p-1 bg-white rounded-lg shadow-md border border-gray-100 w-full">
+                      <img
+                        src={`${API_URL}/news/${news.NewsId || news.id || news._id || news.Id || news.id}/image`}
+                        alt={news.Title}
+                        className="w-full max-h-[420px] min-h-[220px] object-contain rounded"
+                        style={{
+                          objectFit: "contain",
+                          background: "#fff"
+                        }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/1200x600?text=No+Image';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-        )}
+          <div className="hidden md:block w-px bg-gray-300 mx-0"></div>
+          <div className="flex-1 flex flex-col h-full p-2 md:p-4 min-w-0">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-semibold text-[#2D6B9F]">Дэлгэрэнгүй</h3>
+            </div>
+            {isEditing ? (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-32"
+                    required
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditing(false); navigate(`/news/${id}`); }}
+                    className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-blue-50/50"
+                    style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "70px", fontSize: "12px" }}
+                  >
+                    <X size={13} className="mr-1" />
+                    Болих
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-[#2D6B9F] bg-[#2D6B9F]/90"
+                    style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "70px", fontSize: "12px" }}
+                  >
+                    <Pencil size={13} className="mr-1" />
+                    Шинэчлэх
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div
+                  className="text-gray-800 flex-grow overflow-y-auto break-all whitespace-normal border rounded p-3 h-64 md:h-80 bg-white flex flex-col"
+                  style={{ minHeight: "120px" }}
+                >
+                  <div className="text-gray-700 break-words whitespace-normal leading-relaxed flex-grow">
+                    {news.NewsDescription}
+                  </div>
+                </div>
+                {isUserAdmin() && (
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => navigate(`/news/${id}?mode=edit`)}
+                      className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-blue-50/50 mr-2"
+                      style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "70px", fontSize: "12px" }}
+                    >
+                      <Edit size={13} className="mr-1" />
+                      Засах
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-red-50/50"
+                      style={{ borderColor: "#ef4444", color: "#ef4444", minWidth: "70px", fontSize: "12px" }}
+                    >
+                      <Trash2 size={13} className="mr-1" />
+                      Устгах
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
