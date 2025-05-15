@@ -10,7 +10,15 @@ exports.getTariff = async (req, res) => {
     );
     
     if (tariff.length === 0) {
-      return res.status(404).json({ message: 'Тариф олдсонгүй' });
+      return res.json({
+        TariffId: null,
+        ColdWaterTariff: 0,
+        HeatWaterTariff: 0,
+        DirtyWaterTariff: 0,
+        EffectiveFrom: '',
+        EffectiveTo: null,
+        IsActive: 0
+      });
     }
     
     res.json(tariff[0]);
@@ -22,11 +30,11 @@ exports.getTariff = async (req, res) => {
 // Get tariff history
 exports.getTariffHistory = async (req, res) => {
   try {
-    // Get all tariffs ordered by date
+    // Get all tariffs ordered by TariffId DESC (latest first)
     const [tariffs] = await pool.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
       'EffectiveFrom, EffectiveTo, IsActive, CreatedAt, UpdatedAt FROM Tarif ' +
-      'ORDER BY EffectiveFrom DESC'
+      'ORDER BY TariffId DESC'
     );
     
     res.json(tariffs);
@@ -130,7 +138,7 @@ exports.toggleTariffStatus = async (req, res) => {
     await connection.commit();
     
     if (updatedTariff.length === 0) {
-      return res.status(404).json({ message: 'Тариф олдсонгүй' });
+      return res.json({});
     }
     
     res.json({

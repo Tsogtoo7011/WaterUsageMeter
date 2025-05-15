@@ -62,52 +62,120 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Update user details
-exports.updateUser = async (req, res) => {
+exports.createUser = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const { username, firstname, lastname, phonenumber, email } = req.body;
-    
-    // Check if user exists
-    const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
-    const [checkResults] = await db.query(checkQuery, [userId]);
-    
-    if (checkResults.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
+    const { username, firstname, lastname, phonenumber, email, adminRight } = req.body;
+
+    // Validate required fields
+    if (!username || !firstname || !lastname || !email) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
-    
-    // Check if the username or email is already taken by another user
-    const duplicateQuery = 'SELECT UserId FROM UserAdmin WHERE (Username = ? OR Email = ?) AND UserId != ?';
-    const [duplicateResults] = await db.query(duplicateQuery, [username, email, userId]);
-    
+
+    // Check for duplicate username or email
+    const duplicateQuery = 'SELECT UserId FROM UserAdmin WHERE Username = ? OR Email = ?';
+    const [duplicateResults] = await db.query(duplicateQuery, [username, email]);
     if (duplicateResults.length > 0) {
       return res.status(400).json({ message: 'Username or email already in use' });
     }
-    
-    const query = `
-      UPDATE UserAdmin
-      SET 
-        Username = ?, 
-        Firstname = ?, 
-        Lastname = ?, 
-        Phonenumber = ?, 
-        Email = ?
-      WHERE UserId = ?
+
+    // Set a default password for new users (should be changed on first login)
+    const defaultPassword = 'changeme123';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+
+    const insertQuery = `
+      INSERT INTO UserAdmin (Username, Firstname, Lastname, Phonenumber, Email, AdminRight, Password, IsVerified, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())
     `;
-    
-    const [results] = await db.query(query, [
-      username, 
-      firstname, 
-      lastname, 
-      phonenumber, 
-      email, 
-      userId
+    const [result] = await db.query(insertQuery, [
+      username,
+      firstname,
+      lastname,
+      phonenumber || null,
+      email,
+      adminRight === 1 ? 1 : 0,
+      hashedPassword
     ]);
-    
+
+    res.status(201).json({ message: 'User created successfully', userId: result.insertId });
+  } catch (err) {
+    console.error('Error creating user:', err);
+    res.status(500).json({ message: 'Failed to create user: ' + err.message });
+  }
+};
+
+// Update user details (including adminRight if provided)
+exports.updateUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { username, firstname, lastname, phonenumber, email, adminRight } = req.body;
+
+    // Check if user exists
+    const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
+    const [checkResults] = await db.query(checkQuery, [userId]);
+
+    if (checkResults.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if the username or email is already taken by another user
+    const duplicateQuery = 'SELECT UserId FROM UserAdmin WHERE (Username = ? OR Email = ?) AND UserId != ?';
+    const [duplicateResults] = await db.query(duplicateQuery, [username, email, userId]);
+
+    if (duplicateResults.length > 0) {
+      return res.status(400).json({ message: 'Username or email already in use' });
+    }
+
+    // If adminRight is provided and the requester is admin, update it
+    let updateQuery, params;
+    if (typeof adminRight !== 'undefined') {
+      updateQuery = `
+        UPDATE UserAdmin
+        SET 
+          Username = ?, 
+          Firstname = ?, 
+          Lastname = ?, 
+          Phonenumber = ?, 
+          Email = ?,
+          AdminRight = ?
+        WHERE UserId = ?
+      `;
+      params = [
+        username,
+        firstname,
+        lastname,
+        phonenumber,
+        email,
+        adminRight === 1 ? 1 : 0,
+        userId
+      ];
+    } else {
+      updateQuery = `
+        UPDATE UserAdmin
+        SET 
+          Username = ?, 
+          Firstname = ?, 
+          Lastname = ?, 
+          Phonenumber = ?, 
+          Email = ?
+        WHERE UserId = ?
+      `;
+      params = [
+        username,
+        firstname,
+        lastname,
+        phonenumber,
+        email,
+        userId
+      ];
+    }
+
+    const [results] = await db.query(updateQuery, params);
+
     if (results.affectedRows === 0) {
       return res.status(404).json({ message: 'User not found or not updated' });
     }
-    
+
     res.status(200).json({ message: 'User updated successfully' });
   } catch (err) {
     console.error('Error updating user:', err);
@@ -126,10 +194,8 @@ exports.updateAdminRight = async (req, res) => {
       return res.status(400).json({ message: 'Admin right must be 0 or 1' });
     }
     
-    // Check if the requester is an admin
-    if (req.userData.adminRight !== 1) {
-      return res.status(403).json({ message: 'Only admins can change admin rights' });
-    }
+    // The adminOnly middleware has already verified the user is an admin,
+    // so we don't need to check req.userData.adminRight here
     
     // Check if user exists
     const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
