@@ -17,7 +17,6 @@ import AdminTarif from './pages/Admin/AdminTariff';
 import AdminUser from './pages/Admin/AdminUser';
 import AboutUs from './pages/User/About';
 import MeterCounterDetail from './pages/User/MeterCounterDetails';
-import MeterCounterImport from './pages/User/MeterCounterImport';
 import Apartment from './pages/User/Apartment';
 import MeterCounter from './pages/User/MeterCounter';
 import PaymentInfo from './pages/User/Payment';
@@ -84,7 +83,6 @@ function App() {
         <Route path="/user" element={<Navigate to="/home" replace />} />
         <Route path="/profile/apartment" element={<UserRoute><Apartment /></UserRoute>} />
         <Route path="/user/metercounter/details" element={<UserRoute><MeterCounterDetail /></UserRoute>} />
-        <Route path="/user/metercounter/import" element={<UserRoute><MeterCounterImport /></UserRoute>} />
         <Route path="/user/about-us" element={<UserRoute><AboutUs /></UserRoute>} />
         <Route path="/user/metercounter" element={<UserRoute><MeterCounter /></UserRoute>} />
         <Route path="/user/payment-info" element={<UserRoute><PaymentInfo /></UserRoute>} />

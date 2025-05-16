@@ -1,76 +1,76 @@
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
-import api from "../../utils/api"; 
+import api from "../../utils/api";
 import VerificationReminder from '../../components/common/verificationReminder';
 import NoApartments from '../../components/common/NoApartment';
 import Breadcrumb from '../../components/common/Breadcrumb';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
+import ApartmentSelector from '../../components/common/ApartmentSelector';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+// Water Meter Card Component
+const WaterMeterCard = ({ year, month, hot, cold }) => {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group">
+      <div className="flex justify-between items-center border-b border-gray-100 px-4 py-3">
+        <div className="flex items-center">
+          <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <div className="text-sm text-gray-800">{year}-{month} сар</div>
+        </div>
+        <div className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+          Дууссан
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="text-sm text-gray-800 mb-3">
+          Халуун ус: {hot} м³&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Хүйтэн ус: {cold} м³
+        </div>
+        <a 
+          href="/user/watercounter/details"
+          className="block w-full bg-blue-500 text-white py-2 rounded text-sm text-center"
+        >
+          Дэлгэрэнгүй
+        </a>
+      </div>
+    </div>
+  );
+};
 
-export function MeterCounter() {
+const WaterCounter = () => {
   const [user, setUser] = useState(null);
   const [waterMeters, setWaterMeters] = useState([]);
-  const [summary, setSummary] = useState({ hot: 0, cold: 0, locationBreakdown: {} });
-  const [chartData, setChartData] = useState({ labels: [], hot: [], cold: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasApartments, setHasApartments] = useState(true);
   const [hasReadings, setHasReadings] = useState(true);
   const [apartments, setApartments] = useState([]);
   const [selectedApartmentId, setSelectedApartmentId] = useState(null);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  const MONGOLIAN_MONTHS = [
+    '1-р сар', '2-р сар', '3-р сар', '4-р сар', '5-р сар', '6-р сар',
+    '7-р сар', '8-р сар', '9-р сар', '10-р сар', '11-р сар', '12-р сар'
+  ];
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-    
     fetchWaterMeterData();
   }, []);
 
-  // Function to fetch data for specific apartment
   const fetchWaterMeterData = async (apartmentId = null) => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Build URL with query parameter if apartment is specified
       const url = apartmentId 
         ? `/water-meters/user?apartmentId=${apartmentId}`
         : '/water-meters/user';
-      
       const response = await api.get(url);
-      
       if (response.data.success) {
-        // Set data from response
         setWaterMeters(response.data.waterMeters || []);
-        setSummary(response.data.summary || { hot: 0, cold: 0, total: 0, locationBreakdown: {} });
-        setChartData(response.data.chartData || { labels: [], hot: [], cold: [], total: [] });
-        
-        // Set has readings flag
         setHasReadings(response.data.hasReadings !== false);
-        
-        // Directly use the hasApartments flag from the response
         setHasApartments(response.data.hasApartments !== false);
         setApartments(response.data.apartments || []);
         setSelectedApartmentId(response.data.selectedApartmentId || null);
@@ -80,12 +80,10 @@ export function MeterCounter() {
       }
     } catch (err) {
       console.error('Error fetching water meter data:', err);
-      
-      // Check response for hasApartments flag or other indicators
       if (err.response && err.response.data) {
         if (err.response.data.hasApartments === false) {
           setHasApartments(false);
-          setError(null); // Clear error since this is an expected state
+          setError(null);
         } else {
           setError('Серверээс мэдээлэл авахад алдаа гарлаа.');
         }
@@ -104,215 +102,192 @@ export function MeterCounter() {
     }));
   };
 
-  // Function to handle apartment change
-  const handleApartmentChange = (e) => {
-    const newApartmentId = e.target.value;
+  const handleApartmentChange = (apartmentIdOrEvent) => {
+    const newApartmentId = typeof apartmentIdOrEvent === 'string'
+      ? apartmentIdOrEvent
+      : apartmentIdOrEvent.target.value;
     setSelectedApartmentId(newApartmentId);
-    fetchWaterMeterData(newApartmentId); // Fetch data for the new apartment
+    fetchWaterMeterData(newApartmentId);
   };
 
-  const chartOptions = {
-    responsive: true,
-    plugins: { 
-      legend: { position: 'top' },
-      tooltip: {
-        callbacks: {
-          label: function(context) {
-            return `${context.dataset.label}: ${context.raw}м³`;
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Усны хэрэглээ (м³)'
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Сар'
-        }
-      }
-    }
-  };
+  // Group water meters by month (YYYY-MM)
+  const groupedByMonth = React.useMemo(() => {
+    if (!Array.isArray(waterMeters)) return {};
+    return waterMeters.reduce((acc, meter) => {
+      const date = meter.date ? new Date(meter.date) : null;
+      if (!date) return acc;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!acc[monthKey]) acc[monthKey] = [];
+      acc[monthKey].push(meter);
+      return acc;
+    }, {});
+  }, [waterMeters]);
 
-  const getChartConfig = (title, data, color) => ({
-    labels: chartData.labels,
-    datasets: [
-      {
-        label: title,
-        data: data,
-        borderColor: color,
-        backgroundColor: `${color}40`,
-        tension: 0.1,
-        fill: true,
-      },
-    ],
-  });
-
-  // Component to display when no water meter readings are found
-  const NoReadingsView = () => (
-    <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-yellow-50 border-2 border-yellow-200 rounded-lg shadow-lg">
-      <div className="mb-4 text-yellow-600">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      </div>
-      <h2 className="mb-4 text-xl font-bold text-gray-800">Тоолуурын мэдээлэл олдсонгүй</h2>
-      <p className="mb-6 text-gray-600">Та тоолуурын заалтаа өгнө үү.</p>
-      <a 
-        href="/user/metercounter/import"
-        className="px-6 py-3 text-white transition-all bg-yellow-600 rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
-      >
-        Заалт өгөх
-      </a>
-    </div>
-  );
+  const monthKeys = Object.keys(groupedByMonth).sort((a, b) => b.localeCompare(a));
+  const totalPages = Math.ceil(monthKeys.length / itemsPerPage);
+  const paginatedMonthKeys = monthKeys.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb navigation */}
-      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
-        <Breadcrumb />
-      </div>
+    <div className="min-h-screen bg-white">
+      <div className="px-4 sm:px-8 pt-4">
+        <div className="max-w-7xl mx-auto pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2D6B9F]">
+              Тоолуурын заалт
+            </h1>
+            <div className="px-4 pt-2 sm:px-0">
+              <Breadcrumb />
+            </div>
+            <p className="text-gray-600 mt-2">
+              Та өөрийн байрны усны хэрэглээ, заалтыг эндээс хянах боломжтой.
+            </p>
+          </div>
+          <div className="flex flex-col items-end mt-4 sm:mt-0">
+            {apartments && apartments.length > 1 && (
+              <div className="min-w-[220px] ml-0 sm:ml-6">
+                <ApartmentSelector
+                  apartments={apartments}
+                  selectedApartment={selectedApartmentId}
+                  onChange={handleApartmentChange}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
-      <div className="max-w-7xl mx-auto p-6">
-        {user && !user.IsVerified && (
-          <div className="w-full max-w-3xl mb-6">
-            <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
-          </div>
-        )}
-        
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 w-full max-w-3xl">
-            <p className="font-medium">Алдаа гарлаа</p>
-            <p>{error}</p>
-          </div>
-        ) : !hasApartments ? (
-          <NoApartments 
-            title="Таньд холбоотой байр байхгүй байна"
-            description="Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
-            buttonText="Байр нэмэх"
-            buttonHref="/user/profile/apartment"
-            iconColor="blue"
-          />
-        ) : !hasReadings ? (
-          <>
-            {/* Apartment Selector (only show if there are multiple apartments) */}
-            {apartments && apartments.length > 1 && (
-              <div className="border p-4 rounded-lg shadow w-full max-w-3xl mb-6 bg-white">
-                <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-2">
-                  Байр сонгох:
-                </label>
-                <select
-                  id="apartment-select"
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                  value={selectedApartmentId || ''}
-                  onChange={handleApartmentChange}
-                >
-                  {apartments.map(apt => (
-                    <option key={apt.id} value={apt.id}>{apt.displayName}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            
-            <NoReadingsView />
-          </>
-        ) : (
-          <>
-            {/* Apartment Selector (only show if there are multiple apartments) */}
-            {apartments && apartments.length > 1 && (
-              <div className="border p-4 rounded-lg shadow w-full max-w-3xl mb-6 bg-white">
-                <label htmlFor="apartment-select" className="block text-sm font-medium text-gray-700 mb-2">
-                  Байр сонгох:
-                </label>
-                <select
-                  id="apartment-select"
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                  value={selectedApartmentId || ''}
-                  onChange={handleApartmentChange}
-                >
-                  {apartments.map(apt => (
-                    <option key={apt.id} value={apt.id}>{apt.displayName}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            
-            <div className="border p-6 rounded-lg shadow w-full max-w-3xl mb-6 bg-white">
-              <p className="text-lg font-semibold text-blue-600">Тоолуурын мэдээлэл</p>
-              <div className="mt-4 text-gray-700">
-                <p><strong>Нийт энэ сарын усны хэрэглээ:</strong></p>
-                <p>Халуун ус: <strong>{summary.hot}м³</strong> | Хүйтэн ус: <strong>{summary.cold}м³</strong></p>
-                <p className="mt-2">Нийт: <strong>{summary.total || (summary.hot + summary.cold)}м³</strong></p>
-              </div>
+        <div className="max-w-7xl mx-auto p-0 py-6">
+          {user && !user.IsVerified && (
+            <div className="w-full max-w-3xl mb-6">
+              <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl mb-6">
-              {summary.locationBreakdown && Object.entries(summary.locationBreakdown).map(([location, values]) => (
-                <div key={location} className="border p-4 rounded-lg shadow text-center bg-white">
-                  <p className="text-lg font-semibold">{location}</p>
-                  {values.hot !== undefined && <p>Халуун ус: <span className="font-medium">{values.hot}м³</span></p>}
-                  {values.cold !== undefined && <p>Хүйтэн ус: <span className="font-medium">{values.cold}м³</span></p>}
-                  <p className="mt-2 text-sm text-gray-500">
-                    Нийт: {(values.hot || 0) + (values.cold || 0)}м³
-                  </p>
-                </div>
-              ))}
+          )}
+
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl mb-8">
-              <div className="border p-4 rounded-lg shadow bg-white">
-                <h2 className="text-xl font-semibold mb-4">Хүйтэн ус</h2>
-                <div className="h-64">
-                  <Line 
-                    options={chartOptions} 
-                    data={getChartConfig('Хүйтэн ус', chartData.cold, 'rgb(53, 162, 235)')} 
-                  />
-                </div>
-              </div>
-              <div className="border p-4 rounded-lg shadow bg-white">
-                <h2 className="text-xl font-semibold mb-4">Халуун ус</h2>
-                <div className="h-64">
-                  <Line 
-                    options={chartOptions} 
-                    data={getChartConfig('Халуун ус', chartData.hot, 'rgb(255, 99, 132)')} 
-                  />
-                </div>
-              </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mt-6 max-w-md mx-auto">
+              <strong className="font-bold">Алдаа!</strong>
+              <span className="block sm:inline"> {error}</span>
             </div>
-            
-            <div className="border p-4 rounded-lg shadow w-full max-w-3xl text-center bg-white">
-              <p className="text-sm text-gray-600 mt-2">Та усны заалтаа сар бүрийн 1 - 20 ны хооронд өгнө үү.</p>
-              <div className="flex justify-center mt-4 space-x-4">
+          ) : !hasApartments ? (
+            <NoApartments 
+              title="Таньд холбоотой байр байхгүй байна"
+              description="Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
+              buttonText="Байр нэмэх"
+              buttonHref="/user/profile/apartment"
+              iconColor="blue"
+            />
+          ) : !hasReadings ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
+              <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-white border border-[#2D6B9F]/30 rounded-lg shadow">
+                <div className="mb-4 text-[#2D6B9F]">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h2 className="mb-4 text-xl font-bold text-gray-800">Тоолуурын мэдээлэл олдсонгүй</h2>
+                <p className="mb-6 text-gray-600">Та тоолуурын заалтаа өгнө үү.</p>
                 <a 
-                  href="/user/metercounter/details"
-                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition inline-block"
-                >
-                  Дэлгэрэнгүй
-                </a>
-                <a 
-                  href="/user/metercounter/import"
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition inline-block"
+                  href="/user/watercounter/details"
+                  className="px-6 py-3 text-white transition-all bg-[#2D6B9F]/90 rounded-md hover:bg-[#2D6B9F] focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:ring-offset-2"
                 >
                   Заалт өгөх
                 </a>
               </div>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+                {paginatedMonthKeys.length === 0 ? (
+                  <div className="col-span-full text-center text-gray-500 py-10">Тоолуурын мэдээлэл олдсонгүй</div>
+                ) : (
+                  paginatedMonthKeys.map((monthKey) => {
+                    const meters = groupedByMonth[monthKey];
+                    let hot = 0, cold = 0;
+                    meters.forEach(meter => {
+                      if (meter.type === 1) hot += meter.indication;
+                      else cold += meter.indication;
+                    });
+                    
+                    const [year, month] = monthKey.split('-');
+                    
+                    return (
+                      <WaterMeterCard
+                        key={monthKey}
+                        year={year}
+                        month={month}
+                        hot={hot}
+                        cold={cold}
+                      />
+                    );
+                  })
+                )}
+              </div>
+              
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-8 items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                      currentPage === 1
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                    } transition font-bold text-sm`}
+                    title="Өмнөх"
+                    disabled={currentPage === 1}
+                  >
+                    &lt;
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, index) => index + 1)
+                    .filter((page) => {
+                      return (
+                        page <= 2 ||
+                        page > totalPages - 2 ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      );
+                    })
+                    .map((page, index, pages) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && page !== pages[index - 1] + 1 && (
+                          <span className="text-gray-500">...</span>
+                        )}
+                        <button
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
+                            currentPage === page
+                              ? "bg-[#2D6B9F] text-white"
+                              : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                          } transition`}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                    
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                      currentPage === totalPages
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                    } transition font-bold text-sm`}
+                    title="Дараах"
+                    disabled={currentPage === totalPages}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
-}
+};
 
-export default MeterCounter;
+export default WaterCounter;

@@ -560,6 +560,11 @@ export default function AdminUser() {
           </div>
         )}
       </div>
+      {/* Bottom blue bar */}
+      <div className="w-full bg-[#2D6B9F]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8" style={{ height: "48px", display: "flex", alignItems: "center" }}>
+        </div>
+      </div>
     </div>
   );
 }

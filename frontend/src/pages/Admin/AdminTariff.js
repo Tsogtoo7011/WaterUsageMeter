@@ -384,8 +384,8 @@ export default function AdminTariff() {
                         {currentTariffs.length > 0 ? currentTariffs.map((item) => (
                           <tr key={item.TariffId} className="hover:bg-blue-50 transition group">
                             <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center text-gray-900">{item.TariffId}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-blue-700 text-center">{formatCurrency(item.ColdWaterTariff)}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-red-700 text-center">{formatCurrency(item.HeatWaterTariff)}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-blue-500 text-center">{formatCurrency(item.ColdWaterTariff)}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-red-500 text-center">{formatCurrency(item.HeatWaterTariff)}</td>
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{formatCurrency(item.DirtyWaterTariff)}</td>
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{formatDate(item.EffectiveFrom)}</td>
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{item.EffectiveTo ? formatDate(item.EffectiveTo) : 'Тодорхойгүй'}</td>
@@ -413,53 +413,53 @@ export default function AdminTariff() {
                       </tbody>
                     </table>
                   </div>
+                  {/* Pagination moved here, directly under the table */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center mt-4 mb-6 items-center space-x-2">
+                      <button
+                        onClick={() => paginate(Math.max(1, currentPage - 1))}
+                        className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                          currentPage === 1
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                        } transition font-bold text-sm`}
+                        title="Өмнөх"
+                        disabled={currentPage === 1}
+                      >
+                        &lt;
+                      </button>
+                      {Array.from({ length: totalPages }, (_, index) => index + 1)
+                        .map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => paginate(page)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
+                              currentPage === page
+                                ? "bg-[#2D6B9F] text-white"
+                                : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                            } transition`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      <button
+                        onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                        className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                          currentPage === totalPages
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                        } transition font-bold text-sm`}
+                        title="Дараах"
+                        disabled={currentPage === totalPages}
+                      >
+                        &gt;
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            {/* Pagination OUTSIDE the table */}
           </div>
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-4 items-center space-x-2">
-              <button
-                onClick={() => paginate(Math.max(1, currentPage - 1))}
-                className={`w-8 h-8 flex items-center justify-center rounded-full border ${
-                  currentPage === 1
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                } transition font-bold text-sm`}
-                title="Өмнөх"
-                disabled={currentPage === 1}
-              >
-                &lt;
-              </button>
-              {Array.from({ length: totalPages }, (_, index) => index + 1)
-                .map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => paginate(page)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
-                      currentPage === page
-                        ? "bg-[#2D6B9F] text-white"
-                        : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              <button
-                onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-                className={`w-8 h-8 flex items-center justify-center rounded-full border ${
-                  currentPage === totalPages
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                } transition font-bold text-sm`}
-                title="Дараах"
-                disabled={currentPage === totalPages}
-              >
-                &gt;
-              </button>
-            </div>
-          )}
         </div>
         {/* Info Section */}
         <div className="mt-8 bg-blue-50 p-6 rounded-lg">
@@ -574,7 +574,10 @@ export default function AdminTariff() {
           </div>
         </div>
       )}
-      <div style={{ width: "96.5vw", height: 50, background: "#2D6B9F", marginLeft: "calc(50% - 50vw)" }}></div>
+      <div className="w-full bg-[#2D6B9F]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8" style={{ height: "48px", display: "flex", alignItems: "center" }}>
+        </div>
+      </div>
     </div>
   );
 }

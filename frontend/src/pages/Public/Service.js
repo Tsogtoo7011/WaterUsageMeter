@@ -827,7 +827,11 @@ const Service = () => {
             </div>
           </div>
         )}
-         <div style={{ width: "96.5vw", height: 50, background: "#2D6B9F", marginLeft: "calc(50% - 50vw)" }}></div>
+        {/* Bottom blue bar */}
+        <div className="w-full bg-[#2D6B9F]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8" style={{ height: "48px", display: "flex", alignItems: "center" }}>
+          </div>
+        </div>
       </div>
   );
 };

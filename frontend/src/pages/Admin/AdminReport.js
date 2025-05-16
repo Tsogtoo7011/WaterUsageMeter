@@ -195,16 +195,16 @@ export default function AdminReport() {
   const renderFilters = () => {
     if (!['dashboard', 'paymentStats', 'serviceStats'].includes(activeTab)) {
       return (
-        <div className="mb-6 bg-white shadow rounded-lg">
+        <div className="mb-6 bg-white shadow rounded-lg border border-gray-200">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center">
+              <h2 className="text-lg font-bold text-[#2D6B9F] flex items-center">
                 <Filter className="h-5 w-5 mr-2" />
                 Шүүлтүүр
               </h2>
               {reportTabs.some(tab => tab.id === activeTab) && (
                 <button
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#2D6B9F] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   onClick={downloadExcel}
                 >
                   <Download className="h-5 w-5 mr-2" />
@@ -600,12 +600,12 @@ export default function AdminReport() {
 
   const renderDashboard = () => {
     return (
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
         <div className="px-4 py-5 sm:p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Хяналтын самбар</h2>
+          <h2 className="text-lg font-bold text-[#2D6B9F] mb-4">Хяналтын самбар</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="bg-blue-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center">
                 <Users className="w-8 h-8 text-blue-600 mr-3" />
                 <div>
@@ -615,7 +615,7 @@ export default function AdminReport() {
               </div>
             </div>
             
-            <div className="bg-green-50 p-4 rounded-lg">
+            <div className="bg-green-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center">
                 <Building className="w-8 h-8 text-green-600 mr-3" />
                 <div>
@@ -625,7 +625,7 @@ export default function AdminReport() {
               </div>
             </div>
             
-            <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="bg-yellow-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center">
                 <Activity className="w-8 h-8 text-yellow-600 mr-3" />
                 <div>
@@ -635,7 +635,7 @@ export default function AdminReport() {
               </div>
             </div>
             
-            <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="bg-purple-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center">
                 <MessageSquare className="w-8 h-8 text-purple-600 mr-3" />
                 <div>
@@ -645,7 +645,7 @@ export default function AdminReport() {
               </div>
             </div>
             
-            <div className="bg-red-50 p-4 rounded-lg col-span-1 sm:col-span-2">
+            <div className="bg-red-50 p-4 rounded-lg col-span-1 sm:col-span-2 border border-gray-200">
               <div className="flex items-center">
                 <Calendar className="w-8 h-8 text-red-600 mr-3" />
                 <div>
@@ -661,7 +661,7 @@ export default function AdminReport() {
             </div>
           </div>
           
-          <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+          <div className="mt-6 bg-blue-50 p-4 rounded-lg border border-gray-200">
             <h3 className="text-sm font-semibold mb-2 text-blue-800">Тайлангийн тухай</h3>
             <p className="text-sm text-gray-700">
               Энэхүү хяналтын самбар нь таны системийн ерөнхий статистик мэдээллийг харуулж байна. 
@@ -676,7 +676,7 @@ export default function AdminReport() {
   const renderReportTable = () => {
     if (!reportData || reportData.length === 0 || !Array.isArray(reportData)) {
       return (
-        <div className="bg-white rounded-lg shadow p-6 text-center">
+        <div className="bg-white rounded-lg shadow p-6 text-center border border-gray-200">
           <p className="text-gray-500">Энэ тайланд мэдээлэл олдсонгүй.</p>
         </div>
       );
@@ -720,9 +720,9 @@ export default function AdminReport() {
     );
   
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
         <div className="px-4 py-5 sm:p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">{getTabLabel(activeTab)}</h2>
+          <h2 className="text-lg font-bold text-[#2D6B9F] mb-4">{getTabLabel(activeTab)}</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -777,7 +777,7 @@ export default function AdminReport() {
                     <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
                         onClick={() => setSelectedItem(item)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-[#2D6B9F] hover:text-blue-900"
                       >
                         Харах
                       </button>
@@ -795,14 +795,14 @@ export default function AdminReport() {
               <button
                 disabled={currentPage === 1}
                 onClick={() => handlePageChange(currentPage - 1)}
-                className={`px-3 py-1 border rounded ${currentPage === 1 ? 'text-gray-400' : 'text-blue-600 hover:bg-gray-100'}`}
+                className={`px-3 py-1 border rounded ${currentPage === 1 ? 'text-gray-400' : 'text-[#2D6B9F] hover:bg-gray-100'}`}
               >
                 Өмнөх
               </button>
               <button
                 disabled={currentPage === Math.ceil(reportData.length / rowsPerPage)}
                 onClick={() => handlePageChange(currentPage + 1)}
-                className={`px-3 py-1 border rounded ${currentPage === Math.ceil(reportData.length / rowsPerPage) ? 'text-gray-400' : 'text-blue-600 hover:bg-gray-100'}`}
+                className={`px-3 py-1 border rounded ${currentPage === Math.ceil(reportData.length / rowsPerPage) ? 'text-gray-400' : 'text-[#2D6B9F] hover:bg-gray-100'}`}
               >
                 Дараах
               </button>
@@ -883,8 +883,8 @@ export default function AdminReport() {
         {reportData && reportData.length ? (
           <>
             {/* Mini Table */}
-            <div className="bg-white rounded-lg shadow p-6 overflow-auto">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Хүснэгт</h3>
+            <div className="bg-white rounded-lg shadow p-6 overflow-auto border border-gray-200">
+              <h3 className="text-lg font-bold text-[#2D6B9F] mb-4">Хүснэгт</h3>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -913,8 +913,8 @@ export default function AdminReport() {
             </div>
 
             {/* Circle Chart */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">График</h3>
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <h3 className="text-lg font-bold text-[#2D6B9F] mb-4">График</h3>
               <Pie data={{
                 labels: labels,
                 datasets: [
@@ -928,7 +928,7 @@ export default function AdminReport() {
             </div>
           </>
         ) : (
-          <div className="col-span-1 lg:col-span-2 bg-white rounded-lg shadow p-6 text-center">
+          <div className="col-span-1 lg:col-span-2 bg-white rounded-lg shadow p-6 text-center border border-gray-200">
             <p className="text-gray-500">Энэ жилд статистик мэдээлэл олдсонгүй.</p>
           </div>
         )}
@@ -939,7 +939,7 @@ export default function AdminReport() {
   const renderReport = () => {
     if (loading) {
       return (
-        <div className="bg-white rounded-lg shadow p-6 text-center">
+        <div className="bg-white rounded-lg shadow p-6 text-center border border-gray-200">
           <p className="text-gray-500">Тайлан ачааллаж байна...</p>
         </div>
       );
@@ -947,8 +947,8 @@ export default function AdminReport() {
 
     if (error) {
       return (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="rounded-md bg-red-50 p-4">
+        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <div className="rounded-md bg-red-50 p-4 border border-red-200">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -972,58 +972,58 @@ export default function AdminReport() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Breadcrumb navigation */}
-      <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
-        <Breadcrumb />
-      </div>
-
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-6">Админ тайлан</h1>
-          
+    <div className="min-h-screen bg-white">
+      <div className="px-4 sm:px-8 pt-4">
+        <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2D6B9F] mb-2">
+              Админ тайлан
+            </h1>
+            <div className="px-4 pt-2 sm:px-0">
+              <Breadcrumb />
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
           {/* Tabs */}
-          <div className="mb-6 bg-white shadow rounded-lg">
+          <div className="mb-6 bg-white shadow rounded-lg border border-gray-200">
             <div className="flex items-center p-2">
               {/* Dashboard tab (not in dropdown) */}
               <button
-                className={`px-4 py-2 text-center text-sm font-medium flex items-center justify-center ${
+                className={`px-4 py-2 text-center text-sm font-medium flex items-center justify-center rounded-t ${
                   activeTab === 'dashboard'
-                    ? 'text-blue-600 border-b-2 border-blue-500'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'text-[#2D6B9F] border-b-2 border-[#2D6B9F] bg-blue-50'
+                    : 'text-gray-500 hover:text-[#2D6B9F] hover:bg-blue-50'
                 }`}
                 onClick={() => setActiveTab('dashboard')}
               >
                 <Home className="h-5 w-5 mr-2" />
                 Хяналтын самбар
               </button>
-              
-              {/* Statistics dropdown */}
               <div className="relative ml-2">
                 <button
-                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center ${
+                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t ${
                     statisticsTabs.some(tab => tab.id === activeTab)
-                      ? 'text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'text-[#2D6B9F] bg-blue-50'
+                      : 'text-gray-500 hover:text-[#2D6B9F] hover:bg-blue-50'
                   }`}
                   onClick={() => toggleDropdown('statistics')}
                 >
                   Статистик
                   <ChevronDown className="h-5 w-5 ml-1" />
                 </button>
-                
                 {openDropdown === 'statistics' && (
-                  <div className="absolute z-10 mt-1 w-56 bg-white rounded-md shadow-lg">
+                  <div className="absolute z-10 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200">
                     <div className="py-1">
                       {statisticsTabs.map((tab) => {
                         const Icon = tab.icon;
                         return (
                           <button
                             key={tab.id}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center ${
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center rounded ${
                               activeTab === tab.id
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-blue-50 text-[#2D6B9F]'
+                                : 'text-gray-700 hover:bg-blue-50'
                             }`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1040,33 +1040,30 @@ export default function AdminReport() {
                   </div>
                 )}
               </div>
-              
-              {/* Reports dropdown */}
               <div className="relative ml-2">
                 <button
-                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center ${
+                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t ${
                     reportTabs.some(tab => tab.id === activeTab)
-                      ? 'text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'text-[#2D6B9F] bg-blue-50'
+                      : 'text-gray-500 hover:text-[#2D6B9F] hover:bg-blue-50'
                   }`}
                   onClick={() => toggleDropdown('reports')}
                 >
                   Тайлан
                   <ChevronDown className="h-5 w-5 ml-1" />
                 </button>
-                
                 {openDropdown === 'reports' && (
-                  <div className="absolute z-10 mt-1 w-56 bg-white rounded-md shadow-lg">
+                  <div className="absolute z-10 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200">
                     <div className="py-1">
                       {reportTabs.map((tab) => {
                         const Icon = tab.icon;
                         return (
                           <button
                             key={tab.id}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center ${
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center rounded ${
                               activeTab === tab.id
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-blue-50 text-[#2D6B9F]'
+                                : 'text-gray-700 hover:bg-blue-50'
                             }`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1085,14 +1082,12 @@ export default function AdminReport() {
               </div>
             </div>
           </div>
-          
           {/* Filters section */}
-          {renderFilters()}
-          
+          <div className="mb-6">{renderFilters()}</div>
           {/* Message display */}
           {message && (
             <div className="mb-6">
-              <div className="rounded-md bg-green-50 p-4">
+              <div className="rounded-md bg-green-50 p-4 border border-green-200 max-w-md mx-auto">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -1106,28 +1101,27 @@ export default function AdminReport() {
               </div>
             </div>
           )}
-          
-          {activeTab === 'dashboard' ? renderDashboard() : renderReport()}
+          <div>
+            {activeTab === 'dashboard' ? renderDashboard() : renderReport()}
+          </div>
         </div>
       </div>
-
       {/* Details Modal */}
       {selectedItem && (
         <div className="fixed z-50 inset-0 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setSelectedItem(null)}></div>
+              <div className="absolute inset-0 bg-black opacity-50" onClick={() => setSelectedItem(null)}></div>
             </div>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-200">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  <h3 className="text-lg leading-6 font-bold text-[#2D6B9F] mb-4">
                     Дэлгэрэнгүй мэдээлэл
                   </h3>
                   <button
                     onClick={() => setSelectedItem(null)}
-                    className="text-gray-400 hover:text-gray-500"
+                    className="text-gray-400 hover:text-[#2D6B9F]"
                   >
                     <X className="h-6 w-6" />
                   </button>
@@ -1137,27 +1131,21 @@ export default function AdminReport() {
                     <table className="min-w-full divide-y divide-gray-200">
                       <tbody className="bg-white divide-y divide-gray-200">
                         {Object.entries(selectedItem).map(([key, value]) => {
-                          // Format the value based on its type
                           let displayValue = value;
-                          
                           if (value === null || value === undefined) {
                             displayValue = '-';
                           } else if (typeof value === 'boolean') {
                             displayValue = value ? 'Тийм' : 'Үгүй';
                           } else if (key.includes('Date') || key === 'createdAt' || key === 'updatedAt') {
-                            // Try to format as date if it looks like a date field
                             try {
                               const date = new Date(value);
                               if (!isNaN(date)) {
                                 displayValue = date.toLocaleString('mn-MN');
                               }
-                            } catch (e) {
-                              // Keep original value if date parsing fails
-                            }
+                            } catch (e) {}
                           } else if (typeof value === 'object') {
                             displayValue = JSON.stringify(value);
                           }
-                          
                           return (
                             <tr key={key}>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1177,7 +1165,7 @@ export default function AdminReport() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-[#2D6B9F] hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2D6B9F] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => setSelectedItem(null)}
                 >
                   Хаах
@@ -1187,6 +1175,11 @@ export default function AdminReport() {
           </div>
         </div>
       )}
+      {/* Bottom blue bar */}
+      <div className="w-full bg-[#2D6B9F]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8" style={{ height: "48px", display: "flex", alignItems: "center" }}>
+        </div>
+      </div>
     </div>
   );
 }
