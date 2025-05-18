@@ -368,22 +368,6 @@ export function Feedback() {
             <div className="flex justify-center items-center py-10">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
-          ) : filteredFeedbacks.length === 0 ? (
-            <div className="bg-gray-100 p-8 rounded-lg text-center">
-              <p className="text-lg text-gray-600">
-                {isAdmin ? 'Одоогоор бүртгэлтэй санал хүсэлт байхгүй байна.' : 
-                'Танд одоогоор бүртгэлтэй санал хүсэлт байхгүй байна.'}
-              </p>
-              {!isAdmin && (
-                <button
-                  onClick={() => handleOpenModal('create')}
-                  className="mt-4 bg-[#2D6B9F]/90 border rounded text-white font-medium py-2 px-4 hover:bg-[#2D6B9F] transition duration-200"
-                  style={{ borderColor: "#2D6B9F" }}
-                >
-                  Санал хүсэлт үүсгэх
-                </button>
-              )}
-            </div>
           ) : (
             <div className="overflow-x-auto">
               <div className="align-middle inline-block min-w-full shadow overflow-hidden rounded-lg">
@@ -402,7 +386,7 @@ export function Feedback() {
                           onClick={() => handleSort('Username')}
                         >
                           Хэрэглэгч{renderSortArrow('Username')}
-                      </th>
+                        </th>
                       )}
                       <th
                         className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
@@ -428,71 +412,82 @@ export function Feedback() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {paginatedFeedbacks.map((feedback) => {
-                      const shouldShowEdit = canEditFeedback(feedback.Status, feedback);
-                      const shouldShowDelete = canDeleteFeedback(feedback.Status, feedback);
-                      return (
-                        <tr key={feedback.ApplicationId} className="hover:bg-blue-50 transition group">
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap font-medium text-xs md:text-sm text-gray-900 text-center">
-                            {feedback.ApplicationId}
-                          </td>
-                          {isAdmin && (
-                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
-                              {feedback.Username || 'Хэрэглэгч'}
+                    {paginatedFeedbacks.length > 0 ? (
+                      paginatedFeedbacks.map((feedback) => {
+                        const shouldShowEdit = canEditFeedback(feedback.Status, feedback);
+                        const shouldShowDelete = canDeleteFeedback(feedback.Status, feedback);
+                        return (
+                          <tr key={feedback.ApplicationId} className="hover:bg-blue-50 transition group">
+                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap font-medium text-xs md:text-sm text-gray-900 text-center">
+                              {feedback.ApplicationId}
                             </td>
-                          )}
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
-                            {feedbackTypeNames[feedback.Type] || 'Тодорхойгүй'}
-                          </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-500 text-center">
-                            <div className="max-w-[200px] truncate mx-auto">{feedback.Description}</div>
-                          </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-center">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(feedback.Status)}`}>
-                              {statusNames[feedback.Status] || 'Тодорхойгүй'}
-                            </span>
-                          </td>
-                          <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-center text-xs md:text-sm font-medium">
-                            <div className="flex justify-center gap-1">
-                              <button
-                                onClick={() => handleViewDetails(feedback.ApplicationId)}
-                                className="text-[#2D6B9F] hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
-                                title={isAdmin ? "Хянах" : "Дэлгэрэнгүй"}
-                              >
-                                <Eye size={16} />
-                              </button>
-                              {isAdmin && (
+                            {isAdmin && (
+                              <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
+                                {feedback.Username || 'Хэрэглэгч'}
+                              </td>
+                            )}
+                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
+                              {feedbackTypeNames[feedback.Type] || 'Тодорхойгүй'}
+                            </td>
+                            <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-500 text-center">
+                              <div className="max-w-[200px] truncate mx-auto">{feedback.Description}</div>
+                            </td>
+                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-center">
+                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(feedback.Status)}`}>
+                                {statusNames[feedback.Status] || 'Тодорхойгүй'}
+                              </span>
+                            </td>
+                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-center text-xs md:text-sm font-medium">
+                              <div className="flex justify-center gap-1">
                                 <button
-                                  onClick={() => navigate(`/feedback/${feedback.ApplicationId}?mode=edit`)}
-                                  className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                  title="Хариу өгөх"
+                                  onClick={() => handleViewDetails(feedback.ApplicationId)}
+                                  className="text-[#2D6B9F] hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
+                                  title={isAdmin ? "Хянах" : "Дэлгэрэнгүй"}
                                 >
-                                  <MessageSquare size={16} />
+                                  <Eye size={16} />
                                 </button>
-                              )}
-                              {shouldShowEdit && (
-                                <button
-                                  onClick={() => handleEditFeedback(feedback)}
-                                  className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                  title="Засах"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                              )}
-                              {shouldShowDelete && (
-                                <button
-                                  onClick={() => handleDeleteFeedback(feedback.ApplicationId)}
-                                  className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
-                                  title="Устгах"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => navigate(`/feedback/${feedback.ApplicationId}?mode=edit`)}
+                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                    title="Хариу өгөх"
+                                  >
+                                    <MessageSquare size={16} />
+                                  </button>
+                                )}
+                                {shouldShowEdit && (
+                                  <button
+                                    onClick={() => handleEditFeedback(feedback)}
+                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                    title="Засах"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                )}
+                                {shouldShowDelete && (
+                                  <button
+                                    onClick={() => handleDeleteFeedback(feedback.ApplicationId)}
+                                    className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                    title="Устгах"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={isAdmin ? 6 : 5}
+                          className="px-6 py-4 text-center text-gray-500"
+                        >
+                          Хүсэлт олдсонгүй
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -644,11 +639,6 @@ export function Feedback() {
           </div>
         </div>
       )}
-      {/* Bottom blue bar */}
-      <div className="w-full bg-[#2D6B9F]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8" style={{ height: "48px", display: "flex", alignItems: "center" }}>
-        </div>
-      </div>
     </div>
   );  
 }

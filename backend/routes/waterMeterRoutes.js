@@ -8,6 +8,7 @@ router.use(authMiddleware.authenticate);
 // User routes
 router.get('/user', waterMeterController.getUserWaterMeters);
 router.get('/details', waterMeterController.getWaterMeterDetails);
+router.get('/expected', waterMeterController.getExpectedWaterMeters); 
 router.get('/:id', waterMeterController.getWaterMeterById);
 router.post('/add', authMiddleware.verifiedOnly, waterMeterController.addMeterReading);
 

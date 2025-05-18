@@ -32,11 +32,28 @@ const ApartmentSelector = ({ apartments, selectedApartment, onChange }) => {
             required
           >
             <option value="" disabled>-- Байр сонгох --</option>
-            {apartments.map((apartment) => (
-              <option key={apartment.id} value={apartment.id}>
-                {apartment.displayName || apartment.ApartmentName || `Apartment #${apartment.id}`}
-              </option>
-            ))}
+            {apartments.map((apartment) => {
+              const aptId = apartment.ApartmentId || apartment.id || apartment._id;
+              let display = apartment.displayName || apartment.ApartmentName;
+              if (!display) {
+                display = [
+                  apartment.City,
+                  apartment.District,
+                  apartment.SubDistrict,
+                  apartment.AptName,
+                  apartment.BlckNmbr ? `байр ${apartment.BlckNmbr}` : null,
+                  apartment.UnitNmbr ? `тоот ${apartment.UnitNmbr}` : null
+                ]
+                  .filter(Boolean)
+                  .join(', ');
+                if (!display) display = `Apartment #${aptId || ''}`;
+              }
+              return (
+                <option key={aptId} value={aptId}>
+                  {display}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>

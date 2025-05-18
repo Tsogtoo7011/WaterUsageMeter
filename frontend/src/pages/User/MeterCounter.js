@@ -4,38 +4,9 @@ import VerificationReminder from '../../components/common/verificationReminder';
 import NoApartments from '../../components/common/NoApartment';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
+import WaterMeterCard from '../../components/MeterCounters/WaterMeterCard';
 
-// Water Meter Card Component
-const WaterMeterCard = ({ year, month, hot, cold }) => {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group">
-      <div className="flex justify-between items-center border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center">
-          <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <div className="text-sm text-gray-800">{year}-{month} сар</div>
-        </div>
-        <div className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-          Дууссан
-        </div>
-      </div>
-      <div className="p-3">
-        <div className="text-sm text-gray-800 mb-3">
-          Халуун ус: {hot} м³&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Хүйтэн ус: {cold} м³
-        </div>
-        <a 
-          href="/user/watercounter/details"
-          className="block w-full bg-blue-500 text-white py-2 rounded text-sm text-center"
-        >
-          Дэлгэрэнгүй
-        </a>
-      </div>
-    </div>
-  );
-};
-
-const WaterCounter = () => {
+const MeterCounter = () => {
   const [user, setUser] = useState(null);
   const [waterMeters, setWaterMeters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,39 +28,110 @@ const WaterCounter = () => {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-    fetchWaterMeterData();
+    fetchApartmentsAndWaterMeterData();
   }, []);
 
-  const fetchWaterMeterData = async (apartmentId = null) => {
+  const fetchApartmentsAndWaterMeterData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const url = apartmentId 
-        ? `/water-meters/user?apartmentId=${apartmentId}`
-        : '/water-meters/user';
-      const response = await api.get(url);
-      if (response.data.success) {
-        setWaterMeters(response.data.waterMeters || []);
-        setHasReadings(response.data.hasReadings !== false);
-        setHasApartments(response.data.hasApartments !== false);
-        setApartments(response.data.apartments || []);
-        setSelectedApartmentId(response.data.selectedApartmentId || null);
+      
+      const apartmentsResponse = await api.get('/user/Profile/Apartment');
+      console.log('Apartments response:', apartmentsResponse.data);
+      
+      let userApartments = [];
+      if (Array.isArray(apartmentsResponse.data)) {
+        userApartments = apartmentsResponse.data;
+      } else if (apartmentsResponse.data && Array.isArray(apartmentsResponse.data.apartments)) {
+        userApartments = apartmentsResponse.data.apartments;
+      } else if (apartmentsResponse.data && apartmentsResponse.data.success && Array.isArray(apartmentsResponse.data.data)) {
+        userApartments = apartmentsResponse.data.data;
+      }
+      userApartments = (userApartments || []).filter(Boolean);
+
+      setApartments(userApartments);
+      setHasApartments(Array.isArray(userApartments) && userApartments.length > 0);
+      
+
+      if (userApartments.length > 0) {
+
+        const defaultApartment = userApartments[0];
+        const defaultApartmentId = defaultApartment.id || defaultApartment._id || defaultApartment.ApartmentId;
+        console.log('Selected apartment ID:', defaultApartmentId);
+        
+        setSelectedApartmentId(defaultApartmentId);
+        
+        // Then fetch water meter data for the selected apartment
+        await fetchWaterMeterData(defaultApartmentId);
       } else {
-        setError('Мэдээлэл авахад алдаа гарлаа.');
-        setHasApartments(false);
+        setIsLoading(false);
       }
     } catch (err) {
-      console.error('Error fetching water meter data:', err);
-      if (err.response && err.response.data) {
-        if (err.response.data.hasApartments === false) {
-          setHasApartments(false);
-          setError(null);
-        } else {
-          setError('Серверээс мэдээлэл авахад алдаа гарлаа.');
+      console.error('Error fetching apartments:', err);
+      // Try to recover by checking if there are any apartments in localStorage
+      try {
+        const storedApartments = localStorage.getItem('userApartments');
+        if (storedApartments) {
+          const parsedApartments = JSON.parse(storedApartments);
+          if (Array.isArray(parsedApartments) && parsedApartments.length > 0) {
+            setApartments(parsedApartments);
+            setHasApartments(true);
+            const defaultApartmentId = parsedApartments[0].id || parsedApartments[0]._id || parsedApartments[0].ApartmentId;
+            setSelectedApartmentId(defaultApartmentId);
+            await fetchWaterMeterData(defaultApartmentId);
+            return;
+          }
         }
-      } else {
+      } catch (localStorageErr) {
+        console.error('Error reading apartments from localStorage:', localStorageErr);
+      }
+      
+      // Only set hasApartments to false if we are sure there are no apartments
+      setApartments([]);
+      setHasApartments(false);
+      setIsLoading(false);
+    }
+  };
+
+  const fetchWaterMeterData = async (apartmentId = null) => {
+    if (!apartmentId) {
+      setWaterMeters([]);
+      setHasReadings(false);
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Always fetch all water meter data for the selected apartment
+      const url = `/water-meters/details?apartmentId=${apartmentId}`;
+      const response = await api.get(url);
+      console.log('Water meter response:', response.data);
+      
+      // Use all readings from all months for the selected apartment
+      let meterData = [];
+      if (response.data.success && response.data.waterMeters) {
+        // Flatten all readings from all months into a single array
+        meterData = Object.values(response.data.waterMeters || {}).flat();
+      } else if (Array.isArray(response.data)) {
+        meterData = response.data;
+      } else if (response.data.meters) {
+        meterData = response.data.meters;
+      } else if (response.data.data) {
+        meterData = response.data.data;
+      }
+      
+      setWaterMeters(meterData);
+      setHasReadings(meterData && meterData.length > 0);
+    } catch (err) {
+      console.error('Error fetching water meter data:', err);
+      if (err.response && err.response.status !== 404) {
         setError('Серверээс мэдээлэл авахад алдаа гарлаа.');
       }
+      setWaterMeters([]);
+      setHasReadings(false);
     } finally {
       setIsLoading(false);
     }
@@ -106,11 +148,12 @@ const WaterCounter = () => {
     const newApartmentId = typeof apartmentIdOrEvent === 'string'
       ? apartmentIdOrEvent
       : apartmentIdOrEvent.target.value;
+    
+    console.log('Apartment changed to:', newApartmentId);
     setSelectedApartmentId(newApartmentId);
     fetchWaterMeterData(newApartmentId);
   };
 
-  // Group water meters by month (YYYY-MM)
   const groupedByMonth = React.useMemo(() => {
     if (!Array.isArray(waterMeters)) return {};
     return waterMeters.reduce((acc, meter) => {
@@ -123,7 +166,14 @@ const WaterCounter = () => {
     }, {});
   }, [waterMeters]);
 
-  const monthKeys = Object.keys(groupedByMonth).sort((a, b) => b.localeCompare(a));
+  // Add logic to ensure current month is always present in monthKeys
+  const currentDate = new Date();
+  const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  let monthKeys = Object.keys(groupedByMonth);
+  if (!monthKeys.includes(currentMonthKey)) {
+    monthKeys = [currentMonthKey, ...monthKeys];
+  }
+  monthKeys = monthKeys.sort((a, b) => b.localeCompare(a));
   const totalPages = Math.ceil(monthKeys.length / itemsPerPage);
   const paginatedMonthKeys = monthKeys.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -143,7 +193,7 @@ const WaterCounter = () => {
             </p>
           </div>
           <div className="flex flex-col items-end mt-4 sm:mt-0">
-            {apartments && apartments.length > 1 && (
+            {apartments && apartments.length > 0 && (
               <div className="min-w-[220px] ml-0 sm:ml-6">
                 <ApartmentSelector
                   apartments={apartments}
@@ -176,10 +226,10 @@ const WaterCounter = () => {
               title="Таньд холбоотой байр байхгүй байна"
               description="Усны тоолуурын мэдээлэл харахын тулд эхлээд байраа бүртгүүлнэ үү."
               buttonText="Байр нэмэх"
-              buttonHref="/user/profile/apartment"
+              buttonHref="/profile/apartment"
               iconColor="blue"
             />
-          ) : !hasReadings ? (
+          ) : !hasReadings && selectedApartmentId ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
               <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-white border border-[#2D6B9F]/30 rounded-lg shadow">
                 <div className="mb-4 text-[#2D6B9F]">
@@ -190,7 +240,7 @@ const WaterCounter = () => {
                 <h2 className="mb-4 text-xl font-bold text-gray-800">Тоолуурын мэдээлэл олдсонгүй</h2>
                 <p className="mb-6 text-gray-600">Та тоолуурын заалтаа өгнө үү.</p>
                 <a 
-                  href="/user/watercounter/details"
+                  href="/user/metercounter/details"
                   className="px-6 py-3 text-white transition-all bg-[#2D6B9F]/90 rounded-md hover:bg-[#2D6B9F] focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:ring-offset-2"
                 >
                   Заалт өгөх
@@ -204,15 +254,16 @@ const WaterCounter = () => {
                   <div className="col-span-full text-center text-gray-500 py-10">Тоолуурын мэдээлэл олдсонгүй</div>
                 ) : (
                   paginatedMonthKeys.map((monthKey) => {
-                    const meters = groupedByMonth[monthKey];
+                    const meters = groupedByMonth[monthKey] || [];
                     let hot = 0, cold = 0;
                     meters.forEach(meter => {
                       if (meter.type === 1) hot += meter.indication;
                       else cold += meter.indication;
                     });
-                    
+
                     const [year, month] = monthKey.split('-');
-                    
+
+                    // Pass apartmentId to WaterMeterCard
                     return (
                       <WaterMeterCard
                         key={monthKey}
@@ -220,6 +271,8 @@ const WaterCounter = () => {
                         month={month}
                         hot={hot}
                         cold={cold}
+                        meters={meters}
+                        apartmentId={selectedApartmentId}
                       />
                     );
                   })
@@ -290,4 +343,4 @@ const WaterCounter = () => {
   );
 };
 
-export default WaterCounter;
+export default MeterCounter;

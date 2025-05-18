@@ -50,7 +50,7 @@ exports.searchApartments = async (req, res) => {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
 
-    const { ApartmentCode, City, District, SubDistrict, AptName, BlckNmbr, UnitNmbr } = req.query;
+    let { ApartmentCode, City, District, SubDistrict, AptName, BlckNmbr, UnitNmbr } = req.query;
 
     let whereConditions = [];
     let params = [];
@@ -75,27 +75,39 @@ exports.searchApartments = async (req, res) => {
     }
 
     if (SubDistrict && SubDistrict.trim() !== '') {
-      whereConditions.push('a.SubDistrictName LIKE ?');
-      params.push(`%${SubDistrict}%`);
-      hasSearchCriteria = true;
+      const subDistrictNum = parseInt(SubDistrict);
+      if (!isNaN(subDistrictNum)) {
+        whereConditions.push('a.SubDistrictName = ?');
+        params.push(subDistrictNum);
+        hasSearchCriteria = true;
+      }
     }
 
     if (ApartmentCode && ApartmentCode.trim() !== '') {
-      whereConditions.push('a.ApartmentCode LIKE ?');
-      params.push(`%${ApartmentCode}%`);
-      hasSearchCriteria = true;
+      const aptCodeNum = parseInt(ApartmentCode);
+      if (!isNaN(aptCodeNum)) {
+        whereConditions.push('a.ApartmentCode = ?');
+        params.push(aptCodeNum);
+        hasSearchCriteria = true;
+      }
     }
 
     if (BlckNmbr && BlckNmbr.trim() !== '') {
-      whereConditions.push('a.BlockNumber LIKE ?');
-      params.push(`%${BlckNmbr}%`);
-      hasSearchCriteria = true;
+      const blockNum = parseInt(BlckNmbr);
+      if (!isNaN(blockNum)) {
+        whereConditions.push('a.BlockNumber = ?');
+        params.push(blockNum);
+        hasSearchCriteria = true;
+      }
     }
 
     if (UnitNmbr && UnitNmbr.trim() !== '') {
-      whereConditions.push('a.UnitNumber LIKE ?');
-      params.push(`%${UnitNmbr}%`);
-      hasSearchCriteria = true;
+      const unitNum = parseInt(UnitNmbr);
+      if (!isNaN(unitNum)) {
+        whereConditions.push('a.UnitNumber = ?');
+        params.push(unitNum);
+        hasSearchCriteria = true;
+      }
     }
 
     if (!hasSearchCriteria) {
@@ -217,10 +229,14 @@ exports.createApartment = async (req, res) => {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
 
-    const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr'];
+    const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr', 'UnitNmbr'];
 
     for (const field of requiredFields) {
-      if (!req.body[field]) {
+      if (
+        req.body[field] === undefined ||
+        req.body[field] === null ||
+        req.body[field] === ''
+      ) {
         await connection.rollback();
         return res.status(400).json({ message: `${field} талбар заавал шаардлагатай` });
       }
@@ -228,10 +244,17 @@ exports.createApartment = async (req, res) => {
 
     const apartmentCode = parseInt(req.body.ApartmentCode);
     const blockNumber = parseInt(req.body.BlckNmbr);
+    const subDistrictNumber = parseInt(req.body.SubDistrict);
+    const unitNumber = parseInt(req.body.UnitNmbr);
 
-    if (isNaN(apartmentCode) || isNaN(blockNumber)) {
+    if (
+      isNaN(apartmentCode) ||
+      isNaN(blockNumber) ||
+      isNaN(subDistrictNumber) ||
+      isNaN(unitNumber)
+    ) {
       await connection.rollback();
-      return res.status(400).json({ message: 'ApartmentCode болон BlckNmbr тоо байх ёстой' });
+      return res.status(400).json({ message: 'ApartmentCode, BlckNmbr, SubDistrict, UnitNmbr тоо байх ёстой' });
     }
 
     const userRole = req.body.ApartmentType === 'эзэмшигч' ? 0 : 1;
@@ -244,10 +267,10 @@ exports.createApartment = async (req, res) => {
         apartmentCode,
         req.body.City,
         req.body.District,
-        req.body.SubDistrict,
+        subDistrictNumber,
         req.body.AptName,
         blockNumber,
-        req.body.UnitNmbr || ''
+        unitNumber
       ]
     );
 
@@ -292,7 +315,6 @@ exports.deleteApartment = async (req, res) => {
   try {
     await connection.beginTransaction();
     
-    // Verify user exists
     const [users] = await connection.execute(
       'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -302,7 +324,6 @@ exports.deleteApartment = async (req, res) => {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
     
-    // Verify user has access to this apartment
     const [userApartment] = await connection.execute(
       `SELECT aua.ApartmentId 
        FROM ApartmentUserAdmin aua
@@ -315,7 +336,6 @@ exports.deleteApartment = async (req, res) => {
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
     
-    // Remove this user's association with the apartment (only)
     await connection.execute(
       'DELETE FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
       [apartmentId, req.userData.userId]
@@ -333,6 +353,7 @@ exports.deleteApartment = async (req, res) => {
     connection.release();
   }
 }; 
+
 exports.updateApartment = async (req, res) => {
   const apartmentId = req.params.id;
   const connection = await pool.getConnection();
@@ -360,10 +381,14 @@ exports.updateApartment = async (req, res) => {
       return res.status(404).json({ message: 'Байр олдсонгүй эсвэл таны эрх хүрэхгүй байна' });
     }
 
-    const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr'];
+    const requiredFields = ['ApartmentType', 'ApartmentCode', 'City', 'District', 'SubDistrict', 'AptName', 'BlckNmbr', 'UnitNmbr'];
 
     for (const field of requiredFields) {
-      if (!req.body[field]) {
+      if (
+        req.body[field] === undefined ||
+        req.body[field] === null ||
+        req.body[field] === ''
+      ) {
         await connection.rollback();
         return res.status(400).json({ message: `${field} талбар заавал шаардлагатай` });
       }
@@ -371,10 +396,17 @@ exports.updateApartment = async (req, res) => {
 
     const apartmentCode = parseInt(req.body.ApartmentCode);
     const blockNumber = parseInt(req.body.BlckNmbr);
+    const subDistrictNumber = parseInt(req.body.SubDistrict);
+    const unitNumber = parseInt(req.body.UnitNmbr);
 
-    if (isNaN(apartmentCode) || isNaN(blockNumber)) {
+    if (
+      isNaN(apartmentCode) ||
+      isNaN(blockNumber) ||
+      isNaN(subDistrictNumber) ||
+      isNaN(unitNumber)
+    ) {
       await connection.rollback();
-      return res.status(400).json({ message: 'ApartmentCode болон BlckNmbr тоо байх ёстой' });
+      return res.status(400).json({ message: 'ApartmentCode, BlckNmbr, SubDistrict, UnitNmbr тоо байх ёстой' });
     }
 
     const userRole = req.body.ApartmentType === 'эзэмшигч' ? 0 : 1;
@@ -388,10 +420,10 @@ exports.updateApartment = async (req, res) => {
         apartmentCode,
         req.body.City,
         req.body.District,
-        req.body.SubDistrict,
+        subDistrictNumber,
         req.body.AptName,
         blockNumber,
-        req.body.UnitNmbr || '',
+        unitNumber,
         apartmentId
       ]
     );
@@ -548,7 +580,6 @@ exports.getApartmentUsers = async (req, res) => {
   const apartmentId = req.params.id;
 
   try {
-    // First check if requesting user exists
     const [users] = await pool.execute(
       'SELECT UserId FROM UserAdmin WHERE UserId = ?',
       [req.userData.userId]
@@ -558,7 +589,6 @@ exports.getApartmentUsers = async (req, res) => {
       return res.status(404).json({ message: 'Хэрэглэгч олдсонгүй' });
     }
 
-    // Check if requesting user is the owner of this apartment
     const [ownerCheck] = await pool.execute(
       `SELECT aua.UserRole 
        FROM ApartmentUserAdmin aua
@@ -570,7 +600,6 @@ exports.getApartmentUsers = async (req, res) => {
       return res.status(403).json({ message: 'Зөвхөн эзэмшигч хэрэглэгчдийн жагсаалтыг харах боломжтой' });
     }
 
-    // Get all users associated with this apartment
     const [apartmentUsers] = await pool.execute(
       `SELECT ua.UserId, ua.Username, ua.Firstname, ua.Lastname, ua.Email, aua.UserRole
        FROM ApartmentUserAdmin aua
