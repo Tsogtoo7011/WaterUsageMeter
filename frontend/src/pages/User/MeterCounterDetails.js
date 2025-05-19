@@ -34,8 +34,8 @@ export default function MeterCounterDetails() {
   const [cropStart, setCropStart] = useState(null);
   const [cropImageSize, setCropImageSize] = useState({ width: 1, height: 1 });
   const cropImageRef = useRef(null);
-  const cropCanvasRef = useRef(null);
   const fileInputRef = useRef({});
+  const [monthsWithStatus, setMonthsWithStatus] = useState([]); 
 
   useEffect(() => {
     const urlApartmentId = searchParams.get('apartmentId');
@@ -45,25 +45,25 @@ export default function MeterCounterDetails() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!selectedMonth || !waterMeterData) {
+    if (!selectedMonth || !waterMeterData || !monthsWithStatus.length) {
       setPreviousMonthReadings({});
       return;
     }
-    const [year, monthNum] = selectedMonth.split('-').map(Number);
-    let prevYear = year;
-    let prevMonth = monthNum - 1;
-    if (prevMonth === 0) {
-      prevMonth = 12;
-      prevYear = year - 1;
+    const idx = monthsWithStatus.findIndex(m => m.monthKey === selectedMonth);
+    let prevDoneMonth = null;
+    for (let i = idx + 1; i < monthsWithStatus.length; i++) {
+      if (monthsWithStatus[i].status === "done") {
+        prevDoneMonth = monthsWithStatus[i].monthKey;
+        break;
+      }
     }
-    const prevMonthStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-    const prevReadingsArr = waterMeterData[prevMonthStr] || [];
+    const prevReadingsArr = prevDoneMonth && waterMeterData[prevDoneMonth] ? waterMeterData[prevDoneMonth] : [];
     const prevReadings = {};
     prevReadingsArr.forEach(meter => {
       prevReadings[`${meter.location}-${meter.type}`] = meter.indication;
     });
     setPreviousMonthReadings(prevReadings);
-  }, [selectedMonth, waterMeterData]);
+  }, [selectedMonth, waterMeterData, monthsWithStatus]);
 
   useEffect(() => {
     if (editMode && expectedMeters.length > 0 && previousMonthReadings) {
@@ -88,6 +88,7 @@ export default function MeterCounterDetails() {
         setWaterMeterData(response.data.waterMeters || {});
         setApartments(response.data.apartments || []);
         setExpectedMeters(response.data.expectedMeters || []);
+        setMonthsWithStatus(response.data.months || []);
         const newSelectedId = response.data.selectedApartmentId ||
           (response.data.apartments && response.data.apartments.length > 0 ?
             response.data.apartments[0].id : null);
@@ -491,129 +492,135 @@ export default function MeterCounterDetails() {
     }
   };
 
-  const renderMonthlyData = () => {
-    if (!selectedMonth || !waterMeterData[selectedMonth]) {
-      return (
-        <div className="bg-white rounded-xl shadow-lg p-8 mt-6 text-center max-w-3xl mx-auto">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p className="text-gray-500 mt-4">Тоолуурын мэдээлэл олдсонгүй</p>
-        </div>
-      );
-    }
-
-    const readings = waterMeterData[selectedMonth];
-    const [year, monthNum] = selectedMonth.split('-');
-    const monthName = new Date(year, parseInt(monthNum) - 1, 1).toLocaleDateString('mn-MN', { month: 'long' });
-
-    let hotTotal = 0;
-    let coldTotal = 0;
-    readings.forEach(meter => {
-      if (meter.type === 1) {
-        hotTotal += meter.indication;
-      } else {
-        coldTotal += meter.indication;
-      }
-    });
-
-    let prevHotTotal = 0;
-    let prevColdTotal = 0;
-    readings.forEach(meter => {
-      const prevKey = `${meter.location}-${meter.type}`;
-      const prevIndication = previousMonthReadings[prevKey];
-      if (meter.type === 1) {
-        prevHotTotal += prevIndication !== undefined ? Number(prevIndication) : 0;
-      } else {
-        prevColdTotal += prevIndication !== undefined ? Number(prevIndication) : 0;
-      }
-    });
-
-    const hotDiff = (hotTotal - prevHotTotal).toFixed(2);
-    const coldDiff = (coldTotal - prevColdTotal).toFixed(2);
-    const totalDiff = (hotTotal + coldTotal - prevHotTotal - prevColdTotal).toFixed(2);
-
-    const tableRows = readings.map((meter) => {
-      const prevKey = `${meter.location}-${meter.type}`;
-      const previousIndication = previousMonthReadings[prevKey];
-      const difference = previousIndication !== undefined
-        ? (meter.indication - previousIndication).toFixed(2)
-        : "-";
-      return {
-        id: meter.id,
-        location: meter.location,
-        type: meter.type,
-        typeText: meter.type === 1 ? "Халуун ус" : "Хүйтэн ус",
-        prev: previousIndication !== undefined ? previousIndication : "-",
-        curr: meter.indication,
-        diff: difference,
-        date: formatDate(meter.date)
-      };
-    });
-
+const renderMonthlyData = () => {
+  if (!selectedMonth || !waterMeterData[selectedMonth]) {
     return (
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6 max-w-5xl mx-auto p-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Left side: summary */}
-          <div className="md:w-1/3 w-full flex flex-col gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-xs text-gray-500 mb-1">Огноо</div>
-              <div className="text-lg font-bold text-[#2D6B9F]">{monthName} {year}</div>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Хүйтэн ус</p>
-              <p className="text-xl font-bold text-blue-700">{coldDiff} м³</p>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Халуун ус</p>
-              <p className="text-xl font-bold text-red-700">{hotDiff} м³</p>
-            </div>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Нийт</p>
-              <p className="text-xl font-bold text-purple-700">{totalDiff} м³</p>
-            </div>
+      <div className="bg-white rounded-xl shadow-lg p-6 mt-4 text-center w-full">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p className="text-gray-500 mt-3">Тоолуурын мэдээлэл олдсонгүй</p>
+      </div>
+    );
+  }
+
+  const readings = waterMeterData[selectedMonth];
+  const [year, monthNum] = selectedMonth.split('-');
+  const monthName = new Date(year, parseInt(monthNum) - 1, 1).toLocaleDateString('mn-MN', { month: 'long' });
+
+  let hotTotal = 0;
+  let coldTotal = 0;
+  readings.forEach(meter => {
+    if (meter.type === 1) {
+      hotTotal += meter.indication;
+    } else {
+      coldTotal += meter.indication;
+    }
+  });
+
+  let prevHotTotal = 0;
+  let prevColdTotal = 0;
+  readings.forEach(meter => {
+    const prevKey = `${meter.location}-${meter.type}`;
+    const prevIndication = previousMonthReadings[prevKey];
+    if (meter.type === 1) {
+      prevHotTotal += prevIndication !== undefined ? Number(prevIndication) : 0;
+    } else {
+      prevColdTotal += prevIndication !== undefined ? Number(prevIndication) : 0;
+    }
+  });
+
+  const hotDiff = (hotTotal - prevHotTotal).toFixed(2);
+  const coldDiff = (coldTotal - prevColdTotal).toFixed(2);
+  const totalDiff = (hotTotal + coldTotal - prevHotTotal - prevColdTotal).toFixed(2);
+
+  const tableRows = readings.map((meter) => {
+    const prevKey = `${meter.location}-${meter.type}`;
+    const previousIndication = previousMonthReadings[prevKey];
+    const difference = previousIndication !== undefined
+      ? (meter.indication - previousIndication).toFixed(2)
+      : "-";
+    return {
+      id: meter.id,
+      location: meter.location,
+      type: meter.type,
+      typeText: meter.type === 1 ? "Халуун ус" : "Хүйтэн ус",
+      prev: previousIndication !== undefined ? previousIndication : "-",
+      curr: meter.indication,
+      diff: difference,
+      date: formatDate(meter.date)
+    };
+  });
+
+  return (
+    <div className="w-full flex flex-col md:flex-row bg-white">
+      {/* Left side: summary */}
+      <div className="md:w-1/5 pb-4 pr-2">
+        <h1 className="text-lg font-medium text-[#2D6B9F] mb-2">Таны усны хэрэглээ</h1>
+        <div className="flex items-center text-sm text-gray-500 mb-4">
+          <span>
+            {year} он {parseInt(monthNum)} сар
+          </span>
+          <span className="mx-1">•</span>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {/* Show hot/cold/total difference summary */}
+          <div>
+            <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Халуун ус</h3>
+            <p className="text-gray-700">{hotDiff} м³</p>
           </div>
-          {/* Right side: table */}
-          <div className="md:w-2/3 w-full">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Байршил</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Төрөл</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Өмнөх заалт</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Одоогийн заалт</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Зөрүү</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Огноо</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {tableRows.map(row => (
-                    <tr key={row.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{row.location}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs ${row.type === 1 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                          {row.typeText}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-500">{row.prev}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-500">{row.curr}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-500">{row.diff}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.date}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div>
+            <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Хүйтэн ус</h3>
+            <p className="text-gray-700">{coldDiff} м³</p>
+          </div>
+          <div>
+            <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Нийт ус</h3>
+            <p className="text-gray-700">{totalDiff} м³</p>
           </div>
         </div>
       </div>
-    );
-  };
+      {/* Vertical gray line */}
+      <div className="hidden md:block w-px bg-gray-300 mx-1"></div>
+      {/* Right side: table */}
+      <div className="md:w-4/5 flex flex-col h-full">
+        <div className="overflow-x-auto w-full">
+          <table className="min-w-full bg-white divide-[#2D6B9F]/50 rounded-lg text-xs">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Байршил</th>
+                <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Төрөл</th>
+                <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Өмнөх заалт</th>
+                <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Одоогийн заалт</th>
+                <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Зөрүү</th>
+                <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Огноо</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map(row => (
+                <tr key={row.id} className="hover:bg-blue-50 transition group">
+                  <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-700">{row.location}</td>
+                  <td className="px-2 py-2 border-b border-gray-100 text-center text-sm">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${row.type === 1 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {row.typeText}
+                    </span>
+                  </td>
+                  <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{row.prev}</td>
+                  <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{row.curr}</td>
+                  <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{row.diff}</td>
+                  <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{row.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
 
   const renderEntryForm = () => {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 mt-6 max-w-3xl mx-auto">
+      <div className="bg-white rounded-xl mx-auto">
         <h2 className="text-xl font-bold mb-4 text-[#2D6B9F]">Заалт өгөх</h2>
         {error && (
           <div className="p-4 mb-4 bg-red-100 text-red-700 rounded-lg">
@@ -626,73 +633,86 @@ export default function MeterCounterDetails() {
           </div>
         )}
         <form onSubmit={handleFormSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {expectedMeters.map((meter, index) => {
-              const key = `${meter.location}-${meter.type}`;
-              const prev = previousMonthReadings[key] !== undefined ? previousMonthReadings[key] : '';
-              return (
-                <div key={index} className="flex flex-col">
-                  <label className="text-sm text-gray-600 mb-2">
-                    {meter.location} - {meter.type === 1 ? "Халуун ус" : "Хүйтэн ус"}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      className="border rounded-lg px-4 py-2 w-full"
-                      value={meterReadings[key] || ''}
-                      min={prev}
-                      onChange={(e) => setMeterReadings({
-                        ...meterReadings,
-                        [key]: e.target.value
-                      })}
-                      disabled={processingImage && currentProcessingField === key}
-                      inputMode="decimal"
-                      // Remove spinner arrows for number input
-                      style={{ MozAppearance: 'textfield' }}
-                      onWheel={e => e.target.blur()}
-                    />
-                    <style jsx>{`
-                      input[type=number]::-webkit-inner-spin-button,
-                      input[type=number]::-webkit-outer-spin-button {
-                        -webkit-appearance: none;
-                        margin: 0;
-                      }
-                    `}</style>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      {processingImage && currentProcessingField === key ? (
-                        <div className="animate-spin h-5 w-5 border-t-2 border-blue-500 rounded-full"></div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-gray-500 hover:text-blue-600"
-                          onClick={() => handleCameraClick(key)}
-                        >
-                          <Camera size={20} />
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, key)}
-                      ref={el => fileInputRef.current[key] = el}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500 mt-1">
-                    Өмнөх заалт: {prev !== '' ? prev : '-'}
-                  </span>
-                  {meterReadings[key] !== '' && prev !== '' && Number(meterReadings[key]) < Number(prev) && (
-                    <span className="text-xs text-red-600">Таны заалт буруу байна та сайн нягтлана уу.</span>
-                  )}
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-full bg-white divide-[#2D6B9F]/50 rounded-lg text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Байршил</th>
+                  <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Төрөл</th>
+                  <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Өмнөх заалт</th>
+                  <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Одоогийн заалт</th>
+                  <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Зураг</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expectedMeters.map((meter, index) => {
+                  const key = `${meter.location}-${meter.type}`;
+                  const prev = previousMonthReadings[key] !== undefined ? previousMonthReadings[key] : '';
+                  return (
+                    <tr key={index} className="hover:bg-blue-50 transition group">
+                      <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-700">{meter.location}</td>
+                      <td className="px-2 py-2 border-b border-gray-100 text-center text-sm">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${meter.type === 1 ? 'bg-red-100 text-red-800' : 'bg-[#2D6B9F] bg-opacity-10 text-[#2D6B9F]'}`}>
+                          {meter.type === 1 ? "Халуун ус" : "Хүйтэн ус"}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{prev !== '' ? prev : '-'}</td>
+                      <td className="px-2 py-2 border-b border-gray-100 text-center text-sm">
+                        <input
+                          type="number"
+                          className="border rounded-lg px-2 py-1 w-24 text-center focus:border-[#2D6B9F] focus:ring-[#2D6B9F]"
+                          value={meterReadings[key] || ''}
+                          min={prev}
+                          onChange={(e) => setMeterReadings({
+                            ...meterReadings,
+                            [key]: e.target.value
+                          })}
+                          disabled={processingImage && currentProcessingField === key}
+                          inputMode="decimal"
+                          style={{ MozAppearance: 'textfield' }}
+                          onWheel={e => e.target.blur()}
+                        />
+                        <style jsx>{`
+                          input[type=number]::-webkit-inner-spin-button,
+                          input[type=number]::-webkit-outer-spin-button {
+                            -webkit-appearance: none;
+                            margin: 0;
+                          }
+                        `}</style>
+                        {meterReadings[key] !== '' && prev !== '' && Number(meterReadings[key]) < Number(prev) && (
+                          <div className="text-xs text-red-600 mt-1">Таны заалт буруу байна та сайн нягтлана уу.</div>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 border-b border-gray-100 text-center text-sm">
+                        {processingImage && currentProcessingField === key ? (
+                          <div className="animate-spin h-5 w-5 border-t-2 border-[#2D6B9F] rounded-full mx-auto"></div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-gray-500 hover:text-[#2D6B9F]"
+                            onClick={() => handleCameraClick(key)}
+                          >
+                            <Camera size={20} />
+                          </button>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e, key)}
+                          ref={el => fileInputRef.current[key] = el}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
           <div className="mt-6 flex justify-end">
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              className="px-6 py-2 bg-[#2D6B9F] text-white rounded-lg hover:bg-[#2D6B9F]/90 transition"
               disabled={isSubmitting || processingImage}
             >
               Хадгалах
@@ -700,63 +720,78 @@ export default function MeterCounterDetails() {
           </div>
         </form>
         {showConfirm && (
-          <div className="fixed inset-0 flex items-center justify-center z-[100] bg-black bg-opacity-30">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold mb-2 text-yellow-700">Таны энэхүү заалт өөрчлөгдөхгүй болно Та заалтаа сайн хянана уу.</h3>
-              <div className="mb-4">
-                <table className="min-w-full text-sm">
-                  <thead>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110] p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-medium text-[#2D6B9F]">
+                  Таны энэхүү заалт өөрчлөгдөхгүй тул заалтаа сайн хянана уу!
+                </h3>
+                <button
+                  className="text-gray-600 hover:text-[#2D6B9F] p-2 ml-2"
+                  style={{ background: "none", border: "none" }}
+                  onClick={handleCancelSubmit}
+                  disabled={isSubmitting}
+                  title="Болих"
+                  type="button"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="mb-6">
+                <table className="min-w-full bg-white  divide-[#2D6B9F]/50 rounded-lg text-xs">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-2 py-1 text-left">Байршил</th>
-                      <th className="px-2 py-1 text-left">Төрөл</th>
-                      <th className="px-2 py-1 text-right">Өмнөх</th>
-                      <th className="px-2 py-1 text-right">Шинэ</th>
-                      <th className="px-2 py-1 text-right">Зөрүү</th>
+                      <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Байршил</th>
+                      <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Төрөл</th>
+                      <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Өмнөх заалт</th>
+                      <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Одоогийн заалт</th>
+                      <th className="px-2 py-2 text-center text-sm font-semibold text-[#2D6B9F] border-b border-gray-200">Зөрүү</th>
                     </tr>
                   </thead>
                   <tbody>
                     {differences.map((d, i) => (
-                      <tr key={i}>
-                        <td className="px-2 py-1">{d.location}</td>
-                        <td className="px-2 py-1">{d.typeText}</td>
-                        <td className="px-2 py-1 text-right">{d.prev}</td>
-                        <td className="px-2 py-1 text-right">{d.curr}</td>
-                        <td className="px-2 py-1 text-right">{d.diff}</td>
+                      <tr key={i} className="hover:bg-blue-50 transition group">
+                        <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-700">{d.location}</td>
+                        <td className="px-2 py-2 border-b border-gray-100 text-center text-sm">
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${d.type === 1 ? 'bg-red-100 text-red-800' : 'bg-[#2D6B9F] bg-opacity-10 text-[#2D6B9F]'}`}>
+                            {d.typeText}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{d.prev}</td>
+                        <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{d.curr}</td>
+                        <td className="px-2 py-2 border-b border-gray-100 text-center text-sm text-gray-500">{d.diff}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
                 <button
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-6 py-2 bg-[#2D6B9F] text-white rounded-lg hover:bg-[#2D6B9F]/90 transition"
                   onClick={handleConfirmSubmit}
                   disabled={isSubmitting}
+                  type="button"
                 >
                   Оруулах
-                </button>
-                <button
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                  onClick={handleCancelSubmit}
-                  disabled={isSubmitting}
-                >
-                  Оруулахгүй
                 </button>
               </div>
             </div>
           </div>
         )}
         {showImageModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-[100] bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full relative">
-              <h3 className="text-lg font-bold mb-2 text-gray-800">Зураг шалгах</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-lg w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110] p-6 relative">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800">Зураг шалгах</h3>
+              </div>
               <div className="flex flex-col items-center">
                 <div className="w-full flex justify-center mb-4 relative">
-                  {/* Border container for image preview */}
                   <div
                     style={{
-                      width: 256, // fixed width (e.g. 256px)
-                      height: 256, // fixed height (e.g. 256px)
+                      width: 256,
+                      height: 256,
                       border: '3px solid #2563eb',
                       borderRadius: '12px',
                       overflow: 'hidden',
@@ -784,7 +819,6 @@ export default function MeterCounterDetails() {
                         ref={el => {
                           cropImageRef.current = el;
                           if (el && cropImageSize.width === 1) {
-                            // Only set once
                             setTimeout(() => {
                               if (el) setCropImageSize({ width: el.naturalWidth, height: el.naturalHeight });
                             }, 100);
@@ -828,14 +862,14 @@ export default function MeterCounterDetails() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    className="bg-[#2D6B9F]/90 text-white hover:bg-[#2D6B9F] flex items-center justify-center px-4 py-2 rounded text-sm font-medium transition duration-200"
                     onClick={handleConfirmImageModal}
                     type="button"
                   >
                     Заалт авах
                   </button>
                   <button
-                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                    className="bg-gray-300 hover:bg-gray-400 flex items-center justify-center px-4 py-2 rounded text-sm font-medium transition duration-200"
                     onClick={handleCancelImageModal}
                     type="button"
                   >
@@ -910,9 +944,7 @@ export default function MeterCounterDetails() {
         </div>
         <Breadcrumb />
       </div>
-      <div className="max-w-5xl mx-auto py-6">
-        <div className="flex mb-4 justify-between items-center">
-        </div>
+      <div className="max-w-6xl mx-auto py-4 px-4">
         {editMode ? renderEntryForm() : renderMonthlyData()}
       </div>
     </div>

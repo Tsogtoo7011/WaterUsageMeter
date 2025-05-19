@@ -9,7 +9,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
   const [statistics, setStatistics] = useState({
     monthlyStats: [],
     yearlyTotal: 0,
-    yearlyStatusData: [] // Add this to store the yearly status data from backend
+    yearlyStatusData: [] 
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,10 +25,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
       try {
         const response = await api.get(`/payments/statistics?apartmentId=${apartmentId}`);
         if (response && response.data) {
-          // Log the data to help with debugging
-          console.log('Statistics data:', response.data);
 
-          // Ensure all required fields exist on each monthly stat
           const processedStats = (response.data.monthlyStats || []).map(month => ({
             ...month,
             paidCount: month.paidCount || 0,
@@ -40,7 +37,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
           setStatistics({
             monthlyStats: processedStats,
             yearlyTotal: response.data.yearlyTotal || 0,
-            yearlyStatusData: response.data.yearlyStatusData || [] // Store the yearly status data
+            yearlyStatusData: response.data.yearlyStatusData || [] 
           });
         } else {
           throw new Error('Invalid response format');
@@ -65,17 +62,11 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
     return date.toLocaleString('default', { month: 'long' });
   };
 
-  const getMonthAbbreviation = (monthName) => {
-    if (!monthName) return '';
-    return monthName.substring(0, 3);
-  };
 
-  // Calculate monthly average by dividing yearly total by 12
   const calculateMonthlyAverage = () => {
     return statistics.yearlyTotal / 12;
   };
 
-  // Get status styles - consistent with PaymentsList
   const getStatusStyles = (status) => {
     const normalizedStatus = status?.toLowerCase();
     switch (normalizedStatus) {
@@ -88,24 +79,25 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
       case 'cancelled':
         return 'bg-gray-100 text-gray-800';
       default:
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[#E6F0F8] text-[#2D6B9F]'; 
     }
   };
 
-  // Format status text - consistent with PaymentsList
   const getFormattedStatus = (status) => {
-    if (!status) return 'Unknown';
-    
-    // Convert to title case (first letter uppercase, rest lowercase)
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    if (!status) return 'Тодорхойгүй';
+    switch (status.toLowerCase()) {
+      case 'paid': return 'Төлөгдсөн';
+      case 'pending': return 'Хүлээгдэж буй';
+      case 'overdue': return 'Хоцорсон';
+      case 'cancelled': return 'Цуцлагдсан';
+      default: return status;
+    }
   };
 
-  // Render payment status badges consistent with PaymentsList
   const renderStatusBadges = (month) => {
     const badges = [];
     const hasAnyStatus = (month.paidCount > 0 || month.pendingCount > 0 || month.overdueCount > 0);
     
-    // If there's no status data but there is an amount, show a generic badge
     if (!hasAnyStatus && month.totalAmount > 0) {
       return (
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusStyles('pending')}`}>
@@ -161,51 +153,51 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
   if (!apartmentId) {
     return (
       <div className="bg-white shadow-md rounded-lg p-6 text-center">
-        <p className="text-gray-500">Please select an apartment to view statistics.</p>
+        <p className="text-gray-500">Статистик харахын тулд байр сонгоно уу.</p>
       </div>
     );
   }
 
   if (!hasData) {
     return (
-      <div className="bg-white shadow-md rounded-lg p-6 text-center">
-        <p className="text-gray-500">No payment statistics available for this apartment.</p>
+      <div className="bg-white  rounded-lg p-6 text-center">
+        <p className="text-gray-500">Энэ байранд төлбөрийн статистик байхгүй байна.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
+    <div className="bg-white rounded-lg p-6 w-full">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Payment Statistics</h2>
+        <h2 className="text-xl font-semibold text-[#2D6B9F]">Төлбөрийн статистик</h2>
         <div className="flex space-x-2">
           <button
             onClick={() => setViewMode('chart')}
-            className={`px-4 py-2 rounded ${viewMode === 'chart' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            className={`px-2 py-1 text-sm rounded ${viewMode === 'chart' ? 'bg-[#2D6B9F] text-white' : 'border border-[#2D6B9F] hover:bg-blue-50 text-[#2D6B9F]'}`}
           >
-            Chart
+            График
           </button>
           <button
             onClick={() => setViewMode('table')}
-            className={`px-4 py-2 rounded ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            className={`px-2 py-1 text-sm rounded ${viewMode === 'table' ? 'bg-[#2D6B9F] text-white' : 'border border-[#2D6B9F] hover:bg-blue-50 text-[#2D6B9F]'}`}
           >
-            Table
+            Хүснэгт
           </button>
         </div>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg shadow-sm">
-          <p className="text-sm text-blue-700 font-medium">Total Yearly Payments</p>
-          <p className="text-2xl font-bold">${statistics.yearlyTotal.toFixed(2)}</p>
+        <div className="border border-blue-50 p-4 rounded-lg shadow-sm">
+          <p className="text-sm text-[#2D6B9F] font-medium">Жилийн нийт төлбөр</p>
+          <p className="text-2xl text-[#2D6B9F]  font-bold">${statistics.yearlyTotal.toFixed(2)}</p>
         </div>
-        <div className="bg-green-50 p-4 rounded-lg shadow-sm">
-          <p className="text-sm text-green-700 font-medium">Monthly Average</p>
-          <p className="text-2xl font-bold">${calculateMonthlyAverage().toFixed(2)}</p>
+        <div className="border border-blue-50 p-4 rounded-lg shadow-sm">
+          <p className="text-sm text-[#2D6B9F] font-medium">Жилийн дундаж</p>
+          <p className="text-2xl text-[#2D6B9F]  font-bold">${calculateMonthlyAverage().toFixed(2)}</p>
         </div>
-        <div className="bg-purple-50 p-4 rounded-lg shadow-sm">
-          <p className="text-sm text-purple-700 font-medium">Status Overview</p>
+        <div className="border border-purple-50 p-4 rounded-lg shadow-sm">
+          <p className="text-sm text-[#2D6B9F] font-medium">Төлөвийн тойм</p>
           <div className="flex gap-2 mt-1">
             {statistics.yearlyStatusData.length > 0 ? (
               statistics.yearlyStatusData.map(status => (
@@ -213,45 +205,53 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
                   key={status.name} 
                   className={`px-2 py-1 text-xs rounded-full ${getStatusStyles(status.name)}`}
                 >
-                  {status.name}: {status.value}
+                  {getFormattedStatus(status.name)}: {status.value}
                 </span>
               ))
             ) : (
-              <span className="text-gray-500">No payment status data</span>
+              <span className="text-gray-500">Төлбөрийн төлөвийн мэдээлэл байхгүй</span>
             )}
           </div>
         </div>
       </div>
-
       {viewMode === 'chart' ? (
-        <div className="space-y-6">
-          {/* Monthly Amount Bar Chart */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-lg font-medium mb-4">Monthly Payment Amounts</h3>
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="md:flex-[7_7_0%] bg-white p-4 rounded-lg shadow-sm">
+            <h3 className="text-lg text-[#2D6B9F]  font-medium mb-4">Сарын төлбөрийн дүн</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={statistics.monthlyStats}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="monthName" tickFormatter={getMonthAbbreviation} />
+                  <XAxis 
+                    dataKey="month" 
+                    tickFormatter={(month) => month} 
+                    label={{ value: "Сар", position: "insideBottom", offset: -5 }}
+                  />
                   <YAxis />
-                  <Tooltip formatter={(value) => [`$${value}`, 'Amount']} />
-                  <Legend />
-                  <Bar dataKey="totalAmount" name="Payment Amount" fill="#3B82F6" />
+                  <Tooltip 
+                    formatter={(value) => [`$${value}`, 'Дүн']} 
+                    labelFormatter={(label) => `${label} сар`}
+                  />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="right" />
+                  <Bar dataKey="totalAmount" name="Нийт дүн" fill="#2D6B9F" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-
+          {/* Divider for desktop */}
+          <div className="hidden md:block w-px bg-gray-200"></div>
           {/* Payment Status Pie Chart */}
-          {statistics.yearlyStatusData.length > 0 && (
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="text-lg font-medium mb-4">Payment Status Distribution</h3>
-              <div className="h-64 flex justify-center">
+          <div className="md:flex-[3_3_0%] bg-white p-4 rounded-lg shadow-sm">
+            <h3 className="text-lg text-[#2D6B9F] font-medium mb-4">Төлбөрийн төлөвийн харьцаа</h3>
+            <div className="h-64 flex justify-center">
+              {statistics.yearlyStatusData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart
+                    margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
+                  >
                     <Pie
                       data={statistics.yearlyStatusData}
                       cx="50%"
@@ -261,37 +261,62 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
                       fill="#8884d8"
                       dataKey="value"
                       nameKey="name"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ percent, cx, cy, midAngle, outerRadius, index }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = outerRadius + 10;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            fill="#2D6B9F"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize={14}
+                            fontWeight="bold"
+                          >
+                            {(percent * 100).toFixed(0)}%
+                          </text>
+                        );
+                      }}
                     >
                       {statistics.yearlyStatusData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value, name) => [value, name]} />
+                    <Tooltip 
+                      formatter={(value, name) => [value, getFormattedStatus(name)]} 
+                    />
+                    <Legend 
+                      formatter={(value) => getFormattedStatus(value)} 
+                    />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+              ) : (
+                <span className="text-gray-500">Төлбөрийн төлөвийн мэдээлэл байхгүй</span>
+              )}
             </div>
-          )}
+          </div>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-[#2D6B9F]/50">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Сар</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Дүн</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">Төлөв</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {statistics.monthlyStats.map((month) => (
                 <tr key={month.month} className={month.totalAmount > 0 ? '' : 'opacity-50'}>
-                  <td className="px-6 py-4 whitespace-nowrap">{month.monthName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-[#2D6B9F]">{month.month ? `${month.month} сар` : month.monthName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-[#2D6B9F]">
                     {month.totalAmount > 0 ? `$${month.totalAmount.toFixed(2)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap text-[#2D6B9F]">
                     {renderStatusBadges(month)}
                   </td>
                 </tr>
@@ -299,8 +324,8 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
             </tbody>
             <tfoot className="bg-gray-50">
               <tr>
-                <td className="px-6 py-4 whitespace-nowrap font-medium">Total</td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium">${statistics.yearlyTotal.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-[#2D6B9F]">Нийт</td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-[#2D6B9F]">${statistics.yearlyTotal.toFixed(2)}</td>
                 <td className="px-6 py-4 whitespace-nowrap"></td>
               </tr>
             </tfoot>

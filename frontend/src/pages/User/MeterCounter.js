@@ -9,6 +9,7 @@ import WaterMeterCard from '../../components/MeterCounters/WaterMeterCard';
 const MeterCounter = () => {
   const [user, setUser] = useState(null);
   const [waterMeters, setWaterMeters] = useState([]);
+  const [months, setMonths] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasApartments, setHasApartments] = useState(true);
@@ -106,19 +107,17 @@ const MeterCounter = () => {
       const response = await api.get(url);
       console.log('Water meter response:', response.data);
       
-      let meterData = [];
-      if (response.data.success && response.data.waterMeters) {
-        meterData = Object.values(response.data.waterMeters || {}).flat();
-      } else if (Array.isArray(response.data)) {
-        meterData = response.data;
-      } else if (response.data.meters) {
-        meterData = response.data.meters;
-      } else if (response.data.data) {
-        meterData = response.data.data;
+      // Use backend's months array for correct status
+      if (response.data && Array.isArray(response.data.months)) {
+        setMonths(response.data.months);
+        // Optionally, keep waterMeters for other uses
+        setWaterMeters(Object.values(response.data.waterMeters || {}).flat());
+        setHasReadings(response.data.months.some(m => m.status === "done"));
+      } else {
+        setMonths([]);
+        setWaterMeters([]);
+        setHasReadings(false);
       }
-      
-      setWaterMeters(meterData);
-      setHasReadings(meterData && meterData.length > 0);
     } catch (err) {
       console.error('Error fetching water meter data:', err);
       if (err.response && err.response.status !== 404) {
@@ -148,31 +147,17 @@ const MeterCounter = () => {
     fetchWaterMeterData(newApartmentId);
   };
 
-  const groupedByMonth = React.useMemo(() => {
-    if (!Array.isArray(waterMeters)) return {};
-    return waterMeters.reduce((acc, meter) => {
-      const date = meter.date ? new Date(meter.date) : null;
-      if (!date) return acc;
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (!acc[monthKey]) acc[monthKey] = [];
-      acc[monthKey].push(meter);
-      return acc;
-    }, {});
-  }, [waterMeters]);
+  const totalPages = Math.ceil(months.length / itemsPerPage);
+  const paginatedMonths = months.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const currentDate = new Date();
-  const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-  let monthKeys = Object.keys(groupedByMonth);
-  if (!monthKeys.includes(currentMonthKey)) {
-    monthKeys = [currentMonthKey, ...monthKeys];
-  }
-  monthKeys = monthKeys.sort((a, b) => b.localeCompare(a));
-  const totalPages = Math.ceil(monthKeys.length / itemsPerPage);
-  const paginatedMonthKeys = monthKeys.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const getCurrentYearMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="px-4 sm:px-8 pt-4">
+    <div className="min-h-screen bg-white pb-12">
+      <div className="px-4 sm:px-8 py-6">
         <div className="max-w-7xl mx-auto pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div>
             <h1 className="text-2xl font-bold text-[#2D6B9F]">
@@ -233,7 +218,7 @@ const MeterCounter = () => {
                 <h2 className="mb-4 text-xl font-bold text-gray-800">Тоолуурын мэдээлэл олдсонгүй</h2>
                 <p className="mb-6 text-gray-600">Та тоолуурын заалтаа өгнө үү.</p>
                 <a 
-                  href="/user/metercounter/details"
+                  href={`/user/metercounter/details?apartmentId=${selectedApartmentId}&month=${getCurrentYearMonth()}`}
                   className="px-6 py-3 text-white transition-all bg-[#2D6B9F]/90 rounded-md hover:bg-[#2D6B9F] focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:ring-offset-2"
                 >
                   Заалт өгөх
@@ -243,29 +228,50 @@ const MeterCounter = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {paginatedMonthKeys.length === 0 ? (
+                {paginatedMonths.length === 0 ? (
                   <div className="col-span-full text-center text-gray-500 py-10">Тоолуурын мэдээлэл олдсонгүй</div>
                 ) : (
-                  paginatedMonthKeys.map((monthKey) => {
-                    const meters = groupedByMonth[monthKey] || [];
-                    let hot = 0, cold = 0;
-                    meters.forEach(meter => {
-                      if (meter.type === 1) hot += meter.indication;
-                      else cold += meter.indication;
+                  paginatedMonths.map((monthObj, idx) => {
+                    const { monthKey, year, month, status, readings } = monthObj;
+                    // Sum all current readings by type
+                    let hotTotal = 0, coldTotal = 0;
+                    readings.forEach(meter => {
+                      if (meter.type === 1) hotTotal += meter.indication;
+                      else coldTotal += meter.indication;
                     });
 
-                    const [year, month] = monthKey.split('-');
+                    let prevMeters = [];
+                    const globalIdx = (currentPage - 1) * itemsPerPage + idx;
+                    let prevDoneMonth = null;
+                    for (let i = globalIdx + 1; i < months.length; i++) {
+                      if (months[i].status === "done") {
+                        prevDoneMonth = months[i];
+                        break;
+                      }
+                    }
+                    if (prevDoneMonth && prevDoneMonth.readings) {
+                      prevMeters = prevDoneMonth.readings;
+                    }
 
-                    // Pass apartmentId to WaterMeterCard
+                    let prevHotTotal = 0, prevColdTotal = 0;
+                    prevMeters.forEach(meter => {
+                      if (meter.type === 1) prevHotTotal += meter.indication;
+                      else prevColdTotal += meter.indication;
+                    });
+                    const hotDiff = prevMeters.length === 0 && hotTotal === 0 ? "-" : (hotTotal - prevHotTotal).toFixed(2);
+                    const coldDiff = prevMeters.length === 0 && coldTotal === 0 ? "-" : (coldTotal - prevColdTotal).toFixed(2);
+
                     return (
                       <WaterMeterCard
                         key={monthKey}
                         year={year}
-                        month={month}
-                        hot={hot}
-                        cold={cold}
-                        meters={meters}
+                        month={String(month).padStart(2, '0')}
+                        hot={hotDiff}
+                        cold={coldDiff}
+                        meters={readings}
                         apartmentId={selectedApartmentId}
+                        status={status}
+                        prevMeters={prevMeters}
                       />
                     );
                   })

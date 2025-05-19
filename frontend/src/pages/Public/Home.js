@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import api from "../../utils/api";
+import { PlusCircle, Home as HomeIcon, BarChart2, Newspaper, CreditCard, MessageCircle, HelpCircle, Building2 } from 'lucide-react';
 
 function Home() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isEmailVerified, setIsEmailVerified] = useState(true);
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -18,17 +20,16 @@ function Home() {
           navigate('/');
           return;
         }
-        
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
+          setIsEmailVerified(!!parsedUser.IsVerified);
         }
-
         const response = await api.get("/user/profile");
-        
         if (response.data) {
           setUser(response.data);
+          setIsEmailVerified(!!response.data.IsVerified);
           localStorage.setItem('user', JSON.stringify(response.data));
         }
       } catch (err) {
@@ -42,17 +43,17 @@ function Home() {
         setIsLoading(false);
       }
     };
-    
     fetchUserData();
   }, [navigate]);
-  
+
   const handleVerificationSuccess = () => {
     setUser(prev => ({
       ...prev,
       IsVerified: true
     }));
+    setIsEmailVerified(true);
   };
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -60,7 +61,7 @@ function Home() {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -72,108 +73,117 @@ function Home() {
   }
 
   const isAdmin = user?.AdminRight === 1;
-  
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation component has been removed */}
-      
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {user && !user.IsVerified && (
-          <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
-        )}
-        
-        {/* Add the Breadcrumb component for path-based navigation */}
-        <div className="px-4 pt-2 sm:px-0">
-          <Breadcrumb />
+    <div className="min-h-screen bg-white">
+      <div className="px-4 sm:px-8 pt-4">
+        <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2D6B9F]">
+              {isAdmin ? 'Админ удирдлага' : 'Хэрэглэгчийн хэсэг'}
+            </h1>
+            <div className="px-4 pt-2 sm:px-0">
+              <Breadcrumb />
+            </div>
+            <p className="text-gray-600 mt-2">
+              {isAdmin
+                ? 'Системийн удирдлагын үйлдлүүд'
+                : 'Хэрэглэгчийн үндсэн үйлдлүүд'}
+            </p>
+          </div>
         </div>
-        
-        <div className="px-4 py-4 sm:px-0">
-          {isAdmin ? (
-            // Admin content
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h1 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
-                <div className="mt-4">
-                  <p>Welcome, {user.Username}! You have administrative privileges.</p>
-                </div>
-                
-                <div className="mt-6">
-                  <h3 className="text-xl font-medium text-gray-900">Admin Functions</h3>
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
-                      onClick={() => navigate('/admin/user')}
-                    >
-                      <h4 className="font-medium">User Management</h4>
-                      <p className="text-sm text-gray-500">Manage system users</p>
-                    </div>
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
-                      onClick={() => navigate('/admin/tarif')}
-                    >
-                      <h4 className="font-medium">Tariff Management</h4>
-                      <p className="text-sm text-gray-500">Configure application settings</p>
-                    </div>
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
-                      onClick={() => navigate('/admin/report')}
-                    >
-                      <h4 className="font-medium">Reports</h4>
-                      <p className="text-sm text-gray-500">View system reports and analytics</p>
-                    </div>
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100"
-                      onClick={() => navigate('/profile')}
-                    >
-                      <h4 className="font-medium">Admin Profile</h4>
-                      <p className="text-sm text-gray-500">Manage your admin account</p>
-                    </div>
-                  </div>
-                </div>
+
+        <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
+          {user && !isEmailVerified && (
+            <VerificationReminder user={user} onVerify={handleVerificationSuccess} />
+          )}
+
+          {!isAdmin && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
+              <div
+                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/profile/apartment')}
+              >
+                <Building2 size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Орон сууц</h4>
+                <p className="text-sm text-gray-500 text-center">Орон сууцны мэдээлэл</p>
+              </div>
+              <div
+                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/news')}
+              >
+                <Newspaper size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Мэдээ мэдээлэл</h4>
+                <p className="text-sm text-gray-500 text-center">Системийн мэдээ, мэдээлэл</p>
+              </div>
+              <div
+                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/user/metercounter')}
+              >
+                <BarChart2 size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Тоолуур</h4>
+                <p className="text-sm text-gray-500 text-center">Тоолуурын үзүүлэлт</p>
+              </div>
+              <div
+                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/user/payment-info')}
+              >
+                <CreditCard size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Төлбөр</h4>
+                <p className="text-sm text-gray-500 text-center">Төлбөрийн мэдээлэл</p>
+              </div>
+              <div
+                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/feedback')}
+              >
+                <MessageCircle size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Санал хүсэлт</h4>
+                <p className="text-sm text-gray-500 text-center">Санал, хүсэлт илгээх</p>
+              </div>
+              <div
+                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/service')}
+              >
+                <HelpCircle size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Үйлчилгээ</h4>
+                <p className="text-sm text-gray-500 text-center">Үйлчилгээний мэдээлэл</p>
               </div>
             </div>
-          ) : (
-            // User content
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h1 className="text-2xl font-semibold text-gray-900">Хэрэглэгчийн хэсэг</h1>
-                <div className="mt-4">
-                  <p>Сайн байна уу, {user?.Username}!</p>
-                </div>
-                
-                <div className="mt-6">
-                  <h3 className="text-xl font-medium text-gray-900">Хэрэглэгчийн үйлдлүүд</h3>
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
-                      onClick={() => navigate('/profile')}
-                    >
-                      <h4 className="font-medium">Хувийн мэдээлэл</h4>
-                      <p className="text-sm text-gray-500">Өөрийн мэдээллийг хянах</p>
-                    </div>
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
-                      onClick={() => navigate('/user/profile/apartment')}
-                    >
-                      <h4 className="font-medium">Орон сууц</h4>
-                      <p className="text-sm text-gray-500">Орон сууц нэмэх</p>
-                    </div>
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
-                      onClick={() => navigate('/user/metercounter')}
-                    >
-                      <h4 className="font-medium">Тоолуур</h4>
-                      <p className="text-sm text-gray-500">Тоолуурын үзүүлэлт</p>
-                    </div>
-                    <div 
-                      className="bg-gray-50 p-4 rounded-md cursor-pointer hover:bg-gray-100" 
-                      onClick={() => navigate('/user/payment-info')}
-                    >
-                      <h4 className="font-medium">Төлбөр</h4>
-                      <p className="text-sm text-gray-500">Төлбөрийн мэдээлэл</p>
-                    </div>
-                  </div>
-                </div>
+          )}
+
+          {isAdmin && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
+              <div
+                className="bg-gray-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/admin/user')}
+              >
+                <Users size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Хэрэглэгчид</h4>
+                <p className="text-sm text-gray-500 text-center">Системийн хэрэглэгчдийг удирдах</p>
+              </div>
+              <div
+                className="bg-gray-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/admin/tarif')}
+              >
+                <Settings size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Тариф</h4>
+                <p className="text-sm text-gray-500 text-center">Тариф болон тохиргоо</p>
+              </div>
+              <div
+                className="bg-gray-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/admin/report')}
+              >
+                <BarChart2 size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Тайлан</h4>
+                <p className="text-sm text-gray-500 text-center">Системийн тайлан, шинжилгээ</p>
+              </div>
+              <div
+                className="bg-gray-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                onClick={() => navigate('/profile')}
+              >
+                <User size={32} className="mb-2 text-[#2D6B9F]" />
+                <h4 className="font-medium text-gray-700 text-lg">Админ профайл</h4>
+                <p className="text-sm text-gray-500 text-center">Өөрийн админ мэдээлэл</p>
               </div>
             </div>
           )}

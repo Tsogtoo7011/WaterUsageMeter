@@ -377,7 +377,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     );
     
     if (existingPayments.length > 0) {
-
+      // If already exists, just return info (do NOT generate again)
       const [paymentDetails] = await pool.execute(
         `SELECT 
           p.PaymentId,
@@ -415,6 +415,10 @@ exports.generateMonthlyPayment = async (req, res) => {
       }
     }
     
+    // Only allow explicit generation if not already present (do NOT auto-generate here)
+    // If you want to restrict generation to after meter reading, you could return an error here instead:
+    // return res.status(400).json({ success: false, message: 'Please submit water meter readings before generating payment.' });
+
     // Get water usage for the current month
     const waterUsage = await calculateWaterUsage(
       apartmentId,

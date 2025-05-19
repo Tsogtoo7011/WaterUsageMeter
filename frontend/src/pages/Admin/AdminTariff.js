@@ -463,7 +463,7 @@ export default function AdminTariff() {
         </div>
         {/* Info Section */}
         <div className="mt-8 bg-blue-50 p-6 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Тарифын тухай</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-700">Тарифын тухай</h3>
           <p className="text-gray-700">
             Энэхүү тариф нь усны хэрэглээний нэгж үнийг харуулж байна. Шинэ тариф нэмэх үед өмнөх тариф
             автоматаар идэвхгүй болно. Тарифын түүхээс хуучин тарифуудыг харах болон дахин идэвхжүүлэх боломжтой.

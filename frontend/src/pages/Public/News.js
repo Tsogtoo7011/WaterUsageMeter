@@ -299,9 +299,8 @@ const News = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="max-w-7xl mx-auto mt-4 mb-6">
-          <div className="relative w-full md:w-1/2">
+        <div className="flex flex-col md:flex-row gap-4 mb-6 max-w-7xl mx-auto mt-4">
+          <div className="relative flex-grow">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -310,12 +309,13 @@ const News = () => {
               placeholder="Мэдээ хайх..."
               className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
               value={searchQuery}
-              onChange={(e) => {
+              onChange={e => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
             />
           </div>
+          {/* If you want to add a filter dropdown for news status/type, add here as in Feedback.js */}
         </div>
 
         <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">

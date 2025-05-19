@@ -25,9 +25,10 @@ const SidebarLayout = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [scrollOpacity, setScrollOpacity] = useState(1);
+  const [headerHeight, setHeaderHeight] = useState(64); // 64px = 4rem (default)
   const dropdownRef = useRef(null);
+  const mainContentRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -66,7 +67,6 @@ const SidebarLayout = ({ children }) => {
     }
   }, []);
   
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -81,27 +81,27 @@ const SidebarLayout = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
-    };
+    const main = mainContentRef.current;
+    if (!main) return;
 
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleScroll = () => {
-      const maxScroll = 200; // Adjust this value as needed
-      const scrollY = window.scrollY;
-      const opacity = Math.max(1 - scrollY / maxScroll, 0.5); // Minimum opacity of 0.5
+      const maxScroll = 100;
+      const scrollY = main.scrollTop;
+      const opacity = Math.max(1 - scrollY / maxScroll, 0.7);
       setScrollOpacity(opacity);
+
+      // Header height shrinks from 64px (4rem) to 48px (3rem)
+      const minHeight = 48;
+      const maxHeight = 64;
+      const newHeight = Math.max(maxHeight - (scrollY / maxScroll) * (maxHeight - minHeight), minHeight);
+      setHeaderHeight(newHeight);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    main.addEventListener('scroll', handleScroll);
+    handleScroll();
+
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      main.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -195,7 +195,7 @@ const SidebarLayout = ({ children }) => {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div 
-        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full transition-all duration-300 ease-in-out z-40`}
+        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full transition-all duration-300 ease-in-out z-10`}
       >
         <div className="flex flex-col h-full p-4">  
           {/* Logo */}
@@ -248,7 +248,7 @@ const SidebarLayout = ({ children }) => {
 
       {/* Mobile Sidebar */}
       <div 
-        className={`md:hidden fixed top-0 left-0 h-full bg-white border-r border-[#2D6B9F] shadow-sm transform transition-transform duration-300 ease-in-out z-50 ${
+        className={`md:hidden fixed top-0 left-0 h-full bg-white border-r border-[#2D6B9F] shadow-sm transform transition-transform duration-300 ease-in-out z-10 ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } w-64`}
       >
@@ -297,13 +297,16 @@ const SidebarLayout = ({ children }) => {
           isSidebarOpen ? 'md:ml-64' : 'md:ml-20'
         } transition-all duration-300 ease-in-out`}
       >
-        {/* Top Navigation Bar */}
+        {/* Top Navigation Bar - Almost completely transparent when scrolled */}
         <header 
-          className="h-16 flex items-center px-4 sticky top-0 z-[60]"
+          className="flex items-center px-4 sticky top-0 z-30"
           style={{
+            height: `${headerHeight}px`,
             backgroundColor: `rgba(255, 255, 255, ${scrollOpacity})`,
-            backdropFilter: 'blur(10px)',
-            borderBottom: '1px solid #2D6B9F'
+            backdropFilter: scrollOpacity < 0.9 ? 'blur(3px)' : 'none',
+            boxShadow: 'none',
+            transition: 'all 0.15s ease',
+            pointerEvents: "auto"
           }}
         >
           <div className="flex items-center justify-between w-full">
@@ -315,8 +318,10 @@ const SidebarLayout = ({ children }) => {
               <Menu className="w-5 h-5 text-gray-600" />
             </button>
 
-            {/* SearchBar */}
-            <SearchBar routes={routes} isAdmin={isAdmin} />
+        {/* SearchBar - Ensure it doesn't have a white background */}
+            <div className="flex-1">
+              <SearchBar routes={routes} isAdmin={isAdmin} />
+            </div>
             <div className="flex-1 md:hidden"></div>
             <div className="flex items-center space-x-4">
               <button className="relative p-2 rounded-full hover:bg-blue-50/50 transition-colors duration-200">
@@ -378,7 +383,15 @@ const SidebarLayout = ({ children }) => {
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto p-0 bg-white border-x-0 border-t-0 border-b-0 border-r border-[#2D6B9F]">
+        <main
+          ref={mainContentRef}
+          className="flex-1 flex flex-col h-screen overflow-y-auto bg-white"
+          style={{ 
+            marginTop: "-4rem",
+            paddingTop: "4rem", 
+            position: "relative"
+          }}
+        >
           {children}
         </main>
       </div>

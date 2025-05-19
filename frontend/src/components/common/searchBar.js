@@ -30,10 +30,9 @@ const SearchBar = ({ routes, isAdmin }) => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  // Get icon component based on the path
   const getIconForRoute = (path) => {
     if (path.includes('home')) return Home;
-    if (path.includes('profile')) return UserCircle;
+    if (path.includes('profile')) return { Icon: UserCircle, small: true };
     if (path.includes('news')) return Newspaper;
     if (path.includes('payment')) return CreditCard;
     if (path.includes('feedback')) return MessageCircle;
@@ -45,12 +44,10 @@ const SearchBar = ({ routes, isAdmin }) => {
     if (path.includes('apartment')) return Building;
     if (path.includes('metercounter')) return Droplet;
     if (path.includes('about-us')) return Info;
-    // Default fallback icon
     return FileText;
   };
 
   useEffect(() => {
-    // Load recent searches from localStorage
     const savedSearches = localStorage.getItem('recentSearches');
     if (savedSearches) {
       setRecentSearches(JSON.parse(savedSearches).slice(0, 5));
@@ -258,7 +255,15 @@ const SearchBar = ({ routes, isAdmin }) => {
   const renderSearchResults = () => (
     <div className="divide-y divide-gray-100">
       {searchResults.map((route, index) => {
-        const IconComponent = getIconForRoute(route.path);
+        const iconObj = getIconForRoute(route.path);
+        let IconComponent, iconProps = {};
+        if (typeof iconObj === 'object' && iconObj.Icon) {
+          IconComponent = iconObj.Icon;
+          if (iconObj.small) iconProps = { className: "w-4 h-4" };
+        } else {
+          IconComponent = iconObj;
+          iconProps = { className: "w-5 h-5" };
+        }
         return (
           <div 
             key={route.path}
@@ -269,7 +274,7 @@ const SearchBar = ({ routes, isAdmin }) => {
           >
             <div className="flex items-center">
               <div className="mr-3 text-gray-400">
-                <IconComponent className="w-5 h-5" />
+                <IconComponent {...iconProps} />
               </div>
               <div className="flex-1">
                 <div className="font-medium text-gray-800">{route.label}</div>
@@ -298,7 +303,15 @@ const SearchBar = ({ routes, isAdmin }) => {
       </div>
       <div className="divide-y divide-gray-100">
         {recentSearches.map((item, index) => {
-          const IconComponent = getIconForRoute(item.path);
+          const iconObj = getIconForRoute(item.path);
+          let IconComponent, iconProps = {};
+          if (typeof iconObj === 'object' && iconObj.Icon) {
+            IconComponent = iconObj.Icon;
+            if (iconObj.small) iconProps = { className: "w-4 h-4" };
+          } else {
+            IconComponent = iconObj;
+            iconProps = { className: "w-5 h-5" };
+          }
           return (
             <div 
               key={index}
@@ -311,7 +324,7 @@ const SearchBar = ({ routes, isAdmin }) => {
                 <div className="text-sm text-gray-500">{item.path}</div>
               </div>
               <div className="ml-3 text-gray-400">
-                <IconComponent className="w-4 h-4" />
+                <IconComponent {...iconProps} />
               </div>
             </div>
           );

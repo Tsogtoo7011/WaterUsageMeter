@@ -21,8 +21,8 @@ function getExpectedMeters(meterCount) {
   
   // Base configuration - Always present
   expectedMeters.push(
-    { location: 'Гал тогоо', type: 0 }, // Kitchen Cold
-    { location: 'Гал тогоо', type: 1 }  // Kitchen Hot
+    { location: 'Гал тогоо', type: 0 }, 
+    { location: 'Гал тогоо', type: 1 }  
   );
   
   // MeterCount 3: Add Bathroom Cold
@@ -123,6 +123,143 @@ async function hasSubmittedCurrentMonthReadings(apartmentId) {
   return result[0].count > 0;
 }
 
+async function getCurrentTariff() {
+  const [tariffs] = await pool.execute(
+    'SELECT * FROM Tarif ORDER BY TariffId DESC LIMIT 1'
+  );
+  if (tariffs.length === 0) {
+    throw new Error('No tariff information found in the system');
+  }
+  return tariffs[0];
+}
+
+// --- Helper: Generate monthly payment for an apartment if not exists ---
+async function generateMonthlyPaymentForApartment(apartmentId, userId, pool) {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  // Check if payment already exists for this month
+  const [existingPayments] = await pool.execute(
+    `SELECT PaymentId
+     FROM Payment
+     WHERE ApartmentId = ?
+     AND UserAdminId = ?
+     AND MONTH(PayDate) = ?
+     AND YEAR(PayDate) = ?
+     LIMIT 1`,
+    [apartmentId, userId, currentMonth, currentYear]
+  );
+
+  if (existingPayments.length > 0) {
+    // Already exists, return payment info
+    const [paymentDetails] = await pool.execute(
+      `SELECT 
+        p.PaymentId,
+        p.ApartmentId,
+        p.Amount,
+        p.PayDate,
+        p.PaidDate,
+        p.Status,
+        p.OrderOrderId
+      FROM Payment p
+      WHERE p.PaymentId = ?`,
+      [existingPayments[0].PaymentId]
+    );
+    if (paymentDetails.length > 0) {
+      const payment = paymentDetails[0];
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+      return {
+        id: payment.PaymentId,
+        apartmentId: Number(apartmentId),
+        amount: payment.Amount,
+        status: payment.Status,
+        payDate: payment.PayDate,
+        dueDate: dueDate.toISOString(),
+        orderId: payment.OrderOrderId,
+        exists: true
+      };
+    }
+  }
+
+  let prevMonth = currentMonth - 1;
+  let prevYear = currentYear;
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear = currentYear - 1;
+  }
+  const [currentReadings] = await pool.execute(
+    `SELECT 
+      Type,
+      MAX(Indication) as latest_reading
+    FROM WaterMeter
+    WHERE ApartmentId = ?
+    AND MONTH(WaterMeterDate) = ?
+    AND YEAR(WaterMeterDate) = ?
+    GROUP BY Type`,
+    [apartmentId, currentMonth, currentYear]
+  );
+  const [prevReadings] = await pool.execute(
+    `SELECT 
+      Type,
+      MAX(Indication) as latest_reading
+    FROM WaterMeter
+    WHERE ApartmentId = ?
+    AND MONTH(WaterMeterDate) = ?
+    AND YEAR(WaterMeterDate) = ?
+    GROUP BY Type`,
+    [apartmentId, prevMonth, prevYear]
+  );
+  // Calculate usage as the difference between this month's and previous month's readings
+  const usage = { cold: 0, hot: 0 };
+  currentReadings.forEach(current => {
+    const prevReading = prevReadings.find(prev => prev.Type === current.Type);
+    const previousValue = prevReading ? Number(prevReading.latest_reading) : 0;
+    const currentValue = Number(current.latest_reading);
+    // Usage is the difference between current and previous month for each type
+    const usageValue = currentValue >= previousValue ? currentValue - previousValue : currentValue;
+    if (current.Type === 0) usage.cold = usageValue;
+    else if (current.Type === 1) usage.hot = usageValue;
+  });
+
+  // --- FIX: Fetch tariff from DB ---
+  const tariff = await getCurrentTariff();
+
+  // Calculate payment amounts based on usage difference
+  const coldWaterCost = (usage.cold + usage.hot) * tariff.ColdWaterTariff;
+  const hotWaterCost = usage.hot * tariff.HeatWaterTariff;
+  const dirtyWaterCost = (usage.cold + usage.hot) * tariff.DirtyWaterTariff;
+  const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
+
+  // Generate a simple order ID
+  const orderId = Math.floor(Math.random() * 1000000) + 1;
+
+  // Insert payment
+  const [result] = await pool.execute(
+    `INSERT INTO Payment 
+      (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
+     VALUES (?, ?, ?, CURRENT_TIMESTAMP, NULL, 'PENDING', ?)`,
+    [apartmentId, userId, totalAmount, orderId]
+  );
+  const paymentId = result.insertId;
+  const payDate = new Date();
+  const dueDate = new Date(payDate);
+  dueDate.setDate(dueDate.getDate() + 30);
+
+  return {
+    id: paymentId,
+    apartmentId: Number(apartmentId),
+    amount: totalAmount,
+    status: 'PENDING',
+    payDate: payDate.toISOString(),
+    dueDate: dueDate.toISOString(),
+    orderId: orderId,
+    exists: false
+  };
+}
+
 // Get water meter data for the current user
 exports.getUserWaterMeters = async (req, res) => {
   try {
@@ -155,12 +292,10 @@ exports.getUserWaterMeters = async (req, res) => {
         selectedApartmentId: null,
         hasApartments: false,
         expectedMeters: [],
-        canSubmitReading: isDateInAllowedPeriod() // Add submission period status
+        canSubmitReading: isDateInAllowedPeriod() 
       });
     }
-    
-    // If apartment ID is specifically requested and valid, use it
-    // Otherwise, use the first one as default
+
     let selectedApartmentId;
     
     if (requestedApartmentId && apartmentIds.includes(requestedApartmentId)) {
@@ -360,6 +495,7 @@ exports.getWaterMeterDetails = async (req, res) => {
         success: true,
         message: 'No apartments found for this user',
         waterMeters: {},
+        months: [],
         apartments: [],
         selectedApartmentId: null,
         hasApartments: false,
@@ -407,15 +543,12 @@ exports.getWaterMeterDetails = async (req, res) => {
     
     // Group by month for better organization
     const groupedByMonth = {};
-    
     waterMeters.forEach(meter => {
       const date = new Date(meter.WaterMeterDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-      
       if (!groupedByMonth[monthKey]) {
         groupedByMonth[monthKey] = [];
       }
-      
       groupedByMonth[monthKey].push({
         id: Number(meter.WaterMeterId),
         type: Number(meter.Type),
@@ -425,7 +558,39 @@ exports.getWaterMeterDetails = async (req, res) => {
         date: meter.WaterMeterDate
       });
     });
-    
+
+    // --- NEW: Generate all months from January of current year up to current month, with status ---
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const months = [];
+    let y = currentYear, m = 1;
+    while (y < currentYear || (y === currentYear && m <= currentMonth)) {
+      const key = `${y}-${String(m).padStart(2, '0')}`;
+      months.push(key);
+      m++;
+      if (m > 12) { m = 1; y++; }
+    }
+
+    // Compose months array with status and readings
+    const monthsWithStatus = months.map(monthKey => {
+      const readings = groupedByMonth[monthKey] || [];
+      let status = "done";
+      const [year, month] = monthKey.split('-').map(Number);
+      const isCurrentMonth = year === currentYear && month === currentMonth;
+      if (readings.length === 0) {
+        if (isCurrentMonth) status = "not_done";
+        else status = "missing";
+      }
+      return {
+        monthKey,
+        year,
+        month,
+        status,
+        readings
+      };
+    }).reverse(); // newest first
+
     // Get list of apartment objects for selection
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
@@ -450,6 +615,7 @@ exports.getWaterMeterDetails = async (req, res) => {
     return res.status(200).json({
       success: true,
       waterMeters: groupedByMonth,
+      months: monthsWithStatus,
       apartments: apartments,
       selectedApartmentId: validApartmentId,
       hasApartments: true,
@@ -616,19 +782,33 @@ exports.addMeterReading = async (req, res) => {
     );
     
     await Promise.all(insertPromises);
-    
+
+    // --- Generate payment after successful meter reading submission ---
+    let paymentInfo = null;
+    try {
+      paymentInfo = await generateMonthlyPaymentForApartment(apartmentId, userId, pool);
+    } catch (err) {
+      // If payment generation fails, just log, don't block meter submission
+      console.error('Payment generation failed:', err.message);
+    }
+
     // Include the comparison in the response
     const response = {
       success: true,
       message: 'Энэ сарын усны тоолуурын бүх заалт амжилттай хадгалагдлаа.'
     };
-    
+
     // If we have comparison data, include it
     if (comparisonResults.length > 0) {
       response.comparisons = comparisonResults;
       response.warningMessage = 'Тоолуурын заалтын өөрчлөлтийг доор харуулав:';
     }
-    
+
+    // Add payment info to response
+    if (paymentInfo) {
+      response.payment = paymentInfo;
+    }
+
     return res.status(201).json(response);
     
   } catch (error) {
