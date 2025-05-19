@@ -1017,34 +1017,36 @@ export function Apartment() {
                             {apartment.UnitNmbr && `, ${apartment.UnitNmbr}`}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium flex items-center justify-center space-x-4">
-                          {apartment.ApartmentType === 'эзэмшигч' && (
-                            <>
-                              <button
-                                onClick={() => handleShare(apartment)}
-                                className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center text-sm"
-                                title="Хуваалцах"
-                              >
-                                <FaShare size={15} />
-                              </button>
-                              <button
-                                onClick={() => fetchApartmentUsers(apartment.ApartmentId)}
-                                className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center text-sm"
-                                title="Хэрэглэгчид"
-                              >
-                                <FaInfoCircle size={15} />
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => handleDeleteApartment(apartment.ApartmentId)}
-                            className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center text-sm"
-                            title="Устгах"
-                          >
-                            <FaTrash size={15} />
-                          </button>
-                        </td>
-                      </tr>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium">
+        <div className="flex justify-center gap-1">
+          {apartment.ApartmentType === 'эзэмшигч' && (
+            <>
+              <button
+                onClick={() => handleShare(apartment)}
+                className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                title="Хуваалцах"
+              >
+                <FaShare size={15} />
+              </button>
+              <button
+                onClick={() => fetchApartmentUsers(apartment.ApartmentId)}
+                className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center"
+                title="Хэрэглэгчид"
+              >
+                <FaInfoCircle size={15} />
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => handleDeleteApartment(apartment.ApartmentId)}
+            className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+            title="Устгах"
+          >
+            <FaTrash size={15} />
+          </button>
+        </div>
+      </td>
+            </tr>
                     ))}
                   </tbody>
                 </table>

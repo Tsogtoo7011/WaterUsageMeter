@@ -61,14 +61,12 @@ const MeterCounter = () => {
         
         setSelectedApartmentId(defaultApartmentId);
         
-        // Then fetch water meter data for the selected apartment
         await fetchWaterMeterData(defaultApartmentId);
       } else {
         setIsLoading(false);
       }
     } catch (err) {
       console.error('Error fetching apartments:', err);
-      // Try to recover by checking if there are any apartments in localStorage
       try {
         const storedApartments = localStorage.getItem('userApartments');
         if (storedApartments) {
@@ -86,7 +84,6 @@ const MeterCounter = () => {
         console.error('Error reading apartments from localStorage:', localStorageErr);
       }
       
-      // Only set hasApartments to false if we are sure there are no apartments
       setApartments([]);
       setHasApartments(false);
       setIsLoading(false);
@@ -105,15 +102,12 @@ const MeterCounter = () => {
       setIsLoading(true);
       setError(null);
       
-      // Always fetch all water meter data for the selected apartment
       const url = `/water-meters/details?apartmentId=${apartmentId}`;
       const response = await api.get(url);
       console.log('Water meter response:', response.data);
       
-      // Use all readings from all months for the selected apartment
       let meterData = [];
       if (response.data.success && response.data.waterMeters) {
-        // Flatten all readings from all months into a single array
         meterData = Object.values(response.data.waterMeters || {}).flat();
       } else if (Array.isArray(response.data)) {
         meterData = response.data;
@@ -166,7 +160,6 @@ const MeterCounter = () => {
     }, {});
   }, [waterMeters]);
 
-  // Add logic to ensure current month is always present in monthKeys
   const currentDate = new Date();
   const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   let monthKeys = Object.keys(groupedByMonth);
