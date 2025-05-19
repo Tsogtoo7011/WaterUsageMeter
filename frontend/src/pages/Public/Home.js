@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import api from "../../utils/api";
-import { PlusCircle, Home as HomeIcon, BarChart2, Newspaper, CreditCard, MessageCircle, HelpCircle, Building2 } from 'lucide-react';
+import { PlusCircle, Home as HomeIcon, BarChart2, Newspaper, CreditCard, MessageCircle, HelpCircle, Building2, Users, Settings, User } from 'lucide-react';
 
 function Home() {
   const [user, setUser] = useState(null);
