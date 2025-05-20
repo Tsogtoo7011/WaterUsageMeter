@@ -31,6 +31,7 @@ function App() {
   const checkAuth = useCallback(() => {
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
+    setIsLoading(false); 
   }, []);
 
   useEffect(() => {
@@ -45,11 +46,6 @@ function App() {
     };
   }, [checkAuth]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
   const PrivateRoute = useCallback(({ children }) => localStorage.getItem('token') ? children : <Navigate to="/" replace />, []);
   const checkIsAdmin = useCallback(() => JSON.parse(localStorage.getItem('user'))?.AdminRight === 1, []);
   const AdminRoute = useCallback(({ children }) => !localStorage.getItem('token') ? <Navigate to="/" replace /> : !checkIsAdmin() ? <Navigate to="/home" replace /> : <SidebarLayout>{children}</SidebarLayout>, [checkIsAdmin]);
@@ -61,9 +57,9 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignIn />} />
-        <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />} />
-        <Route path="/ForgetPassword" element={isAuthenticated ? <Navigate to="/home" replace /> : <ForgetPassword />} />
+        <Route path="/" element={localStorage.getItem('token') ? <Navigate to="/home" replace /> : <SignIn />} />
+        <Route path="/signup" element={localStorage.getItem('token') ? <Navigate to="/home" replace /> : <SignUp />} />
+        <Route path="/ForgetPassword" element={localStorage.getItem('token') ? <Navigate to="/home" replace /> : <ForgetPassword />} />
         
         <Route path="/home" element={<SharedLayout><Home /></SharedLayout>} />
         <Route path="/settings" element={<SharedLayout><Settings /></SharedLayout>} />

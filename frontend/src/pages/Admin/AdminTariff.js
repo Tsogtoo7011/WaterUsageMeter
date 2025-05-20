@@ -268,28 +268,9 @@ export default function AdminTariff() {
           </div>
         </div>
         {/* Main Content */}
-        <div className="w-full flex flex-col md:flex-row p-6 bg-white rounded-lg shadow-sm">
-          {/* Left: current tariff meta */}
-          <div className="md:flex-[3_3_0%] pr-4 pb-6">
-            <h2 className="text-xl font-bold text-[#2D6B9F] mb-4">Одоогийн тарифын мэдээлэл</h2>
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-[#2D6B9F] mb-1">Хэрэгжиж эхэлсэн огноо</h3>
-              <p className="text-gray-700">{formatDate(tariff.EffectiveFrom)}</p>
-            </div>
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-[#2D6B9F] mb-1">Дуусах огноо</h3>
-              <p className="text-gray-700">{tariff.EffectiveTo ? formatDate(tariff.EffectiveTo) : 'Тодорхойгүй'}</p>
-            </div>
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-[#2D6B9F] mb-1">Төлөв</h3>
-              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tariff.IsActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                {tariff.IsActive ? 'Идэвхтэй' : 'Идэвхгүй'}
-              </span>
-            </div>
-          </div>
-          <div className="hidden md:block w-px bg-gray-300 mx-1"></div>
+        <div className="w-full flex flex-col p-6 bg-white rounded-lg shadow-sm">
           {/* Right: tabbed content with icon toggle */}
-          <div className="md:flex-[7_7_0%] md:pl-4 flex flex-col h-full gap-4">
+          <div className="flex flex-col h-full gap-4 w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-[#2D6B9F]">
                 {showHistory ? "Тарифын түүх" : "Тарифын мэдээлэл"}
@@ -319,6 +300,23 @@ export default function AdminTariff() {
                 <div className="flex items-center justify-between bg-gray-50 rounded px-4 py-3">
                   <span className="font-semibold text-gray-700">Бохир ус : {formatCurrency(tariff.DirtyWaterTariff)}</span>
                   <span className="text-gray-600 text-sm ml-4">м³ тутамд</span>
+                </div>
+                {/* Move meta info here */}
+                <div className="flex flex-wrap gap-6 mt-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D6B9F] mb-1">Хэрэгжиж эхэлсэн огноо</h3>
+                    <p className="text-gray-700">{formatDate(tariff.EffectiveFrom)}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D6B9F] mb-1">Дуусах огноо</h3>
+                    <p className="text-gray-700">{tariff.EffectiveTo ? formatDate(tariff.EffectiveTo) : 'Тодорхойгүй'}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2D6B9F] mb-1">Төлөв</h3>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tariff.IsActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {tariff.IsActive ? 'Идэвхтэй' : 'Идэвхгүй'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
