@@ -323,6 +323,7 @@ export default function AdminReport() {
         setCurrentPage={setCurrentPage}
         rowsPerPage={rowsPerPage}
         setSelectedItem={setSelectedItem}
+        downloadExcel={downloadExcel}
       />
     );
   };

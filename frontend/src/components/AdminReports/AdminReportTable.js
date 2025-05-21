@@ -8,7 +8,8 @@ export default function AdminReportTable({
   currentPage,
   setCurrentPage,
   rowsPerPage,
-  setSelectedItem
+  setSelectedItem,
+  downloadExcel 
 }) {
   const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -118,27 +119,6 @@ export default function AdminReportTable({
     );
   };
 
-  const handleExcelDownload = () => {
-    const endpointMap = {
-      payments: '/AdminReport/payments',
-      waterMeters: '/AdminReport/water-meters',
-      waterConsumption: '/AdminReport/water-consumption',
-      services: '/AdminReport/services',
-      feedback: '/AdminReport/feedback',
-      users: '/AdminReport/users',
-      apartments: '/AdminReport/apartments'
-    };
-    const endpoint = endpointMap[activeTab];
-    if (!endpoint) return;
-    const url = `${window.location.origin}${endpoint}?format=excel`;
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${activeTab}_report.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
-
   if (!reportData || reportData.length === 0 || !Array.isArray(reportData)) {
     return (
       <div className="bg-white rounded-lg p-6 text-center">
@@ -154,7 +134,7 @@ export default function AdminReportTable({
           {getTabLabel ? getTabLabel(activeTab) : ''}
         </span>
         <button
-          onClick={handleExcelDownload}
+          onClick={downloadExcel}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#2D6B9F]/90 hover:bg-[#2D6B9F] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full md:w-auto"
         >
           <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
