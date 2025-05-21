@@ -750,6 +750,7 @@ exports.getPaymentStatistics = async (req, res) => {
     const formattedResults = results.map(row => ({
       ...row,
       MonthName: monthNames[row.Month - 1],
+      year: reportYear, // <-- Add year property
       CollectionRate: row.TotalAmount > 0
         ? ((row.PaidAmount / row.TotalAmount) * 100).toFixed(2) + '%'
         : '0%'
