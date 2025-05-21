@@ -27,10 +27,9 @@ exports.getTariff = async (req, res) => {
   }
 };
 
-// Get tariff history
 exports.getTariffHistory = async (req, res) => {
   try {
-    // Get all tariffs ordered by TariffId DESC (latest first)
+
     const [tariffs] = await pool.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
       'EffectiveFrom, EffectiveTo, IsActive, CreatedAt, UpdatedAt FROM Tarif ' +
@@ -54,29 +53,26 @@ exports.updateTariff = async (req, res) => {
       DirtyWaterTariff,
       EffectiveFrom
     } = req.body;
-    
-    // Validate input
+
     if (!ColdWaterTariff || !HeatWaterTariff || !DirtyWaterTariff || !EffectiveFrom) {
       await connection.rollback();
       return res.status(400).json({ 
         message: 'Бүх тарифын утгуудыг болон хэрэгжих огноог оруулах шаардлагатай' 
       });
     }
-    
-    // Validate effective date format
+
     const effectiveDate = new Date(EffectiveFrom);
     if (isNaN(effectiveDate.getTime())) {
       await connection.rollback();
       return res.status(400).json({ message: 'Хэрэгжих огноо буруу форматтай байна' });
     }
-    
-    // First, deactivate any currently active tariff
+
     await connection.execute(
       'UPDATE Tarif SET IsActive = 0, EffectiveTo = ? WHERE IsActive = 1',
       [EffectiveFrom]
     );
     
-    // Insert new tariff record
+
     const [result] = await connection.execute(
       'INSERT INTO Tarif (ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom, IsActive) ' +
       'VALUES (?, ?, ?, ?, 1)',
@@ -103,7 +99,6 @@ exports.updateTariff = async (req, res) => {
   }
 };
 
-// Activate/deactivate a tariff
 exports.toggleTariffStatus = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -122,13 +117,11 @@ exports.toggleTariffStatus = async (req, res) => {
       );
     }
     
-    // Update the target tariff status
     await connection.execute(
       'UPDATE Tarif SET IsActive = ? WHERE TariffId = ?',
       [isActive, tariffId]
     );
     
-    // Get the updated tariff
     const [updatedTariff] = await connection.execute(
       'SELECT TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, ' +
       'EffectiveFrom, EffectiveTo, IsActive FROM Tarif WHERE TariffId = ?',

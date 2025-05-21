@@ -1,4 +1,3 @@
-// utils/errorHandler.js
 exports.handleError = (res, error, context) => {
   console.error(`${context} error:`, error);
   

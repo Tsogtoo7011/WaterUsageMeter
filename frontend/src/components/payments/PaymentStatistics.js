@@ -105,8 +105,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
         </span>
       );
     }
-    
-    // If no payment data at all, show placeholder
+
     if (!hasAnyStatus && month.totalAmount === 0) {
       return <span className="text-gray-400">-</span>;
     }
@@ -138,7 +137,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
     return <div className="flex flex-wrap gap-2">{badges}</div>;
   };
 
-  // Handle empty data gracefully
+
   const hasData = statistics.monthlyStats && statistics.monthlyStats.length > 0;
   const hasPayments = hasData && statistics.monthlyStats.some(m => m.totalAmount > 0);
 
@@ -186,7 +185,6 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
         </div>
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="border border-blue-50 p-4 rounded-lg shadow-sm">
           <p className="text-sm text-[#2D6B9F] font-medium">Жилийн нийт төлбөр</p>
@@ -241,9 +239,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
               </ResponsiveContainer>
             </div>
           </div>
-          {/* Divider for desktop */}
           <div className="hidden md:block w-px bg-gray-200"></div>
-          {/* Payment Status Pie Chart */}
           <div className="md:flex-[3_3_0%] bg-white p-4 rounded-lg shadow-sm">
             <h3 className="text-lg text-[#2D6B9F] font-medium mb-4">Төлбөрийн төлөвийн харьцаа</h3>
             <div className="h-64 flex justify-center">

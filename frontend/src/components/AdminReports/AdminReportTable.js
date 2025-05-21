@@ -10,12 +10,9 @@ export default function AdminReportTable({
   rowsPerPage,
   setSelectedItem
 }) {
-  // Search state
   const [search, setSearch] = useState('');
-  // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  // Columns config for each tab
   const columnsConfig = {
     payments: [
       { key: 'PaymentId', label: 'ID' },
@@ -75,13 +72,11 @@ export default function AdminReportTable({
     ]
   };
 
-  // Get columns for current tab
   const columns = columnsConfig[activeTab] ||
     (reportData.length > 0
       ? Object.keys(reportData[0]).slice(0, 5).map(key => ({ key, label: key }))
       : []);
 
-  // Search filter
   const filteredData = reportData.filter(item =>
     columns.some(col => {
       const value = item[col.key];
@@ -89,7 +84,6 @@ export default function AdminReportTable({
     })
   );
 
-  // Sorting
   const sortedData = [...filteredData].sort((a, b) => {
     if (!sortConfig.key) return 0;
     let aValue = a[sortConfig.key] ?? '';
@@ -103,7 +97,6 @@ export default function AdminReportTable({
     return 0;
   });
 
-  // Pagination
   const totalRows = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage)); 
   const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
@@ -112,13 +105,11 @@ export default function AdminReportTable({
     safeCurrentPage * rowsPerPage
   );
 
-  // Sorting arrow
   const renderSortArrow = (key) => {
     if (sortConfig.key !== key) return null;
     return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
   };
 
-  // Handle sort
   const handleSort = (key) => {
     setSortConfig(prev =>
       prev.key === key
@@ -127,9 +118,7 @@ export default function AdminReportTable({
     );
   };
 
-  // Excel download handler
   const handleExcelDownload = () => {
-    // Use absolute URL for API endpoint
     const endpointMap = {
       payments: '/AdminReport/payments',
       waterMeters: '/AdminReport/water-meters',
@@ -141,11 +130,7 @@ export default function AdminReportTable({
     };
     const endpoint = endpointMap[activeTab];
     if (!endpoint) return;
-
-    // Use window.location.origin to ensure correct base in production
     const url = `${window.location.origin}${endpoint}?format=excel`;
-
-    // Use a hidden link to trigger download (for better browser compatibility)
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `${activeTab}_report.xlsx`);
@@ -164,7 +149,6 @@ export default function AdminReportTable({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
-      {/* Title and Excel download button in one row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
         <span className="text-lg font-bold text-[#2D6B9F] mb-2 md:mb-0">
           {getTabLabel ? getTabLabel(activeTab) : ''}
@@ -174,14 +158,13 @@ export default function AdminReportTable({
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#2D6B9F]/90 hover:bg-[#2D6B9F] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full md:w-auto"
         >
           <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M16 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+            <path d="M16 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1-2 2v2" />
             <polyline points="15 10 20 15 15 20" />
             <line x1="20" y1="15" x2="9" y2="15" />
           </svg>
           Excel татах
         </button>
       </div>
-      {/* Search bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
         <div className="relative flex-grow w-full">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -202,7 +185,6 @@ export default function AdminReportTable({
           />
         </div>
       </div>
-      {/* Table */}
       <div className="overflow-x-auto">
         <div className="align-middle inline-block min-w-full shadow overflow-hidden rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
@@ -286,7 +268,6 @@ export default function AdminReportTable({
           </table>
         </div>
       </div>
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-4 items-center space-x-2">
           <button
@@ -349,7 +330,6 @@ export default function AdminReportTable({
           </button>
         </div>
       )}
-      {/* Table summary */}
       <div className="mt-4 text-sm text-gray-500 text-center">
         Нийт {totalRows} бичлэг.
       </div>

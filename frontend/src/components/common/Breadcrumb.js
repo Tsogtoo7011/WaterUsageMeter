@@ -82,7 +82,6 @@ const Breadcrumb = () => {
         
         {pathnames.filter(name => name !== 'home').map((name, index) => {
           const url = getBreadcrumbUrl(index);
-          // Find the real index in pathnames (since we filtered out 'home')
           const realIdx = location.pathname.split('/').filter(x => x).indexOf(name);
           const isLast = index === pathnames.filter(n => n !== 'home').length - 1;
           const displayName = getDisplayName(name, realIdx);

@@ -181,7 +181,7 @@ exports.addApartmentByCode = async (req, res) => {
       return res.status(409).json({ message: 'Энэ байр аль хэдийн таны бүртгэлд нэмэгдсэн байна' });
     }
 
-    const userRole = 0; // Always set to "эзэмшигч"
+    const userRole = 0;
 
     await connection.execute(
       'INSERT INTO ApartmentUserAdmin (ApartmentId, UserId, UserRole) VALUES (?, ?, ?)',

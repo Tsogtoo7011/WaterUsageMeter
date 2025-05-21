@@ -5,13 +5,11 @@ exports.validateSignup = (req, res, next) => {
     return res.status(400).json({ message: 'Бүх шаардлагатай талбарыг бөглөнө үү' });
   }
   
-  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ message: 'Хүчинтэй имэйл хаяг оруулна уу' });
   }
   
-  // Validate password strength (min 6 chars, at least 1 letter, 1 number, and 1 special character)
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
   if (!passwordRegex.test(password)) {
     return res.status(400).json({
@@ -39,7 +37,6 @@ exports.validateProfileUpdate = (req, res, next) => {
     return res.status(400).json({ message: 'Овог, нэр, имэйл хаяг шаардлагатай' });
   }
   
-  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(Email)) {
     return res.status(400).json({ message: 'Хүчинтэй имэйл хаяг оруулна уу' });

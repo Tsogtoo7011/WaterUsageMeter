@@ -22,26 +22,24 @@ exports.forgotPassword = async (req, res) => {
     
     const user = users[0];
     
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    const resetTokenExpiry = new Date(Date.now() + 3600000);
     
-    // Hash the token before storing it
+
     const hashedToken = crypto
       .createHash('sha256')
       .update(resetToken)
       .digest('hex');
     
-    // Store token in database
+
     await pool.execute(
       'UPDATE UserAdmin SET ResetPasswordToken = ?, ResetPasswordExpiry = ? WHERE UserId = ?',
       [hashedToken, resetTokenExpiry, user.UserId]
     );
     
-    // Create reset URL
+
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
     
-    // Send email
     await sendEmail({
       to: user.Email,
       subject: 'Нууц үг шинэчлэх хүсэлт',
@@ -85,19 +83,17 @@ exports.resetPassword = async (req, res) => {
       });
     }
     
-    // Validate password strength
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{6,}$/;
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
         message: 'Нууц үг доод тал нь 6 тэмдэгт байх ба 1 онцгой тэмдэг, 1 тоо агуулсан байх ёстой'
       });
     }
-    
-    // Hash new password
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    // Update user password and clear reset token
+
     await pool.execute(
       'UPDATE UserAdmin SET Password = ?, ResetPasswordToken = NULL, ResetPasswordExpiry = NULL WHERE UserId = ?',
       [hashedPassword, users[0].UserId]
@@ -136,24 +132,20 @@ exports.changePassword = async (req, res) => {
     
     const user = users[0];
     
-    // Check if current password is correct
     const isPasswordValid = await bcrypt.compare(currentPassword, user.Password);
     
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Одоогийн нууц үг буруу байна' });
     }
     
-    // Check if new password is different from the current one
     const isSamePassword = await bcrypt.compare(newPassword, user.Password);
     if (isSamePassword) {
       return res.status(400).json({ message: 'Шинэ нууц үг өмнөх нууц үгтэй адилхан байна' });
     }
     
-    // Hash new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
     
-    // Update password in database
     await pool.execute(
       'UPDATE UserAdmin SET Password = ?, UpdatedAt = NOW() WHERE UserId = ?',
       [hashedPassword, userId]

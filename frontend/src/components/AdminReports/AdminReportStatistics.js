@@ -7,20 +7,16 @@ export default function AdminReportStatistics({
   loading,
   error
 }) {
-  // Only apply for paymentStats or serviceStats tab
   if (activeTab !== 'paymentStats' && activeTab !== 'serviceStats') {
     return null;
   }
 
-  // --- PAYMENT STATS LOGIC ---
-  // Aggregate summary values
   const total = reportData.reduce((sum, r) => sum + (r.TotalAmount || 0), 0);
   const paid = reportData.reduce((sum, r) => sum + (r.PaidAmount || 0), 0);
   const pending = reportData.reduce((sum, r) => sum + (r.PendingAmount || 0), 0);
   const overdue = reportData.reduce((sum, r) => sum + (r.OverdueAmount || 0), 0);
   const other = total - paid - pending;
 
-  // Pie chart data for payment
   const pieData = {
     labels: ['Төлөгдсөн', 'Хүлээгдэж буй', 'Бусад'],
     datasets: [
@@ -32,8 +28,6 @@ export default function AdminReportStatistics({
     ]
   };
 
-  // --- SERVICE STATS LOGIC ---
-  // Aggregate service stats by year/month
   const serviceYearlyStats = {};
   if (activeTab === 'serviceStats') {
     reportData.forEach(row => {
@@ -64,7 +58,6 @@ export default function AdminReportStatistics({
     });
   }
 
-  // --- COMMON YEAR SELECTION LOGIC ---
   const allYears = activeTab === 'paymentStats'
     ? Object.keys(
         reportData.reduce((acc, row) => {
@@ -77,7 +70,6 @@ export default function AdminReportStatistics({
 
   const [selectedYear, setSelectedYear] = useState(allYears.length > 0 ? allYears[allYears.length - 1] : '');
 
-  // --- PAYMENT STATS YEARLY ---
   const selectedYearStats = activeTab === 'paymentStats'
     ? (() => {
         const yearlyStats = {};
@@ -113,12 +105,10 @@ export default function AdminReportStatistics({
       })()
     : [];
 
-  // --- SERVICE STATS YEARLY ---
   const selectedServiceYearStats = activeTab === 'serviceStats'
     ? serviceYearlyStats[selectedYear]?.months || Array(12).fill({ completed: 0, pending: 0, inprogress: 0 })
     : [];
 
-  // --- BAR CHART DATA ---
   const barData = activeTab === 'paymentStats'
     ? {
         labels: [
@@ -167,7 +157,6 @@ export default function AdminReportStatistics({
         ]
       };
 
-  // --- PIE CHART DATA FOR SELECTED YEAR ---
   let pieDataYear = pieData;
   if (activeTab === 'paymentStats') {
     const filteredYearData = reportData.filter(row => {
@@ -209,7 +198,6 @@ export default function AdminReportStatistics({
     };
   }
 
-  // --- SUMMARY CARDS DATA ---
   let summaryCards = [];
   if (activeTab === 'paymentStats') {
     const filteredYearData = reportData.filter(row => {
@@ -310,25 +298,18 @@ export default function AdminReportStatistics({
     ];
   }
 
-  // --- VIEW STATE ---
   const [view, setView] = useState('chart');
-  // Table search state
   const [search, setSearch] = useState('');
-  // Table sorting state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  // Table pagination state (20 per page)
   const [tablePage, setTablePage] = useState(1);
   const tableRowsPerPage = 20;
 
-  // Table columns for paymentStats
   const tableColumns = [
     { key: 'YearMonth', label: 'Огноо', group: 'period' },
-    // Divider
     { key: '__divider1', label: '', divider: true },
     { key: 'TotalPayments', label: 'Гарсан төлбөр', group: 'count' },
     { key: 'PaidPayments', label: 'Төлөгдсөн', group: 'count' },
     { key: 'PendingPayments', label: 'Хүлээгдэж буй', group: 'count' },
-    // Divider
     { key: '__divider2', label: '', divider: true },
     { key: 'TotalAmount', label: 'Нийт дүн', group: 'amount' },
     { key: 'PaidAmount', label: 'Төлөгдсөн дүн', group: 'amount' },
@@ -337,7 +318,6 @@ export default function AdminReportStatistics({
     { key: 'CollectionRate', label: 'Төлөлтийн хувь', group: 'amount' }
   ];
 
-  // Table columns for serviceStats
   const serviceTableColumns = [
     { key: 'YearMonth', label: 'Огноо', group: 'period' },
     { key: '__divider1', label: '', divider: true },
@@ -346,7 +326,6 @@ export default function AdminReportStatistics({
     { key: 'InProgressRequests', label: 'Хийгдэж буй', group: 'count' }
   ];
 
-  // Add YearMonth property to each row for table display
   const processedTableData = reportData.map(row => {
     const year = row.year || row.Year || '';
     const month = row.Month || '';
@@ -356,7 +335,6 @@ export default function AdminReportStatistics({
     };
   });
 
-  // Filtered table data by year/month search
   const filteredTableData = processedTableData.filter(row => {
     const year = row.Year || row.year || (row.MonthName && row.MonthName.split('-')[0]) || '';
     const month = row.MonthName || '';
@@ -366,7 +344,6 @@ export default function AdminReportStatistics({
     );
   });
 
-  // Sorted and paginated table data
   const sortedTableData = [...filteredTableData].sort((a, b) => {
     if (!sortConfig.key) return 0;
     let aValue = a[sortConfig.key] ?? '';
@@ -387,7 +364,6 @@ export default function AdminReportStatistics({
 
   const totalTablePages = Math.ceil(sortedTableData.length / tableRowsPerPage);
 
-  // Helper to format amounts without leading zeros
   const formatAmount = (amount) => {
     if (!amount) return '₮0';
     let str = String(amount);
@@ -401,6 +377,14 @@ export default function AdminReportStatistics({
     return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
   };
 
+  if (!loading && !error && (!reportData || reportData.length === 0)) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-4 text-center text-gray-500">
+        Статистикийн мэдээлэл олдсонгүй.
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       {loading && <p className="text-center py-4">Ачааллаж байна...</p>}
@@ -411,7 +395,6 @@ export default function AdminReportStatistics({
       )}
       {!loading && !error && (
         <>
-          {/* Toggle Buttons */}
           <div className="flex justify-between items-center mb-4">
             <span className="text-lg font-bold text-[#2D6B9F]">
               {activeTab === 'paymentStats' ? 'Төлбөрийн статистик' : 'Үйлчилгээний статистик'}
@@ -431,12 +414,9 @@ export default function AdminReportStatistics({
               </button>
             </div>
           </div>
-
-          {/* Chart Section: Year dropdown + Summary + Bar (left) + Pie (right) */}
           {view === 'chart' && (
             <>
               <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-2">
-                {/* Year selector at the left */}
                 <div className="flex items-center mb-2 sm:mb-0">
                   <label htmlFor="year-select" className="text-sm font-medium text-gray-700 mr-2">Он:</label>
                   <select
@@ -505,8 +485,6 @@ export default function AdminReportStatistics({
               </div>
             </>
           )}
-
-          {/* Table Section */}
           {view === 'table' && (
             <>
               <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -561,23 +539,18 @@ export default function AdminReportStatistics({
                         {paginatedTableData.length > 0 ? (
                           paginatedTableData.map((row, idx) => (
                             <tr key={idx} className="hover:bg-blue-50 transition group">
-                              {/* Period group */}
                               <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">{row.YearMonth}</td>
-                              {/* Divider */}
                               <td className="p-0" style={{ width: "1px", minWidth: "1px", background: "transparent" }}>
                                 <div className="h-6 w-px mx-auto bg-gray-300"></div>
                               </td>
                               {activeTab === 'paymentStats' ? (
                                 <>
-                                  {/* Count group */}
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">{row.TotalPayments ?? ''}</td>
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">{row.PaidPayments ?? ''}</td>
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">{row.PendingPayments ?? ''}</td>
-                                  {/* Divider */}
                                   <td className="p-0" style={{ width: "1px", minWidth: "1px", background: "transparent" }}>
                                     <div className="h-6 w-px mx-auto bg-gray-300"></div>
                                   </td>
-                                  {/* Amount group */}
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">₮{(row.TotalAmount || 0).toLocaleString()}</td>
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">₮{(row.PaidAmount || 0).toLocaleString()}</td>
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">₮{(row.PendingAmount || 0).toLocaleString()}</td>
@@ -586,7 +559,6 @@ export default function AdminReportStatistics({
                                 </>
                               ) : (
                                 <>
-                                  {/* Service stats columns */}
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">{row.CompletedRequests ?? ''}</td>
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">{row.PendingRequests ?? ''}</td>
                                   <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-blue-600 text-center">{row.InProgressRequests ?? ''}</td>
@@ -605,7 +577,6 @@ export default function AdminReportStatistics({
                   </table>
                 </div>
               </div>
-              {/* Pagination */}
               {totalTablePages > 1 && (
                 <div className="flex justify-center mt-4 items-center space-x-2">
                   <button

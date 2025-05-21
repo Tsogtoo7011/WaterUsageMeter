@@ -2,7 +2,6 @@ const db = require('../config/db');
 const path = require('path');
 const fs = require('fs');
 
-// Get all news
 exports.getAllNews = async (req, res) => {
   try {
     const query = `
@@ -14,7 +13,7 @@ exports.getAllNews = async (req, res) => {
     
     const [results] = await db.query(query);
     
-    // Don't send image data in the list to reduce payload size
+
     res.status(200).json(results);
   } catch (err) {
     console.error('Error fetching news:', err);
@@ -22,7 +21,6 @@ exports.getAllNews = async (req, res) => {
   }
 };
 
-// Get single news by ID
 exports.getNewsById = async (req, res) => {
   try {
     const newsId = req.params.id;
@@ -40,7 +38,6 @@ exports.getNewsById = async (req, res) => {
       return res.status(404).json({ error: 'News not found' });
     }
     
-    // Convert BLOB to base64 for frontend display if it exists
     const news = results[0];
     if (news.CoverImageData) {
       news.CoverImageData = news.CoverImageData.toString('base64');
@@ -53,7 +50,6 @@ exports.getNewsById = async (req, res) => {
   }
 };
 
-// Create news
 exports.createNews = async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -86,13 +82,11 @@ exports.createNews = async (req, res) => {
   }
 };
 
-// Update news
 exports.updateNews = async (req, res) => {
   try {
     const newsId = req.params.id;
     const { title, description } = req.body;
     
-    // Check if news exists
     const checkQuery = 'SELECT * FROM News WHERE NewsId = ?';
     const [checkResults] = await db.query(checkQuery, [newsId]);
     
@@ -103,7 +97,7 @@ exports.updateNews = async (req, res) => {
     let query, queryParams;
     
     if (req.file) {
-      // Update with new image
+
       const coverImageType = path.extname(req.file.originalname).substring(1);
       const coverImageData = req.file.buffer;
       
@@ -115,7 +109,7 @@ exports.updateNews = async (req, res) => {
       
       queryParams = [title, description, coverImageType, coverImageData, newsId];
     } else {
-      // Update without changing image
+
       query = `
         UPDATE News
         SET Title = ?, NewsDescription = ?
@@ -138,7 +132,6 @@ exports.updateNews = async (req, res) => {
   }
 };
 
-// Delete news
 exports.deleteNews = async (req, res) => {
   try {
     const newsId = req.params.id;
@@ -158,7 +151,6 @@ exports.deleteNews = async (req, res) => {
   }
 };
 
-// Get news image by ID
 exports.getNewsImage = async (req, res) => {
   try {
     const newsId = req.params.id;

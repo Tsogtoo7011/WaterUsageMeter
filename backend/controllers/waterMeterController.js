@@ -1,7 +1,6 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 
-// Helper function to get user's apartments
 async function getUserApartments(userId) {
   const [apartments] = await pool.execute(
     'SELECT aua.ApartmentId FROM ApartmentUserAdmin aua WHERE aua.UserId = ?',
@@ -15,27 +14,22 @@ async function getUserApartments(userId) {
   return apartments.map(apt => apt.ApartmentId);
 }
 
-// Helper function to get expected water meter configurations based on MeterCount
 function getExpectedMeters(meterCount) {
   const expectedMeters = [];
   
-  // Base configuration - Always present
   expectedMeters.push(
     { location: 'Гал тогоо', type: 0 }, 
     { location: 'Гал тогоо', type: 1 }  
   );
-  
-  // MeterCount 3: Add Bathroom Cold
+
   if (meterCount >= 3) {
     expectedMeters.push({ location: 'Ванн', type: 0 });
   }
-  
-  // MeterCount 4: Add Bathroom Hot
+
   if (meterCount >= 4) {
     expectedMeters.push({ location: 'Ванн', type: 1 });
   }
-  
-  // MeterCount 5: Add Toilet Cold
+
   if (meterCount >= 5) {
     expectedMeters.push({ location: 'Нойл', type: 0 });
   }
@@ -43,17 +37,15 @@ function getExpectedMeters(meterCount) {
   return expectedMeters;
 }
 
-// Helper function to check if the date is within the allowed period
 function isDateInAllowedPeriod() {
   const currentDate = new Date();
   const currentDay = currentDate.getDate();
 
-  return currentDay >= 1 && currentDay <= 20;
+  return currentDay >= 1 && currentDay <= 21;
 }
 
-// Helper function to get previous meter readings for comparison
 async function getPreviousReadings(apartmentId) {
-  // Get the current month's readings if they exist
+
   const [currentReadings] = await pool.execute(
     `SELECT 
       WaterMeterId,
@@ -76,8 +68,7 @@ async function getPreviousReadings(apartmentId) {
       indication: Number(meter.Indication)
     }));
   }
-  
-  // Get the last month's readings as fallback
+
   const [lastMonthReadings] = await pool.execute(
     `SELECT 
       WaterMeterId,
@@ -109,7 +100,6 @@ async function getPreviousReadings(apartmentId) {
   return [];
 }
 
-// Helper to check if user already submitted readings for the current month
 async function hasSubmittedCurrentMonthReadings(apartmentId) {
   const [result] = await pool.execute(
     `SELECT COUNT(*) as count
@@ -133,13 +123,11 @@ async function getCurrentTariff() {
   return tariffs[0];
 }
 
-// --- Helper: Generate monthly payment for an apartment if not exists ---
 async function generateMonthlyPaymentForApartment(apartmentId, userId, pool) {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  // Check if payment already exists for this month
   const [existingPayments] = await pool.execute(
     `SELECT PaymentId
      FROM Payment
@@ -152,7 +140,6 @@ async function generateMonthlyPaymentForApartment(apartmentId, userId, pool) {
   );
 
   if (existingPayments.length > 0) {
-    // Already exists, return payment info
     const [paymentDetails] = await pool.execute(
       `SELECT 
         p.PaymentId,
@@ -212,31 +199,25 @@ async function generateMonthlyPaymentForApartment(apartmentId, userId, pool) {
     GROUP BY Type`,
     [apartmentId, prevMonth, prevYear]
   );
-  // Calculate usage as the difference between this month's and previous month's readings
   const usage = { cold: 0, hot: 0 };
   currentReadings.forEach(current => {
     const prevReading = prevReadings.find(prev => prev.Type === current.Type);
     const previousValue = prevReading ? Number(prevReading.latest_reading) : 0;
     const currentValue = Number(current.latest_reading);
-    // Usage is the difference between current and previous month for each type
     const usageValue = currentValue >= previousValue ? currentValue - previousValue : currentValue;
     if (current.Type === 0) usage.cold = usageValue;
     else if (current.Type === 1) usage.hot = usageValue;
   });
 
-  // --- FIX: Fetch tariff from DB ---
   const tariff = await getCurrentTariff();
 
-  // Calculate payment amounts based on usage difference
   const coldWaterCost = (usage.cold + usage.hot) * tariff.ColdWaterTariff;
   const hotWaterCost = usage.hot * tariff.HeatWaterTariff;
   const dirtyWaterCost = (usage.cold + usage.hot) * tariff.DirtyWaterTariff;
   const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
-  // Generate a simple order ID
   const orderId = Math.floor(Math.random() * 1000000) + 1;
 
-  // Insert payment
   const [result] = await pool.execute(
     `INSERT INTO Payment 
       (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
@@ -260,17 +241,15 @@ async function generateMonthlyPaymentForApartment(apartmentId, userId, pool) {
   };
 }
 
-// Get water meter data for the current user
 exports.getUserWaterMeters = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const requestedApartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
-    
-    // Get list of user's apartments
+
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0) {
-      // Return 200 with empty data and clear status flag
+
       return res.status(200).json({
         success: true,
         message: 'No apartments found for this user',
@@ -303,8 +282,7 @@ exports.getUserWaterMeters = async (req, res) => {
     } else {
       selectedApartmentId = apartmentIds[0];
     }
-    
-    // Get apartment details including MeterCount
+
     const [apartmentDetails] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
        FROM Apartment a
@@ -321,8 +299,7 @@ exports.getUserWaterMeters = async (req, res) => {
     
     const meterCount = apartmentDetails[0].MeterCount;
     const expectedMeters = getExpectedMeters(meterCount);
-    
-    // Get the current month's readings for selected apartment
+
     const [waterMeters] = await pool.execute(
       `SELECT 
         WaterMeterId,
@@ -338,7 +315,6 @@ exports.getUserWaterMeters = async (req, res) => {
       [selectedApartmentId]
     );
     
-    // Format the output
     const formattedMeters = waterMeters.map(meter => ({
       id: Number(meter.WaterMeterId),
       type: Number(meter.Type),
@@ -348,7 +324,6 @@ exports.getUserWaterMeters = async (req, res) => {
       date: meter.WaterMeterDate
     }));
     
-    // Calculate totals
     let totalHot = 0;
     let totalCold = 0;
     
@@ -360,22 +335,18 @@ exports.getUserWaterMeters = async (req, res) => {
       }
     });
     
-    // Get location breakdown - with dynamic locations based on MeterCount
     const locationBreakdown = {
       'Гал тогоо': { hot: 0, cold: 0 }
     };
     
-    // Add optional locations based on MeterCount
     if (meterCount >= 3) {
       locationBreakdown['Ванн'] = { hot: 0, cold: 0 };
     }
     
     if (meterCount >= 5) {
-      locationBreakdown['Нойл'] = { cold: 0 };  // Toilet only has cold water
+      locationBreakdown['Нойл'] = { cold: 0 };  
     }
-    
-    // Process location data
-    const [locationData] = await pool.execute(
+        const [locationData] = await pool.execute(
       `SELECT 
         Location,
         Type,
@@ -388,8 +359,7 @@ exports.getUserWaterMeters = async (req, res) => {
       ORDER BY Location, Type`,
       [selectedApartmentId]
     );
-    
-    // Fill location breakdown with actual data
+
     locationData.forEach(item => {
       const locKey = item.Location;
       const typeKey = item.Type === 1 ? 'hot' : 'cold';
@@ -400,8 +370,7 @@ exports.getUserWaterMeters = async (req, res) => {
         }
       }
     });
-    
-    // Get historical data for chart
+
     const year = new Date().getFullYear();
     const [historicalData] = await pool.execute(
       `SELECT 
@@ -416,7 +385,6 @@ exports.getUserWaterMeters = async (req, res) => {
       [selectedApartmentId, year]
     );
     
-    // Process historical data
     const months = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
     const chartData = {
       labels: months,
@@ -426,7 +394,7 @@ exports.getUserWaterMeters = async (req, res) => {
     };
     
     historicalData.forEach(record => {
-      const monthIndex = record.month - 1; // Convert to 0-based index
+      const monthIndex = record.month - 1; 
       const typeKey = record.Type === 1 ? 'hot' : 'cold';
       const value = Number(record.total);
       
@@ -434,7 +402,6 @@ exports.getUserWaterMeters = async (req, res) => {
       chartData.total[monthIndex] += value;
     });
     
-    // Get list of apartment objects for selection
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
        FROM Apartment a
@@ -450,8 +417,7 @@ exports.getUserWaterMeters = async (req, res) => {
       meterCount: apt.MeterCount,
       displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
     }));
-    
-    // Check if user can submit readings (date restrictions + once per month)
+
     const hasCurrentMonthReadings = formattedMeters.length > 0;
     const canSubmit = isDateInAllowedPeriod() && !hasCurrentMonthReadings;
     
@@ -480,17 +446,15 @@ exports.getUserWaterMeters = async (req, res) => {
   }
 };
 
-// Get detailed water meter readings for a specific apartment
 exports.getWaterMeterDetails = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const apartmentId = req.query.apartmentId;
-    
-    // Get list of user's apartments
+
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0) {
-      // Return 200 with empty data and clear status flag
+
       return res.status(200).json({
         success: true,
         message: 'No apartments found for this user',
@@ -500,16 +464,14 @@ exports.getWaterMeterDetails = async (req, res) => {
         selectedApartmentId: null,
         hasApartments: false,
         expectedMeters: [],
-        canSubmitReading: isDateInAllowedPeriod() // Add submission period status
+        canSubmitReading: isDateInAllowedPeriod() 
       });
     }
-    
-    // If apartment ID is not provided or not valid, use the first one
+
     const validApartmentId = apartmentId && apartmentIds.includes(Number(apartmentId)) 
       ? Number(apartmentId) 
       : apartmentIds[0];
-    
-    // Get apartment details including MeterCount
+
     const [apartmentDetails] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
        FROM Apartment a
@@ -527,7 +489,6 @@ exports.getWaterMeterDetails = async (req, res) => {
     const meterCount = apartmentDetails[0].MeterCount;
     const expectedMeters = getExpectedMeters(meterCount);
     
-    // Get water meters for this apartment
     const [waterMeters] = await pool.execute(
       `SELECT 
         WaterMeterId,
@@ -540,8 +501,7 @@ exports.getWaterMeterDetails = async (req, res) => {
       ORDER BY WaterMeterDate DESC, Location, Type`,
       [validApartmentId]
     );
-    
-    // Group by month for better organization
+
     const groupedByMonth = {};
     waterMeters.forEach(meter => {
       const date = new Date(meter.WaterMeterDate);
@@ -559,7 +519,6 @@ exports.getWaterMeterDetails = async (req, res) => {
       });
     });
 
-    // --- NEW: Generate all months from January of current year up to current month, with status ---
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -572,7 +531,6 @@ exports.getWaterMeterDetails = async (req, res) => {
       if (m > 12) { m = 1; y++; }
     }
 
-    // Compose months array with status and readings
     const monthsWithStatus = months.map(monthKey => {
       const readings = groupedByMonth[monthKey] || [];
       let status = "done";
@@ -589,9 +547,8 @@ exports.getWaterMeterDetails = async (req, res) => {
         status,
         readings
       };
-    }).reverse(); // newest first
+    }).reverse(); 
 
-    // Get list of apartment objects for selection
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
        FROM Apartment a
@@ -608,7 +565,6 @@ exports.getWaterMeterDetails = async (req, res) => {
       displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
     }));
     
-    // Check if user already submitted readings for the current month
     const hasCurrentMonthReadings = await hasSubmittedCurrentMonthReadings(validApartmentId);
     const canSubmit = isDateInAllowedPeriod() && !hasCurrentMonthReadings;
     
@@ -630,13 +586,11 @@ exports.getWaterMeterDetails = async (req, res) => {
   }
 };
 
-// Add new water meter reading for a specific apartment
 exports.addMeterReading = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const { apartmentId, readings } = req.body;
     
-    // Validate input format
     if (!readings || !Array.isArray(readings) || readings.length === 0) {
       return res.status(400).json({
         success: false,
@@ -651,7 +605,6 @@ exports.addMeterReading = async (req, res) => {
       });
     }
     
-    // Get list of user's apartments
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
@@ -661,16 +614,14 @@ exports.addMeterReading = async (req, res) => {
         hasApartments: false
       });
     }
-    
-    // Check if submission period is valid (1st day or after 20th day of month)
+  
     if (!isDateInAllowedPeriod()) {
       return res.status(403).json({
         success: false,
-        message: 'Тоолуурын заалт оруулах боломжтой хугацаа биш байна. Та сарын 1-нд эсвэл 20-ноос хойш оруулна уу.'
+        message: 'Тоолуурын заалт оруулах боломжтой хугацаа биш байна. Та сарын 1-нд эсвэл 21-ээс хойш оруулна уу.'
       });
     }
     
-    // Check if user already submitted readings for this month
     const hasCurrentMonthReadings = await hasSubmittedCurrentMonthReadings(apartmentId);
     if (hasCurrentMonthReadings) {
       return res.status(403).json({
@@ -678,8 +629,7 @@ exports.addMeterReading = async (req, res) => {
         message: 'Та энэ сард аль хэдийн тоолуурын заалт оруулсан байна. Сард зөвхөн нэг удаа оруулах боломжтой.'
       });
     }
-    
-    // Get apartment details to check MeterCount
+
     const [apartmentDetails] = await pool.execute(
       `SELECT MeterCount FROM Apartment WHERE ApartmentId = ?`,
       [apartmentId]
@@ -694,28 +644,24 @@ exports.addMeterReading = async (req, res) => {
     
     const meterCount = apartmentDetails[0].MeterCount;
     const expectedMeters = getExpectedMeters(meterCount);
-    
-    // Create a map of expected meters for validation
+
     const expectedMeterMap = {};
     expectedMeters.forEach(meter => {
       const key = `${meter.location}-${meter.type}`;
       expectedMeterMap[key] = true;
     });
-    
-    // Validate all readings
+
     const validLocations = ['Гал тогоо', 'Нойл', 'Ванн'];
-    const validTypes = [0, 1]; // 0 = Cold, 1 = Hot
-    
-    // Check for invalid readings based on MeterCount
+    const validTypes = [0, 1];
+  
     const invalidReadings = readings.filter(r => {
-      // Basic validation
+
       if (!validLocations.includes(r.location) || 
           !validTypes.includes(r.type) || 
           typeof r.indication !== 'number') {
         return true;
       }
-      
-      // Check if this meter configuration is expected based on MeterCount
+
       const key = `${r.location}-${r.type}`;
       return !expectedMeterMap[key];
     });
@@ -728,8 +674,7 @@ exports.addMeterReading = async (req, res) => {
         expectedMeters
       });
     }
-    
-    // Check if all expected meters are included in the readings
+
     const includedMeterKeys = readings.map(r => `${r.location}-${r.type}`);
     const missingMeters = expectedMeters.filter(meter => {
       const key = `${meter.location}-${meter.type}`;
@@ -744,11 +689,9 @@ exports.addMeterReading = async (req, res) => {
         expectedMeters
       });
     }
-    
-    // Get previous readings for comparison
+
     const previousReadings = await getPreviousReadings(apartmentId);
-    
-    // Compare with previous readings to warn about significant differences
+
     const comparisonResults = [];
     
     readings.forEach(reading => {
@@ -758,8 +701,7 @@ exports.addMeterReading = async (req, res) => {
       
       if (matchingPrevious) {
         const difference = reading.indication - matchingPrevious.indication;
-        
-        // Add to comparison results if there's a change worth noting
+
         if (Math.abs(difference) > 0) {
           comparisonResults.push({
             location: reading.location,
@@ -773,7 +715,6 @@ exports.addMeterReading = async (req, res) => {
       }
     });
     
-    // Insert all new readings
     const insertPromises = readings.map(reading => 
       pool.execute(
         'INSERT INTO WaterMeter (ApartmentId, Type, Location, Indication, CreatedBy) VALUES (?, ?, ?, ?, ?)',
@@ -783,28 +724,23 @@ exports.addMeterReading = async (req, res) => {
     
     await Promise.all(insertPromises);
 
-    // --- Generate payment after successful meter reading submission ---
     let paymentInfo = null;
     try {
       paymentInfo = await generateMonthlyPaymentForApartment(apartmentId, userId, pool);
     } catch (err) {
-      // If payment generation fails, just log, don't block meter submission
       console.error('Payment generation failed:', err.message);
     }
 
-    // Include the comparison in the response
     const response = {
       success: true,
       message: 'Энэ сарын усны тоолуурын бүх заалт амжилттай хадгалагдлаа.'
     };
 
-    // If we have comparison data, include it
     if (comparisonResults.length > 0) {
       response.comparisons = comparisonResults;
       response.warningMessage = 'Тоолуурын заалтын өөрчлөлтийг доор харуулав:';
     }
 
-    // Add payment info to response
     if (paymentInfo) {
       response.payment = paymentInfo;
     }
@@ -816,7 +752,6 @@ exports.addMeterReading = async (req, res) => {
   }
 };
 
-// Get specific water meter by ID
 exports.getWaterMeterById = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -828,8 +763,7 @@ exports.getWaterMeterById = async (req, res) => {
         message: 'Буруу тоолуурын ID.'
       });
     }
-    
-    // Get user's apartments
+
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0) {
@@ -839,8 +773,7 @@ exports.getWaterMeterById = async (req, res) => {
         hasApartments: false
       });
     }
-    
-    // Get the water meter with validation that it belongs to one of user's apartments
+
     const [waterMeters] = await pool.execute(
       `SELECT 
         wm.WaterMeterId,
@@ -888,7 +821,7 @@ exports.getWaterMeterById = async (req, res) => {
       },
       expectedMeters: expectedMeters,
       meterCount: meterCount,
-      canEdit: false // Users can't edit water meter readings once submitted
+      canEdit: false 
     });
     
   } catch (error) {
@@ -896,13 +829,11 @@ exports.getWaterMeterById = async (req, res) => {
   }
 };
 
-// Get expected water meter configuration for an apartment
 exports.getExpectedWaterMeters = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const apartmentId = req.query.apartmentId;
-    
-    // Get list of user's apartments
+
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
@@ -912,8 +843,7 @@ exports.getExpectedWaterMeters = async (req, res) => {
         hasApartments: false
       });
     }
-    
-    // Get apartment details to check MeterCount
+
     const [apartmentDetails] = await pool.execute(
       `SELECT ApartmentId, ApartmentName, BlockNumber, UnitNumber, MeterCount 
        FROM Apartment 
@@ -930,15 +860,13 @@ exports.getExpectedWaterMeters = async (req, res) => {
     
     const apartment = apartmentDetails[0];
     const expectedMeters = getExpectedMeters(apartment.MeterCount);
-    
-    // Format meters with readable text
+
     const formattedMeters = expectedMeters.map(meter => ({
       location: meter.location,
       type: meter.type,
       typeText: meter.type === 1 ? 'Халуун ус' : 'Хүйтэн ус'
     }));
-    
-    // Check if user already submitted readings for the current month
+
     const hasCurrentMonthReadings = await hasSubmittedCurrentMonthReadings(apartmentId);
     const canSubmit = isDateInAllowedPeriod() && !hasCurrentMonthReadings;
     

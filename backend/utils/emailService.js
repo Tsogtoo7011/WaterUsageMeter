@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-  // 1. Verify configuration
   const requiredEnvVars = ['EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASSWORD', 'EMAIL_FROM_ADDRESS'];
   for (const varName of requiredEnvVars) {
     if (!process.env[varName]) {
@@ -9,7 +8,6 @@ const sendEmail = async (options) => {
     }
   }
 
-  // 2. Create transporter with enhanced options
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: parseInt(process.env.EMAIL_PORT),
@@ -18,16 +16,15 @@ const sendEmail = async (options) => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
     },
-    // Connection pool options
+
     pool: true,
     maxConnections: 5,
     maxMessages: 100,
-    // Debugging
+
     logger: true,
     debug: true
   });
 
-  // 3. Verify connection
   try {
     await transporter.verify();
     console.log('SMTP connection verified');
@@ -36,20 +33,17 @@ const sendEmail = async (options) => {
     throw new Error('SMTP connection failed');
   }
 
-  // 4. Prepare email with enhanced options
   const mailOptions = {
     from: `"${process.env.EMAIL_FROM_NAME || 'Water Usage App'}" <${process.env.EMAIL_FROM_ADDRESS}>`,
     to: options.to,
     subject: options.subject,
     text: options.text || stripHtml(options.html),
     html: options.html,
-    // Important headers
     headers: {
       'X-Priority': '1',
       'X-Mailer': 'WaterUsageApp/1.0',
       'List-Unsubscribe': `<mailto:unsubscribe@yourdomain.com?subject=Unsubscribe>`
     },
-    // Delivery status notifications
     dsn: {
       id: generateMessageId(),
       return: 'headers',
@@ -58,7 +52,6 @@ const sendEmail = async (options) => {
     }
   };
 
-  // 5. Send email with retries
   const maxRetries = 3;
   let lastError;
   
@@ -83,12 +76,10 @@ const sendEmail = async (options) => {
   throw lastError;
 };
 
-// Helper function to generate message ID
 function generateMessageId() {
   return `<${Date.now()}${Math.random().toString(16).substr(2)}@yourdomain.com>`;
 }
 
-// Helper function to strip HTML
 function stripHtml(html) {
   return html ? html.replace(/<[^>]*>/g, '') : '';
 }

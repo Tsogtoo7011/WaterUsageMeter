@@ -1,7 +1,6 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
 
-// Helper function to get user's apartments
 async function getUserApartments(userId) {
   const [apartments] = await pool.execute(
     'SELECT aua.ApartmentId FROM ApartmentUserAdmin aua WHERE aua.UserId = ?',
@@ -51,7 +50,7 @@ async function getCurrentTariff() {
 }
 
 async function calculateWaterUsage(apartmentId, month, year) {
-  // Get previous month and year
+
   let prevMonth = month - 1;
   let prevYear = year;
   if (prevMonth === 0) {
@@ -59,7 +58,7 @@ async function calculateWaterUsage(apartmentId, month, year) {
     prevYear = year - 1;
   }
 
-  // Get current month readings
+
   const [currentReadings] = await pool.execute(
     `SELECT 
       Type,
@@ -72,7 +71,7 @@ async function calculateWaterUsage(apartmentId, month, year) {
     [apartmentId, month, year]
   );
 
-  // Get previous month readings
+
   const [prevReadings] = await pool.execute(
     `SELECT 
       Type,
@@ -90,13 +89,12 @@ async function calculateWaterUsage(apartmentId, month, year) {
     hot: 0
   };
   
-  // Calculate usage as difference between current and previous readings
+
   currentReadings.forEach(current => {
     const prevReading = prevReadings.find(prev => prev.Type === current.Type);
     const previousValue = prevReading ? Number(prevReading.latest_reading) : 0;
     const currentValue = Number(current.latest_reading);
     
-    // Calculate usage (handle case where meter was reset)
     const usageValue = currentValue >= previousValue ? currentValue - previousValue : currentValue;
     
     if (current.Type === 0) {
@@ -132,7 +130,6 @@ exports.getUserPayments = async (req, res) => {
       });
     }
     
-    // If apartmentId is provided and valid, only get payments for that apartment
     const whereClause = apartmentId && apartmentIds.includes(apartmentId) 
       ? 'p.ApartmentId = ?' 
       : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
@@ -161,10 +158,9 @@ exports.getUserPayments = async (req, res) => {
     );
 
     const formattedPayments = payments.map(payment => {
-      // Calculate actual status based on backend logic
+
       const calculatedStatus = determinePaymentStatus(payment);
       
-      // Calculate due date (for frontend reference)
       const payDate = new Date(payment.PayDate);
       const dueDate = new Date(payDate);
       dueDate.setDate(dueDate.getDate() + 30);
@@ -276,17 +272,15 @@ exports.getPaymentById = async (req, res) => {
     
     const payment = payments[0];
     
-    // Calculate actual status based on backend logic
+
     const calculatedStatus = determinePaymentStatus(payment);
     
-    // Calculate due date
     const payDate = new Date(payment.PayDate);
     const dueDate = new Date(payDate);
     dueDate.setDate(dueDate.getDate() + 30);
     
-    // Get water usage details for this payment (from the same month)
     const paymentDate = new Date(payment.PayDate);
-    const month = paymentDate.getMonth() + 1; // JavaScript months are 0-indexed
+    const month = paymentDate.getMonth() + 1; 
     const year = paymentDate.getFullYear();
     
     const waterUsage = await calculateWaterUsage(
@@ -294,11 +288,9 @@ exports.getPaymentById = async (req, res) => {
       month,
       year
     );
-    
-    // Get tariff that was used for calculation
+
     const tariff = await getCurrentTariff();
-    
-    // Calculate breakdown with the corrected formula
+
     const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
     const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
@@ -349,8 +341,7 @@ exports.generateMonthlyPayment = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const { apartmentId } = req.body;
-    
-    // Validate apartment belongs to user
+
     const apartmentIds = await getUserApartments(userId);
     
     if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
@@ -377,7 +368,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     );
     
     if (existingPayments.length > 0) {
-      // If already exists, just return info (do NOT generate again)
+
       const [paymentDetails] = await pool.execute(
         `SELECT 
           p.PaymentId,
@@ -415,30 +406,21 @@ exports.generateMonthlyPayment = async (req, res) => {
       }
     }
     
-    // Only allow explicit generation if not already present (do NOT auto-generate here)
-    // If you want to restrict generation to after meter reading, you could return an error here instead:
-    // return res.status(400).json({ success: false, message: 'Please submit water meter readings before generating payment.' });
-
-    // Get water usage for the current month
     const waterUsage = await calculateWaterUsage(
       apartmentId,
       currentMonth,
       currentYear
     );
     
-    // Get current tariff
     const tariff = await getCurrentTariff();
     
-    // Calculate costs with the corrected formula
     const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
     const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
-    
-    // Generate a simple order ID (in a real system, this would come from payment gateway)
+
     const orderId = Math.floor(Math.random() * 1000000) + 1;
-    
-    // Create payment record
+
     const [result] = await pool.execute(
       `INSERT INTO Payment 
         (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
@@ -447,8 +429,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     );
     
     const paymentId = result.insertId;
-    
-    // Calculate due date
+
     const now2 = new Date();
     const dueDate = new Date(now2);
     dueDate.setDate(dueDate.getDate() + 30);
@@ -627,8 +608,6 @@ exports.getPaymentStatistics = async (req, res) => {
       }
       
       monthStats[month].totalAmount += Number(payment.Amount);
-      
-      // Fixed conditional checks to match lowercase status values from determinePaymentStatus function
       if (payment.calculatedStatus === 'paid') {
         monthStats[month].paidCount++;
       } else if (payment.calculatedStatus === 'pending') {

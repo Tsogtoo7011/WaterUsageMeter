@@ -13,7 +13,7 @@ exports.createFeedback = async (req, res) => {
       });
     }
     
-    const type = String(feedbackType); // Convert to string to match ENUM('1', '2', '3')
+    const type = String(feedbackType);
     
     if (!['1', '2', '3'].includes(type)) {
       return res.status(400).json({
@@ -70,7 +70,6 @@ exports.getUserFeedback = async (req, res) => {
 
 exports.getAllFeedback = async (req, res) => {
   try {
-    // No need to check admin rights as it's handled by middleware
     const [feedbacks] = await pool.execute(
       `SELECT 
         f.ApplicationId,
@@ -112,7 +111,6 @@ exports.getFeedbackById = async (req, res) => {
       });
     }
     
-    // The isAdmin check is still needed to determine which query to use
     const isAdmin = req.userData.AdminRight === 1;
     
     let query = '';
@@ -185,7 +183,6 @@ exports.getAdminFeedbackById = async (req, res) => {
       });
     }
     
-    // No need to check admin rights as it's handled by middleware
     const [feedbacks] = await pool.execute(
       `SELECT 
         f.ApplicationId,
@@ -251,12 +248,10 @@ exports.updateFeedback = async (req, res) => {
     const isAdmin = req.userData.AdminRight === 1;
 
     if (isAdmin) {
-      // Key fix: Extract both status and adminResponse from request body
       const { status, adminResponse } = req.body;
       const updates = [];
       const params = [];
       
-      // If status is provided, validate and add to updates
       if (status !== undefined) {
         if (!['Хүлээгдэж байна', 'Хүлээн авсан', 'Хүлээн авахаас татгалзсан'].includes(status)) {
           return res.status(400).json({
@@ -268,9 +263,7 @@ exports.updateFeedback = async (req, res) => {
         params.push(status);
       }
       
-      // If adminResponse is provided, validate and add to updates
       if (adminResponse !== undefined) {
-        // Make sure adminResponse is not empty when status indicates action taken
         const currentStatus = status || feedback.Status;
         if (!adminResponse.trim() && (currentStatus === 'Хүлээн авсан' || currentStatus === 'Хүлээн авахаас татгалзсан')) {
           return res.status(400).json({
@@ -282,11 +275,9 @@ exports.updateFeedback = async (req, res) => {
         updates.push('AdminResponse = ?');
         params.push(adminResponse ? adminResponse.trim() : null);
         
-        // Add admin responder ID
         updates.push('AdminResponderId = ?');
         params.push(userId);
         
-        // If status wasn't provided but we have a response, update status to 'Хүлээн авсан'
         if (status === undefined && feedback.Status === 'Хүлээгдэж байна') {
           updates.push('Status = ?');
           params.push('Хүлээн авсан');
@@ -337,7 +328,7 @@ exports.updateFeedback = async (req, res) => {
         });
       }
       
-      const type = String(feedbackType); // Convert to string to match ENUM('1', '2', '3')
+      const type = String(feedbackType);
       
       if (!['1', '2', '3'].includes(type)) {
         return res.status(400).json({

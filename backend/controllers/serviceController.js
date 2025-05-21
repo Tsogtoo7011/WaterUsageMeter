@@ -53,9 +53,6 @@ exports.getServiceById = async (req, res) => {
   }
 };
 
-/**
- * Create a new service request
- */
 exports.createServiceRequest = async (req, res) => {
   try {
     const { description, apartmentId } = req.body;
@@ -65,7 +62,6 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(400).json({ message: 'Service description is required' });
     }
     
-    // Validate that the user has access to this apartment if apartmentId is provided
     if (apartmentId) {
       if (isNaN(parseInt(apartmentId))) {
         return res.status(400).json({ message: 'Invalid apartment ID' });
@@ -83,7 +79,7 @@ exports.createServiceRequest = async (req, res) => {
       }
     }
     
-    // Create new service request with empty response and default status
+
     const query = `
       INSERT INTO Service (UserAdminId, Description, Respond, ApartmentId, Status)
       VALUES (?, ?, '', ?, 'Хүлээгдэж буй')
@@ -101,9 +97,6 @@ exports.createServiceRequest = async (req, res) => {
   }
 };
 
-/**
- * Update a service response and optionally create payment record
- */
 exports.updateServiceResponse = async (req, res) => {
   const connection = await db.getConnection();
   
@@ -114,8 +107,7 @@ exports.updateServiceResponse = async (req, res) => {
     if (!serviceId || isNaN(parseInt(serviceId))) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
-    
-    // Validate status is one of the allowed enum values
+
     const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Явагдаж буй', 'Дууссан', 'Цуцлагдсан'];
     if (status && !allowedStatuses.includes(status)) {
       return res.status(400).json({ 
@@ -124,8 +116,7 @@ exports.updateServiceResponse = async (req, res) => {
     }
     
     await connection.beginTransaction();
-    
-    // Check if service exists
+
     const checkQuery = 'SELECT * FROM Service WHERE ServiceId = ?';
     const [checkResults] = await connection.query(checkQuery, [serviceId]);
     
@@ -133,8 +124,7 @@ exports.updateServiceResponse = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
-    
-    // Update service record
+
     const updateQuery = `
       UPDATE Service
       SET Respond = ?, Status = ?, SubmitDate = NOW()
@@ -145,17 +135,16 @@ exports.updateServiceResponse = async (req, res) => {
       updateQuery, 
       [respond || checkResults[0].Respond, status || checkResults[0].Status, serviceId]
     );
-    
-    // Handle payment record if amount is provided
+
     let paymentUpdated = false;
     
     if (amount !== undefined) {
-      // Check if a payment record exists
+
       const checkPaymentQuery = 'SELECT * FROM PaymentService WHERE ServiceId = ?';
       const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
       
       if (paymentResults.length > 0) {
-        // Update existing payment record
+
         const updatePaymentQuery = `
           UPDATE PaymentService
           SET Amount = ?
@@ -165,7 +154,7 @@ exports.updateServiceResponse = async (req, res) => {
         await connection.query(updatePaymentQuery, [amount, serviceId]);
         paymentUpdated = true;
       } else if (amount && amount > 0) {
-        // Create new payment record
+
         const paymentServiceQuery = `
           INSERT INTO PaymentService (ServiceId, Amount, PaidDay)
           VALUES (?, ?, NULL)
@@ -191,9 +180,6 @@ exports.updateServiceResponse = async (req, res) => {
   }
 };
 
-/**
- * Get service requests for the current user
- */
 exports.getUserServiceRequests = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -222,14 +208,10 @@ exports.getUserServiceRequests = async (req, res) => {
   }
 };
 
-/**
- * Get service requests filtered by status
- */
 exports.getServicesByStatus = async (req, res) => {
   try {
     const { status } = req.params;
     
-    // Validate status is one of the allowed enum values
     const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Явагдаж буй', 'Дууссан', 'Цуцлагдсан'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ 
@@ -258,9 +240,7 @@ exports.getServicesByStatus = async (req, res) => {
   }
 };
 
-/**
- * Get apartments accessible to the current user
- */
+
 exports.getUserApartments = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -287,9 +267,6 @@ exports.getUserApartments = async (req, res) => {
   }
 };
 
-/**
- * Delete a service request if it doesn't have paid payments
- */
 exports.deleteServiceRequest = async (req, res) => {
   const connection = await db.getConnection();
   
@@ -302,7 +279,6 @@ exports.deleteServiceRequest = async (req, res) => {
     
     await connection.beginTransaction();
     
-    // Check if service exists
     const checkServiceQuery = 'SELECT * FROM Service WHERE ServiceId = ?';
     const [serviceResults] = await connection.query(checkServiceQuery, [serviceId]);
     
@@ -310,8 +286,7 @@ exports.deleteServiceRequest = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
-    
-    // Check if service has paid payments
+
     const checkPaymentQuery = `
       SELECT * FROM PaymentService WHERE ServiceId = ? AND PaidDay IS NOT NULL
     `;
@@ -324,15 +299,13 @@ exports.deleteServiceRequest = async (req, res) => {
         message: 'Cannot delete service request with associated paid payment records'
       });
     }
-    
-    // Delete any unpaid payment records
+
     const deletePaymentQuery = `
       DELETE FROM PaymentService WHERE ServiceId = ? AND PaidDay IS NULL
     `;
     
     await connection.query(deletePaymentQuery, [serviceId]);
-    
-    // Delete the service
+
     const deleteServiceQuery = 'DELETE FROM Service WHERE ServiceId = ?';
     const [deleteResults] = await connection.query(deleteServiceQuery, [serviceId]);
     
@@ -348,9 +321,6 @@ exports.deleteServiceRequest = async (req, res) => {
   }
 };
 
-/**
- * Process payment for a service request
- */
 exports.processServicePayment = async (req, res) => {
   const connection = await db.getConnection();
   
@@ -363,8 +333,7 @@ exports.processServicePayment = async (req, res) => {
     }
     
     await connection.beginTransaction();
-    
-    // Check if service exists
+
     const checkServiceQuery = 'SELECT * FROM Service WHERE ServiceId = ?';
     const [serviceResults] = await connection.query(checkServiceQuery, [serviceId]);
     

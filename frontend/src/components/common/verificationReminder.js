@@ -7,7 +7,7 @@ function VerificationReminder({ user, onVerify }) {
   const [email, setEmail] = useState('');
   
   useEffect(() => {
-    // Check for both possible cases - Email or email in the user object
+
     if (user) {
       if (user.Email) {
         setEmail(user.Email);
@@ -28,7 +28,6 @@ function VerificationReminder({ user, onVerify }) {
       setStatus('sending');
       console.log('Sending verification request for email:', email);
       
-      // Use your custom API client instead of direct axios
       const response = await api.post(
         '/verification/resend',
         { email }

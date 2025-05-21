@@ -26,7 +26,7 @@ const SidebarLayout = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [scrollOpacity, setScrollOpacity] = useState(1);
-  const [headerHeight, setHeaderHeight] = useState(64); // 64px = 4rem (default)
+  const [headerHeight, setHeaderHeight] = useState(64); 
   const dropdownRef = useRef(null);
   const mainContentRef = useRef(null);
   const navigate = useNavigate();
@@ -90,7 +90,6 @@ const SidebarLayout = ({ children }) => {
       const opacity = Math.max(1 - scrollY / maxScroll, 0.7);
       setScrollOpacity(opacity);
 
-      // Header height shrinks from 64px (4rem) to 48px (3rem)
       const minHeight = 48;
       const maxHeight = 64;
       const newHeight = Math.max(maxHeight - (scrollY / maxScroll) * (maxHeight - minHeight), minHeight);
@@ -183,7 +182,6 @@ const SidebarLayout = ({ children }) => {
     setIsDropdownOpen(!isDropdownOpen);
   };
   
-  // Get first letter of username for the avatar
   const getFirstLetter = () => {
     if (user && user.Username) {
       return user.Username.charAt(0).toUpperCase();
@@ -211,7 +209,7 @@ const SidebarLayout = ({ children }) => {
             )}
           </div>
           
-          {/* Navigation Links */}
+
           <nav className="flex-1 overflow-y-auto">
             {menuItems.map((item) => (
               <NavLink
@@ -238,7 +236,6 @@ const SidebarLayout = ({ children }) => {
         </div>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden transition-opacity duration-300 ease-in-out"
@@ -291,13 +288,11 @@ const SidebarLayout = ({ children }) => {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div 
         className={`flex-1 flex flex-col ${
           isSidebarOpen ? 'md:ml-64' : 'md:ml-20'
         } transition-all duration-300 ease-in-out`}
       >
-        {/* Top Navigation Bar - Almost completely transparent when scrolled */}
         <header 
           className="flex items-center px-4 sticky top-0 z-30"
           style={{
@@ -318,7 +313,6 @@ const SidebarLayout = ({ children }) => {
               <Menu className="w-5 h-5 text-gray-600" />
             </button>
 
-        {/* SearchBar - Ensure it doesn't have a white background */}
             <div className="flex-1">
               <SearchBar routes={routes} isAdmin={isAdmin} />
             </div>

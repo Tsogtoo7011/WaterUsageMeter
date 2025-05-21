@@ -28,7 +28,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get user by ID (without sensitive data)
 exports.getUserById = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -66,19 +65,16 @@ exports.createUser = async (req, res) => {
   try {
     const { username, firstname, lastname, phonenumber, email, adminRight } = req.body;
 
-    // Validate required fields
     if (!username || !firstname || !lastname || !email) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Check for duplicate username or email
     const duplicateQuery = 'SELECT UserId FROM UserAdmin WHERE Username = ? OR Email = ?';
     const [duplicateResults] = await db.query(duplicateQuery, [username, email]);
     if (duplicateResults.length > 0) {
       return res.status(400).json({ message: 'Username or email already in use' });
     }
 
-    // Set a default password for new users (should be changed on first login)
     const defaultPassword = 'changeme123';
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(defaultPassword, salt);
@@ -104,13 +100,11 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// Update user details (including adminRight if provided)
 exports.updateUser = async (req, res) => {
   try {
     const userId = req.params.id;
     const { username, firstname, lastname, phonenumber, email, adminRight } = req.body;
 
-    // Check if user exists
     const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
     const [checkResults] = await db.query(checkQuery, [userId]);
 
@@ -118,7 +112,6 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if the username or email is already taken by another user
     const duplicateQuery = 'SELECT UserId FROM UserAdmin WHERE (Username = ? OR Email = ?) AND UserId != ?';
     const [duplicateResults] = await db.query(duplicateQuery, [username, email, userId]);
 
@@ -126,7 +119,6 @@ exports.updateUser = async (req, res) => {
       return res.status(400).json({ message: 'Username or email already in use' });
     }
 
-    // If adminRight is provided and the requester is admin, update it
     let updateQuery, params;
     if (typeof adminRight !== 'undefined') {
       updateQuery = `
@@ -183,21 +175,15 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// Update user admin rights
 exports.updateAdminRight = async (req, res) => {
   try {
     const userId = req.params.id;
     const { adminRight } = req.body;
     
-    // Validate adminRight value
     if (adminRight !== 0 && adminRight !== 1) {
       return res.status(400).json({ message: 'Admin right must be 0 or 1' });
     }
     
-    // The adminOnly middleware has already verified the user is an admin,
-    // so we don't need to check req.userData.adminRight here
-    
-    // Check if user exists
     const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
     const [checkResults] = await db.query(checkQuery, [userId]);
     
@@ -224,13 +210,11 @@ exports.updateAdminRight = async (req, res) => {
   }
 };
 
-// Delete user account
 exports.deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
     const { password } = req.body;
     
-    // Check if the user to be deleted exists
     const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
     const [user] = await db.query(checkQuery, [userId]);
     
@@ -238,9 +222,7 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // If deleting own account, verify password
     if (parseInt(userId) === req.userData.userId) {
-      // Get the user's stored password for verification
       const passwordQuery = 'SELECT Password FROM UserAdmin WHERE UserId = ?';
       const [passwordResult] = await db.query(passwordQuery, [userId]);
       
@@ -248,23 +230,18 @@ exports.deleteUser = async (req, res) => {
         return res.status(400).json({ message: 'Password is required to delete your account' });
       }
       
-      // Compare the provided password with the stored hash
       const isMatch = await bcrypt.compare(password, passwordResult[0].Password);
       
       if (!isMatch) {
         return res.status(401).json({ message: 'Incorrect password' });
       }
     } 
-    // If admin is deleting another user's account
     else if (req.userData.adminRight === 1) {
-      // Admins can delete other accounts without password verification
     } 
-    // Non-admin trying to delete someone else's account
     else {
       return res.status(403).json({ message: 'You are not authorized to delete this account' });
     }
     
-    // Delete the user
     const deleteQuery = 'DELETE FROM UserAdmin WHERE UserId = ?';
     const [deleteResult] = await db.query(deleteQuery, [userId]);
     
@@ -279,13 +256,11 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// Change user password (requires current password verification)
 exports.changePassword = async (req, res) => {
   try {
     const userId = req.params.id;
     const { currentPassword, newPassword } = req.body;
     
-    // Check if user exists
     const checkQuery = 'SELECT * FROM UserAdmin WHERE UserId = ?';
     const [user] = await db.query(checkQuery, [userId]);
     

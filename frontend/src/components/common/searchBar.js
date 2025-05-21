@@ -55,7 +55,7 @@ const SearchBar = ({ routes, isAdmin }) => {
   }, []);
 
   useEffect(() => {
-    // Perform search when query changes
+
     if (searchQuery.trim() === '') {
       setSearchResults([]);
       return;
@@ -72,7 +72,7 @@ const SearchBar = ({ routes, isAdmin }) => {
   }, [searchQuery, routes]);
 
   useEffect(() => {
-    // Handle click outside to close search
+
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setIsSearchFocused(false);
@@ -88,7 +88,6 @@ const SearchBar = ({ routes, isAdmin }) => {
     };
   }, [searchQuery]);
 
-  // Handle keyboard navigation
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -153,7 +152,6 @@ const SearchBar = ({ routes, isAdmin }) => {
     }, 100);
   };
 
-  // Mobile search display
   const renderMobileSearch = () => {
     if (!showSearch) {
       return (
@@ -211,7 +209,6 @@ const SearchBar = ({ routes, isAdmin }) => {
     );
   };
 
-  // Desktop search display
   const renderDesktopSearch = () => (
     <div ref={searchRef} className="hidden md:block relative max-w-md w-full mx-4">
       <div className="relative">

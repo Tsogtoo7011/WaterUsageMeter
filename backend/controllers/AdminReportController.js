@@ -3,36 +3,27 @@ const excel = require('exceljs');
 const path = require('path');
 const fs = require('fs');
 
-// Helper function to format date for reports
 const formatDate = (date) => {
   return new Date(date).toISOString().split('T')[0];
 };
 
-// Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Get total users count
+
     const [userCount] = await db.query('SELECT COUNT(*) as total FROM UserAdmin');
-    
-    // Get total apartments count
     const [apartmentCount] = await db.query('SELECT COUNT(*) as total FROM Apartment');
-    
-    // Get pending service requests count
     const [pendingServiceCount] = await db.query(
       "SELECT COUNT(*) as total FROM Service WHERE Status = 'pending'"
     );
-    
-    // Get pending feedback count
+
     const [pendingFeedbackCount] = await db.query(
       "SELECT COUNT(*) as total FROM Feedback WHERE Status = 'Хүлээгдэж байна'"
     );
-    
-    // Get total pending payments
+
     const [pendingPaymentsCount] = await db.query(
       "SELECT COUNT(*) as total FROM Payment WHERE Status = 'pending'"
     );
-    
-    // Get total pending payments amount
+
     const [pendingPaymentsAmount] = await db.query(
       "SELECT COALESCE(SUM(Amount), 0) as total FROM Payment WHERE Status = 'pending'"
     );
@@ -51,7 +42,6 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
-// Generate payment report
 exports.getPaymentReport = async (req, res) => {
   try {
     const { startDate, endDate, status, apartmentId } = req.query;
@@ -79,8 +69,7 @@ exports.getPaymentReport = async (req, res) => {
     `;
     
     const queryParams = [];
-    
-    // Add filters if provided
+
     if (startDate && endDate) {
       query += ' AND p.PayDate BETWEEN ? AND ?';
       queryParams.push(startDate, endDate);
@@ -101,11 +90,10 @@ exports.getPaymentReport = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (req.query.format === 'excel') {
-      // Create Excel file
+
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Payment Report');
-      
-      // Add columns
+
       worksheet.columns = [
         { header: 'Payment ID', key: 'PaymentId', width: 10 },
         { header: 'Payment Type', key: 'PaymentType', width: 15 },
@@ -121,26 +109,23 @@ exports.getPaymentReport = async (req, res) => {
         { header: 'Unit Number', key: 'UnitNumber', width: 12 },
         { header: 'User Name', key: 'UserName', width: 20 }
       ];
-      
-      // Format dates and add rows
+
       results.forEach(payment => {
         payment.PayDate = payment.PayDate ? formatDate(payment.PayDate) : null;
         payment.PaidDate = payment.PaidDate ? formatDate(payment.PaidDate) : null;
         worksheet.addRow(payment);
       });
-      
-      // Style the header row
+
       worksheet.getRow(1).font = { bold: true };
-      
-      // Set response headers for file download
+
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=payment_report.xlsx');
       
-      // Write to response
+
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
+
       res.status(200).json(results);
     }
   } catch (err) {
@@ -179,8 +164,7 @@ exports.getWaterMeterReport = async (req, res) => {
     `;
     
     const queryParams = [];
-    
-    // Add filters if provided
+
     if (startDate && endDate) {
       query += ' AND w.WaterMeterDate BETWEEN ? AND ?';
       queryParams.push(startDate, endDate);
@@ -192,7 +176,6 @@ exports.getWaterMeterReport = async (req, res) => {
     }
     
     if (type !== undefined && type !== null && type !== '') {
-      // Make sure type is a valid number and matches our schema constraints (0 or 1)
       const typeNum = parseInt(type);
       if (!isNaN(typeNum) && (typeNum === 0 || typeNum === 1)) {
         query += ' AND w.Type = ?';
@@ -205,11 +188,9 @@ exports.getWaterMeterReport = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (req.query.format === 'excel') {
-      // Create Excel file
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Water Meter Report');
       
-      // Add columns
       worksheet.columns = [
         { header: 'Meter ID', key: 'WaterMeterId', width: 10 },
         { header: 'Water Type', key: 'WaterType', width: 12 },
@@ -225,24 +206,20 @@ exports.getWaterMeterReport = async (req, res) => {
         { header: 'Created By', key: 'CreatedByUser', width: 20 }
       ];
       
-      // Format dates and add rows
       results.forEach(meter => {
         meter.WaterMeterDate = meter.WaterMeterDate ? formatDate(meter.WaterMeterDate) : null;
         worksheet.addRow(meter);
       });
-      
-      // Style the header row
+
       worksheet.getRow(1).font = { bold: true };
-      
-      // Set response headers for file download
+
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=water_meter_report.xlsx');
       
-      // Write to response
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
+
       res.status(200).json(results);
     }
   } catch (err) {
@@ -251,7 +228,6 @@ exports.getWaterMeterReport = async (req, res) => {
   }
 };
 
-// Generate service report
 exports.getServiceReport = async (req, res) => {
   try {
     const { startDate, endDate, status, apartmentId } = req.query;
@@ -280,8 +256,7 @@ exports.getServiceReport = async (req, res) => {
     `;
     
     const queryParams = [];
-    
-    // Add filters if provided
+ 
     if (startDate && endDate) {
       query += ' AND s.RequestDate BETWEEN ? AND ?';
       queryParams.push(startDate, endDate);
@@ -302,11 +277,10 @@ exports.getServiceReport = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (req.query.format === 'excel') {
-      // Create Excel file
+
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Service Report');
       
-      // Add columns
       worksheet.columns = [
         { header: 'Service ID', key: 'ServiceId', width: 10 },
         { header: 'Description', key: 'Description', width: 30 },
@@ -323,8 +297,7 @@ exports.getServiceReport = async (req, res) => {
         { header: 'Paid Date', key: 'PaidDay', width: 15 },
         { header: 'Pay Date', key: 'PayDay', width: 15 }
       ];
-      
-      // Format dates and add rows
+
       results.forEach(service => {
         service.RequestDate = service.RequestDate ? formatDate(service.RequestDate) : null;
         service.SubmitDate = service.SubmitDate ? formatDate(service.SubmitDate) : null;
@@ -332,19 +305,16 @@ exports.getServiceReport = async (req, res) => {
         service.PayDay = service.PayDay ? formatDate(service.PayDay) : null;
         worksheet.addRow(service);
       });
-      
-      // Style the header row
+
       worksheet.getRow(1).font = { bold: true };
-      
-      // Set response headers for file download
+
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=service_report.xlsx');
-      
-      // Write to response
+
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
+
       res.status(200).json(results);
     }
   } catch (err) {
@@ -353,7 +323,6 @@ exports.getServiceReport = async (req, res) => {
   }
 };
 
-// Generate feedback report
 exports.getFeedbackReport = async (req, res) => {
   try {
     const { startDate, endDate, type, status } = req.query;
@@ -378,7 +347,6 @@ exports.getFeedbackReport = async (req, res) => {
     
     const queryParams = [];
     
-    // Add filters if provided
     if (startDate && endDate) {
       query += ' AND f.CreatedAt BETWEEN ? AND ?';
       queryParams.push(startDate, endDate);
@@ -399,11 +367,9 @@ exports.getFeedbackReport = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (req.query.format === 'excel') {
-      // Create Excel file
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Feedback Report');
       
-      // Add columns
       worksheet.columns = [
         { header: 'Feedback ID', key: 'ApplicationId', width: 10 },
         { header: 'Type', key: 'Type', width: 15 },
@@ -417,25 +383,20 @@ exports.getFeedbackReport = async (req, res) => {
         { header: 'Admin Responder', key: 'AdminResponder', width: 20 }
       ];
       
-      // Format dates and add rows
       results.forEach(feedback => {
         feedback.CreatedAt = feedback.CreatedAt ? formatDate(feedback.CreatedAt) : null;
         feedback.UpdatedAt = feedback.UpdatedAt ? formatDate(feedback.UpdatedAt) : null;
         worksheet.addRow(feedback);
       });
       
-      // Style the header row
       worksheet.getRow(1).font = { bold: true };
       
-      // Set response headers for file download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=feedback_report.xlsx');
       
-      // Write to response
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
       res.status(200).json(results);
     }
   } catch (err) {
@@ -444,7 +405,6 @@ exports.getFeedbackReport = async (req, res) => {
   }
 };
 
-// Generate user report
 exports.getUserReport = async (req, res) => {
   try {
     const { adminRight, isVerified } = req.query;
@@ -469,7 +429,6 @@ exports.getUserReport = async (req, res) => {
     
     const queryParams = [];
     
-    // Add filters if provided
     if (adminRight !== undefined && adminRight !== null) {
       query += ' AND u.AdminRight = ?';
       queryParams.push(parseInt(adminRight));
@@ -485,11 +444,9 @@ exports.getUserReport = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (req.query.format === 'excel') {
-      // Create Excel file
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('User Report');
       
-      // Add columns
       worksheet.columns = [
         { header: 'User ID', key: 'UserId', width: 10 },
         { header: 'Admin Right', key: 'AdminRight', width: 12 },
@@ -504,7 +461,6 @@ exports.getUserReport = async (req, res) => {
         { header: 'Apartment Count', key: 'ApartmentCount', width: 15 }
       ];
       
-      // Format dates and add rows
       results.forEach(user => {
         user.CreatedAt = user.CreatedAt ? formatDate(user.CreatedAt) : null;
         user.UpdatedAt = user.UpdatedAt ? formatDate(user.UpdatedAt) : null;
@@ -513,18 +469,14 @@ exports.getUserReport = async (req, res) => {
         worksheet.addRow(user);
       });
       
-      // Style the header row
       worksheet.getRow(1).font = { bold: true };
       
-      // Set response headers for file download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=user_report.xlsx');
       
-      // Write to response
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
       res.status(200).json(results);
     }
   } catch (err) {
@@ -533,7 +485,6 @@ exports.getUserReport = async (req, res) => {
   }
 };
 
-// Generate apartment report
 exports.getApartmentReport = async (req, res) => {
   try {
     const { cityName, districtName } = req.query;
@@ -560,7 +511,6 @@ exports.getApartmentReport = async (req, res) => {
     
     const queryParams = [];
     
-    // Add filters if provided
     if (cityName) {
       query += ' AND a.CityName = ?';
       queryParams.push(cityName);
@@ -576,11 +526,9 @@ exports.getApartmentReport = async (req, res) => {
     const [results] = await db.query(query, queryParams);
     
     if (req.query.format === 'excel') {
-      // Create Excel file
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Apartment Report');
       
-      // Add columns
       worksheet.columns = [
         { header: 'Apartment ID', key: 'ApartmentId', width: 12 },
         { header: 'Apartment Code', key: 'ApartmentCode', width: 15 },
@@ -597,25 +545,20 @@ exports.getApartmentReport = async (req, res) => {
         { header: 'Payments Count', key: 'PaymentsCount', width: 15 }
       ];
       
-      // Format dates and add rows
       results.forEach(apartment => {
         apartment.CreatedAt = apartment.CreatedAt ? formatDate(apartment.CreatedAt) : null;
         apartment.UpdatedAt = apartment.UpdatedAt ? formatDate(apartment.UpdatedAt) : null;
         worksheet.addRow(apartment);
       });
       
-      // Style the header row
       worksheet.getRow(1).font = { bold: true };
       
-      // Set response headers for file download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=apartment_report.xlsx');
       
-      // Write to response
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
       res.status(200).json(results);
     }
   } catch (err) {
@@ -624,7 +567,6 @@ exports.getApartmentReport = async (req, res) => {
   }
 };
 
-// Generate water consumption analysis
 exports.getWaterConsumptionAnalysis = async (req, res) => {
   try {
     const { year, month, apartmentId } = req.query;
@@ -640,7 +582,6 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
       queryParams.push(parseInt(year));
     }
     
-    // Query for analyzing water consumption by type and location
     let query = `
       SELECT 
         a.ApartmentCode,
@@ -665,7 +606,6 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
     
     const [results] = await db.query(query, queryParams);
     
-    // Process results to make them more useful
     const formattedResults = results.map(record => {
       return {
         ...record,
@@ -676,11 +616,9 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
     });
     
     if (req.query.format === 'excel') {
-      // Create Excel file
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Water Consumption Analysis');
       
-      // Add columns
       worksheet.columns = [
         { header: 'Apartment Code', key: 'ApartmentCode', width: 15 },
         { header: 'Apartment Name', key: 'ApartmentName', width: 25 },
@@ -692,23 +630,18 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
         { header: 'Last Reading Date', key: 'LastReading', width: 20 }
       ];
       
-      // Add rows
       formattedResults.forEach(record => {
         worksheet.addRow(record);
       });
       
-      // Style the header row
       worksheet.getRow(1).font = { bold: true };
       
-      // Set response headers for file download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=water_consumption_analysis.xlsx');
       
-      // Write to response
       await workbook.xlsx.write(res);
       res.end();
     } else {
-      // Return JSON if not requesting Excel
       res.status(200).json(formattedResults);
     }
   } catch (err) {
@@ -717,7 +650,6 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
   }
 };
 
-// Get payment statistics
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const { year } = req.query;
@@ -750,7 +682,7 @@ exports.getPaymentStatistics = async (req, res) => {
     const formattedResults = results.map(row => ({
       ...row,
       MonthName: monthNames[row.Month - 1],
-      year: reportYear, // <-- Add year property
+      year: reportYear,
       CollectionRate: row.TotalAmount > 0
         ? ((row.PaidAmount / row.TotalAmount) * 100).toFixed(2) + '%'
         : '0%'
@@ -763,7 +695,6 @@ exports.getPaymentStatistics = async (req, res) => {
   }
 };
 
-// Get service statistics
 exports.getServiceStatistics = async (req, res) => {
   try {
     const { year } = req.query;

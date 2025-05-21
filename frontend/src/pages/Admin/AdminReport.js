@@ -18,7 +18,7 @@ import { Pie } from 'react-chartjs-2';
 import 'chart.js/auto'; 
 import api from "../../utils/api";
 import Breadcrumb from '../../components/common/Breadcrumb'; 
-import AdminReportStatistics from '../../components/AdminReports/AdminReportStatistics'; // <-- Add this import
+import AdminReportStatistics from '../../components/AdminReports/AdminReportStatistics';
 import AdminReportTable from '../../components/AdminReports/AdminReportTable';
 
 export default function AdminReport() {
@@ -50,7 +50,14 @@ export default function AdminReport() {
     if (activeTab === 'dashboard') {
       fetchDashboardStats();
     } else {
-      fetchReportData();
+      if ((activeTab === 'paymentStats' || activeTab === 'serviceStats') && !filters.year) {
+        setFilters(prev => ({
+          ...prev,
+          year: new Date().getFullYear()
+        }));
+      } else {
+        fetchReportData();
+      }
     }
   }, [activeTab, filters]);
 
@@ -195,7 +202,6 @@ export default function AdminReport() {
   const reportTabs = allTabs.filter(tab => tab.category === 'reports');
 
   const renderFilters = () => {
-    // Remove filter UI entirely
     return null;
   };
 
@@ -204,9 +210,7 @@ export default function AdminReport() {
       <div className="bg-white rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:p-6">
           <h2 className="text-lg font-bold text-[#2D6B9F] mb-4">Хяналтын самбар</h2>
-          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Top row */}
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="flex items-center">
                 <Users className="w-8 h-8 text-blue-600 mr-3" />
@@ -225,7 +229,6 @@ export default function AdminReport() {
                 </div>
               </div>
             </div>
-            {/* Bottom row */}
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="flex items-center">
                 <Activity className="w-8 h-8 text-yellow-600 mr-3" />
@@ -245,7 +248,6 @@ export default function AdminReport() {
               </div>
             </div>
           </div>
-          
           <div className="mt-6 bg-blue-50 p-4 rounded-lg">
             <h3 className="text-sm font-semibold mb-2 text-blue-800">Тайлангийн тухай</h3>
             <p className="text-sm text-gray-700">
@@ -260,12 +262,23 @@ export default function AdminReport() {
 
   const renderStatisticsWithGraphics = () => {
     return (
-      <AdminReportStatistics
-        activeTab={activeTab}
-        reportData={reportData}
-        loading={loading}
-        error={error}
-      />
+      <div>
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={downloadExcel}
+            className="flex items-center px-4 py-2 bg-[#2D6B9F] text-white rounded hover:bg-blue-700 transition"
+          >
+            <Download className="h-5 w-5 mr-2" />
+            Excel татах
+          </button>
+        </div>
+        <AdminReportStatistics
+          activeTab={activeTab}
+          reportData={reportData}
+          loading={loading}
+          error={error}
+        />
+      </div>
     );
   };
 
@@ -301,7 +314,6 @@ export default function AdminReport() {
       return renderStatisticsWithGraphics();
     }
 
-    // Use AdminReportTable instead of renderReportTable
     return (
       <AdminReportTable
         activeTab={activeTab}
@@ -327,10 +339,8 @@ export default function AdminReport() {
               <Breadcrumb />
             </div>
           </div>
-          {/* Tabs */}
           <div className="mb-6 bg-white rounded-lg w-full sm:w-auto sm:mb-0 sm:ml-0 sm:mr-24">
             <div className="flex items-center p-2">
-              {/* Dashboard tab (not in dropdown) */}
               <button
                 className={`px-4 py-2 text-center text-sm font-medium flex items-center justify-center rounded-t ${
                   activeTab === 'dashboard'
@@ -342,7 +352,6 @@ export default function AdminReport() {
                 <Home className="h-5 w-5 mr-2" />
                 Хяналтын самбар
               </button>
-              {/* Statistics Dropdown */}
               <div className="relative ml-2">
                 <button
                   className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t ${
@@ -390,7 +399,6 @@ export default function AdminReport() {
                   </>
                 )}
               </div>
-              {/* Reports Dropdown */}
               <div className="relative ml-2">
                 <button
                   className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t ${
@@ -443,9 +451,7 @@ export default function AdminReport() {
         </div>
         <hr className="border-t border-gray-200 my-2" /> 
         <div className="max-w-7xl mx-auto  px-0 sm:px-0 lg:px-0">
-          {/* Filters section */}
           <div className="mb-6">{renderFilters()}</div>
-          {/* Message display */}
           {message && (
             <div className="mb-6">
               <div className="rounded-md bg-green-50 p-4 max-w-md mx-auto">
@@ -467,7 +473,6 @@ export default function AdminReport() {
           </div>
         </div>
       </div>
-      {/* Details Modal */}
       {selectedItem && (
         <div className="fixed z-50 inset-0 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
