@@ -264,16 +264,16 @@ exports.updateFeedback = async (req, res) => {
       }
       
       if (adminResponse !== undefined) {
-        const currentStatus = status || feedback.Status;
-        if (!adminResponse.trim() && (currentStatus === 'Хүлээн авсан' || currentStatus === 'Хүлээн авахаас татгалзсан')) {
-          return res.status(400).json({
-            success: false,
-            message: 'Админы хариу оруулна уу.'
-          });
+        let responseText = adminResponse ? adminResponse.trim() : '';
+        if (!responseText) {
+          let typeName = 'санал хүсэлт';
+          if (feedback.Type === '1') typeName = 'санал';
+          else if (feedback.Type === '2') typeName = 'хүсэлт';
+          else if (feedback.Type === '3') typeName = 'гомдол';
+          responseText = `Таны ${typeName} хүлээн авлаа`;
         }
-        
         updates.push('AdminResponse = ?');
-        params.push(adminResponse ? adminResponse.trim() : null);
+        params.push(responseText);
         
         updates.push('AdminResponderId = ?');
         params.push(userId);

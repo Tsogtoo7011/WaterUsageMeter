@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from "../../utils/api";
 import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
-import { Search, Eye, Edit, Trash2, PlusCircle, ChevronLeft, ChevronRight, Check, X, MessageSquare } from 'lucide-react';
+import { Search, Edit, Trash2, PlusCircle, ChevronLeft, ChevronRight, Check, X, MessageSquare, RotateCcw, Ban } from 'lucide-react';
 
 export function Feedback() {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -142,10 +142,6 @@ export function Feedback() {
 
   const handleCreateFeedback = async (e) => {
     e.preventDefault();
-    if (!createForm.description.trim()) {
-      setCreateError('Дэлгэрэнгүй мэдээлэл заавал шаардлагатай');
-      return;
-    }
     if (!user?.IsVerified) {
       setCreateError('Та имэйл хаягаа баталгаажуулсны дараа санал хүсэлт илгээх боломжтой.');
       return;
@@ -192,6 +188,39 @@ export function Feedback() {
     }
   };
 
+  // Add handlers for admin restore/cancel
+  const handleRestoreFeedback = async (feedbackId) => {
+    if (!window.confirm('Энэ санал хүсэлтийг сэргээх үү?')) return;
+    try {
+      const { data } = await api.put(`/feedback/${feedbackId}/restore`);
+      if (data.success) {
+        setFeedbacks(feedbacks.map(f =>
+          f.ApplicationId === feedbackId ? { ...f, Status: 'Хүлээгдэж байна' } : f
+        ));
+      } else {
+        setError('Сэргээхэд алдаа гарлаа');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Сэргээхэд алдаа гарлаа');
+    }
+  };
+
+  const handleCancelFeedback = async (feedbackId) => {
+    if (!window.confirm('Энэ санал хүсэлтийг цуцлах уу?')) return;
+    try {
+      const { data } = await api.put(`/feedback/${feedbackId}/cancel`);
+      if (data.success) {
+        setFeedbacks(feedbacks.map(f =>
+          f.ApplicationId === feedbackId ? { ...f, Status: 'Хүлээн авахаас татгалзсан' } : f
+        ));
+      } else {
+        setError('Цуцлахад алдаа гарлаа');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Цуцлахад алдаа гарлаа');
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
@@ -233,8 +262,9 @@ export function Feedback() {
            Number(currentUserId) === Number(feedbackUserId);
   };
   
+  // Only user (not admin) can delete their own feedback in "Хүлээгдэж байна"
   const canDeleteFeedback = (status, feedback) => {
-    if (isAdmin) return true; 
+    if (isAdmin) return false; // admin cannot delete
     
     const currentUserId = user?.UserId;
     const feedbackUserId = feedback.UserAdminId;
@@ -243,6 +273,15 @@ export function Feedback() {
            currentUserId && 
            feedbackUserId && 
            Number(currentUserId) === Number(feedbackUserId);
+  };
+
+  // Admin-only: can restore if status is "Хүлээн авахаас татгалзсан"
+  const canRestoreFeedback = (status) => {
+    return isAdmin && status === 'Хүлээн авахаас татгалзсан';
+  };
+  // Admin-only: can cancel if status is "Хүлээгдэж байна"
+  const canCancelFeedback = (status) => {
+    return isAdmin && status === 'Хүлээгдэж байна';
   };
 
   const handleSort = (key) => {
@@ -375,38 +414,40 @@ export function Feedback() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th
-                        className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
                         onClick={() => handleSort('ApplicationId')}
                       >
                         Дугаар{renderSortArrow('ApplicationId')}
                       </th>
                       {isAdmin && (
                         <th
-                          className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                          className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider hidden sm:table-cell cursor-pointer select-none"
                           onClick={() => handleSort('Username')}
                         >
                           Хэрэглэгч{renderSortArrow('Username')}
                         </th>
                       )}
                       <th
-                        className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
                         onClick={() => handleSort('Type')}
                       >
                         Төрөл{renderSortArrow('Type')}
                       </th>
                       <th
-                        className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
                         onClick={() => handleSort('Description')}
                       >
                         Тайлбар{renderSortArrow('Description')}
                       </th>
                       <th
-                        className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
                         onClick={() => handleSort('Status')}
                       >
                         Төлөв{renderSortArrow('Status')}
                       </th>
-                      <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider">
+                      <th
+                        className="px-4 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider sticky right-0 bg-gray-50 z-10 border-l border-gray-200"
+                      >
                         Үйлдэл
                       </th>
                     </tr>
@@ -416,36 +457,38 @@ export function Feedback() {
                       paginatedFeedbacks.map((feedback) => {
                         const shouldShowEdit = canEditFeedback(feedback.Status, feedback);
                         const shouldShowDelete = canDeleteFeedback(feedback.Status, feedback);
+                        const shouldShowRestore = canRestoreFeedback(feedback.Status);
+                        const shouldShowCancel = canCancelFeedback(feedback.Status);
                         return (
-                          <tr key={feedback.ApplicationId} className="hover:bg-blue-50 transition group">
-                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap font-medium text-xs md:text-sm text-gray-900 text-center">
+                          <tr
+                            key={feedback.ApplicationId}
+                            className="hover:bg-blue-50 transition group cursor-pointer"
+                            onClick={() => handleViewDetails(feedback.ApplicationId)}
+                          >
+                            <td className="px-4 py-4 whitespace-nowrap font-medium text-xs md:text-sm text-gray-900 text-center">
                               {feedback.ApplicationId}
                             </td>
                             {isAdmin && (
-                              <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
+                              <td className="px-4 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center hidden sm:table-cell">
                                 {feedback.Username || 'Хэрэглэгч'}
                               </td>
                             )}
-                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
+                            <td className="px-4 py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 text-center">
                               {feedbackTypeNames[feedback.Type] || 'Тодорхойгүй'}
                             </td>
-                            <td className="px-2 md:px-6 py-2 md:py-4 text-xs md:text-sm text-gray-500 text-center">
+                            <td className="px-4 py-4 text-xs md:text-sm text-gray-500 text-center">
                               <div className="max-w-[200px] truncate mx-auto">{feedback.Description}</div>
                             </td>
-                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-center">
+                            <td className="px-4 py-4 whitespace-nowrap text-xs md:text-sm text-center">
                               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(feedback.Status)}`}>
                                 {statusNames[feedback.Status] || 'Тодорхойгүй'}
                               </span>
                             </td>
-                            <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-center text-xs md:text-sm font-medium">
+                            <td
+                              className="px-4 py-4 whitespace-nowrap text-center text-xs md:text-sm font-medium sticky right-0 bg-white z-10 border-l border-gray-200 group-hover:bg-blue-50 transition"
+                              onClick={e => e.stopPropagation()}
+                            >
                               <div className="flex justify-center gap-1">
-                                <button
-                                  onClick={() => handleViewDetails(feedback.ApplicationId)}
-                                  className="text-[#2D6B9F] hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
-                                  title={isAdmin ? "Хянах" : "Дэлгэрэнгүй"}
-                                >
-                                  <Eye size={16} />
-                                </button>
                                 {isAdmin && (
                                   <button
                                     onClick={() => navigate(`/feedback/${feedback.ApplicationId}?mode=edit`)}
@@ -464,6 +507,27 @@ export function Feedback() {
                                     <Edit size={16} />
                                   </button>
                                 )}
+                                {/* Admin-only: Restore */}
+                                {shouldShowRestore && (
+                                  <button
+                                    onClick={() => handleRestoreFeedback(feedback.ApplicationId)}
+                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                    title="Сэргээх"
+                                  >
+                                    <RotateCcw size={16} />
+                                  </button>
+                                )}
+                                {/* Admin-only: Cancel */}
+                                {shouldShowCancel && (
+                                  <button
+                                    onClick={() => handleCancelFeedback(feedback.ApplicationId)}
+                                    className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                    title="Цуцлах"
+                                  >
+                                    <Ban size={16} />
+                                  </button>
+                                )}
+                                {/* User-only: Delete */}
                                 {shouldShowDelete && (
                                   <button
                                     onClick={() => handleDeleteFeedback(feedback.ApplicationId)}
@@ -472,6 +536,13 @@ export function Feedback() {
                                   >
                                     <Trash2 size={16} />
                                   </button>
+                                )}
+                                {/* Show dash if no actions */}
+                                {!isAdmin && !shouldShowEdit && !shouldShowDelete && !shouldShowRestore && !shouldShowCancel && (
+                                  <span className="text-gray-400 select-none">—</span>
+                                )}
+                                {isAdmin && !shouldShowEdit && !shouldShowDelete && !shouldShowRestore && !shouldShowCancel && (
+                                  <span className="text-gray-400 select-none">—</span>
                                 )}
                               </div>
                             </td>
@@ -579,7 +650,6 @@ export function Feedback() {
                     value={createForm.feedbackType}
                     onChange={handleCreateInputChange}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                    required
                   >
                     <option value="" disabled>Төрлөө сонгоно уу</option>
                     <option value="1">Санал</option>
@@ -604,7 +674,6 @@ export function Feedback() {
                       value={createForm.description}
                       onChange={handleCreateInputChange}
                       maxLength={2000}
-                      required
                     ></textarea>
                     <div className="absolute bottom-2 right-2 text-xs text-gray-500">
                       {createForm.description.length} тэмдэгт

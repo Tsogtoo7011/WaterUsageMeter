@@ -16,7 +16,6 @@ const ServiceDetails = () => {
   const [user, setUser] = useState(null);
   const [showResponse, setShowResponse] = useState(false);
 
-  // For editing
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
@@ -40,7 +39,6 @@ const ServiceDetails = () => {
         const parsedUser = JSON.parse(userData);
         setUser({ ...parsedUser, token });
       } catch (err) {
-        // ignore
       }
     }
   }, [id]);
@@ -97,8 +95,6 @@ const ServiceDetails = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'Төлөвлөгдсөн':
         return 'bg-blue-100 text-blue-800';
-      case 'Явагдаж буй':
-        return 'bg-purple-100 text-purple-800';
       case 'Дууссан':
         return 'bg-green-100 text-green-800';
       case 'Цуцлагдсан':
@@ -143,14 +139,16 @@ const ServiceDetails = () => {
       const isAdmin = user && (user.isAdmin === true || user.AdminRight === 1);
 
       if (isAdmin) {
-
         endpoint = `/services/admin/${service.ServiceId}`;
         let status = formData.status;
-        if (formData.respond && status !== "Төлөвлөгдсөн") {
+        if (formData.amount && parseFloat(formData.amount) > 0) {
           status = "Төлөвлөгдсөн";
         }
+        let respondValue = formData.respond && formData.respond.trim().length > 0
+          ? formData.respond
+          : "Таны үйлчилгээний хүсэлтийг хүлээн авлаа. Таньтай эргээд холбогдох болно.";
         payload = {
-          respond: formData.respond,
+          respond: respondValue,
           status: status,
           amount: formData.amount ? parseFloat(formData.amount) : null,
         };
@@ -165,7 +163,7 @@ const ServiceDetails = () => {
       setIsEditing(false);
       fetchServiceDetail();
       alert('Амжилттай хадгаллаа');
-      navigate(`/services/${service.ServiceId}`);
+      navigate(-1);
     } catch (err) {
       alert(
         err.response?.data?.message ||
@@ -310,7 +308,6 @@ const ServiceDetails = () => {
                           onChange={handleInputChange}
                           className="w-full p-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 h-40 shadow-sm bg-green-50/30 transition-all"
                           placeholder="Хариу бичнэ үү..."
-                          required
                         />
                         <div className="absolute bottom-2 right-2 text-xs text-gray-500">
                           {formData.respond.length} тэмдэгт
@@ -318,37 +315,18 @@ const ServiceDetails = () => {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm text-gray-700 font-bold mb-2">
-                          Төлөв
-                        </label>
-                        <select
-                          name="status"
-                          value={formData.status}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
-                          required
-                        >
-                          <option value="Хүлээгдэж буй">Хүлээгдэж буй</option>
-                          <option value="Төлөвлөгдсөн">Төлөвлөгдсөн</option>
-                          <option value="Явагдаж буй">Явагдаж буй</option>
-                          <option value="Дууссан">Дууссан</option>
-                          <option value="Цуцлагдсан">Цуцлагдсан</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-700 font-bold mb-2">
+                      <div className="mb-4 col-span-2">
+                        <label className="block text-sm text-[#2D6B9F] font-bold mb-2">
                           Төлбөр ($)
                         </label>
                         <input
-                          type="number"
+                          type="text"
                           name="amount"
                           value={formData.amount}
                           onChange={handleInputChange}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:[#2D6B9F]"
-                          placeholder="0.00"
-                          step="0.01"
-                          min="0"
+                          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:[#2D6B9F] text-lg"
+                          placeholder="0"
+                          style={{ minWidth: "200px" }} 
                         />
                       </div>
                     </div>
@@ -363,7 +341,7 @@ const ServiceDetails = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setIsEditing(false); navigate(`/services/${service.ServiceId}`); }}
+                        onClick={() => { setIsEditing(false); navigate(-1); }}
                         className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-blue-50/50"
                         style={{ borderColor: "#2D6B9F", color: "#2D6B9F", minWidth: "70px", fontSize: "12px" }}
                       >
@@ -439,6 +417,7 @@ const ServiceDetails = () => {
                     {user && (
                       <div className="flex justify-end mt-2">
                         {isAdmin ? (
+                          service.Status !== 'Дууссан' && (
                           <button
                             onClick={() => navigate(`/services/${service.ServiceId}?mode=edit`)}
                             className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-blue-50/50"
@@ -447,6 +426,7 @@ const ServiceDetails = () => {
                             <MessageSquare size={13} className="mr-1" />
                             Хариу өгөх
                           </button>
+                          )
                         ) : (
                           service.Status === 'Хүлээгдэж буй' && service.UserId === user.id && (
                             <button

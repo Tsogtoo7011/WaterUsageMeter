@@ -51,7 +51,6 @@ const FeedbackDetails = () => {
   const [user, setUser] = useState(null);
   const [showResponse, setShowResponse] = useState(false);
 
-  // Unified edit state
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     feedbackType: '',
@@ -133,7 +132,7 @@ const FeedbackDetails = () => {
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditError('');
-    navigate(`/feedback/${id}`);
+    navigate(-1); 
   };
 
   const handleInputChange = (e) => {
@@ -152,19 +151,14 @@ const FeedbackDetails = () => {
     try {
       let endpoint, payload;
       if (isAdmin) {
-        if (!formData.adminResponse.trim()) {
-          setEditError('Хариу заавал шаардлагатай');
-          setEditSubmitting(false);
-          return;
+        let adminResponse = formData.adminResponse.trim();
+        if (!adminResponse) {
+          const typeName = feedbackTypeNames[feedback.Type] || 'санал хүсэлт';
+          adminResponse = `Таны ${typeName.toLowerCase()} хүлээн авлаа`;
         }
         endpoint = `/feedback/admin/${feedback.ApplicationId}`;
-        payload = { adminResponse: formData.adminResponse.trim() };
+        payload = { adminResponse };
       } else {
-        if (!formData.feedbackType || !formData.description.trim()) {
-          setEditError('Бүх талбарыг бөглөнө үү');
-          setEditSubmitting(false);
-          return;
-        }
         endpoint = `/feedback/${feedback.ApplicationId}`;
         payload = {
           feedbackType: parseInt(formData.feedbackType),
@@ -174,11 +168,11 @@ const FeedbackDetails = () => {
       const { data } = await api.put(endpoint, payload);
       if (data.success) {
         if (isAdmin) {
-          navigate('/feedback')
+          navigate(-1); 
         } else {
           await fetchFeedbackDetail();
           setIsEditing(false);
-          navigate(`/feedback/${id}`);
+          navigate(-1); 
         }
       } else {
         setEditError(data.message || 'Шинэчлэхэд алдаа гарлаа');
@@ -282,7 +276,7 @@ const FeedbackDetails = () => {
                 </span>
               </div>
               <div>
-                <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Шинэчилсэн</h3>
+                <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Хариу өгсөн огноо</h3>
                 <p className="text-gray-700">
                   {feedback.UpdatedAt !== feedback.CreatedAt ? formatDate(feedback.UpdatedAt) : 'Шинэчлэгдээгүй'}
                 </p>
@@ -313,7 +307,6 @@ const FeedbackDetails = () => {
                           rows={8}
                           className="w-full px-4 py-3 bg-green-50 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 focus:outline-none shadow-sm transition-all"
                           placeholder="Хариу бичнэ үү..."
-                          required
                           maxLength={2000}
                         />
                         <div className="absolute bottom-2 right-2 text-xs text-gray-500">
@@ -334,7 +327,6 @@ const FeedbackDetails = () => {
                         value={formData.feedbackType}
                         onChange={handleInputChange}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2D6B9F] focus:border-[#2D6B9F]"
-                        required
                       >
                         <option value="" disabled>Төрлөө сонгоно уу</option>
                         <option value="1">Санал</option>
@@ -358,7 +350,6 @@ const FeedbackDetails = () => {
                           rows={8}
                           className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] focus:outline-none shadow-sm transition-all"
                           placeholder="Санал хүсэлтийн дэлгэрэнгүй мэдээллийг бичнэ үү"
-                          required
                           maxLength={2000}
                         />
                         <div className="absolute bottom-2 right-2 text-xs text-gray-500">

@@ -41,7 +41,7 @@ function isDateInAllowedPeriod() {
   const currentDate = new Date();
   const currentDay = currentDate.getDate();
 
-  return currentDay >= 1 && currentDay <= 21;
+  return currentDay >= 1 && currentDay <= 31;
 }
 
 async function getPreviousReadings(apartmentId) {

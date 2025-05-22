@@ -11,6 +11,8 @@ router.post('/', authMiddleware.verifiedOnly, serviceController.createServiceReq
 router.get('/my-services', authMiddleware.verifiedOnly, serviceController.getUserServiceRequests);
 router.get('/my-apartments', authMiddleware.verifiedOnly, serviceController.getUserApartments);
 router.get('/:id', authMiddleware.verifiedOnly, serviceController.getServiceById);
+router.delete('/:id', authMiddleware.verifiedOnly, serviceController.deleteServiceRequest);
+router.put('/:id/complete', authMiddleware.verifiedOnly, serviceController.userCompleteService);
 
 // Admin routes
 router.get('/admin/all', authMiddleware.verifiedOnly, authMiddleware.adminOnly, serviceController.getAllServices);

@@ -102,13 +102,13 @@ exports.updateServiceResponse = async (req, res) => {
   
   try {
     const serviceId = req.params.id;
-    const { respond, status, amount } = req.body;
+    let { respond, status, amount } = req.body;
     
     if (!serviceId || isNaN(parseInt(serviceId))) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
 
-    const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Явагдаж буй', 'Дууссан', 'Цуцлагдсан'];
+    const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Дууссан', 'Цуцлагдсан'];
     if (status && !allowedStatuses.includes(status)) {
       return res.status(400).json({ 
         message: 'Invalid status. Must be one of: ' + allowedStatuses.join(', ')
@@ -137,14 +137,17 @@ exports.updateServiceResponse = async (req, res) => {
     );
 
     let paymentUpdated = false;
+    let setServiceDate = false;
     
     if (amount !== undefined) {
+      if (amount === null || amount === undefined || isNaN(Number(amount))) {
+        amount = 0;
+      }
 
       const checkPaymentQuery = 'SELECT * FROM PaymentService WHERE ServiceId = ?';
       const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
       
       if (paymentResults.length > 0) {
-
         const updatePaymentQuery = `
           UPDATE PaymentService
           SET Amount = ?
@@ -154,7 +157,6 @@ exports.updateServiceResponse = async (req, res) => {
         await connection.query(updatePaymentQuery, [amount, serviceId]);
         paymentUpdated = true;
       } else if (amount && amount > 0) {
-
         const paymentServiceQuery = `
           INSERT INTO PaymentService (ServiceId, Amount, PaidDay)
           VALUES (?, ?, NULL)
@@ -164,12 +166,41 @@ exports.updateServiceResponse = async (req, res) => {
         paymentUpdated = true;
       }
     }
+    if (status === 'Дууссан') {
+      const updateServiceDateQuery = `
+        UPDATE PaymentService
+        SET ServiceDate = NOW()
+        WHERE ServiceId = ?
+      `;
+      await connection.query(updateServiceDateQuery, [serviceId]);
+      setServiceDate = true;
+
+      const [paymentRows] = await connection.query(
+        'SELECT * FROM PaymentService WHERE ServiceId = ?',
+        [serviceId]
+      );
+      if (paymentRows.length > 0) {
+        const now = new Date();
+        let year = now.getFullYear();
+        let month = now.getMonth() + 1; 
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+        const payDay = new Date(year, month, 20, 0, 0, 0, 0);
+        await connection.query(
+          'UPDATE PaymentService SET PayDay = ? WHERE ServiceId = ?',
+          [payDay, serviceId]
+        );
+      }
+    }
 
     await connection.commit();
     
     res.status(200).json({ 
       message: 'Service updated successfully',
-      paymentUpdated
+      paymentUpdated,
+      setServiceDate
     });
   } catch (err) {
     await connection.rollback();
@@ -212,7 +243,7 @@ exports.getServicesByStatus = async (req, res) => {
   try {
     const { status } = req.params;
     
-    const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Явагдаж буй', 'Дууссан', 'Цуцлагдсан'];
+    const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Дууссан', 'Цуцлагдсан'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ 
         message: 'Invalid status. Must be one of: ' + allowedStatuses.join(', ')
@@ -350,7 +381,6 @@ exports.processServicePayment = async (req, res) => {
       return res.status(404).json({ message: 'No payment record found for this service' });
     }
 
-
     const updateQuery = `
       UPDATE PaymentService
       SET PaidDay = NOW(), PayDay = ?
@@ -369,6 +399,33 @@ exports.processServicePayment = async (req, res) => {
       await connection.query(updateServiceQuery, [serviceId]);
     }
     
+    // Set ServiceDate in PaymentService if exists
+    const [paymentRows] = await connection.query(
+      'SELECT * FROM PaymentService WHERE ServiceId = ?',
+      [serviceId]
+    );
+    if (paymentRows.length > 0) {
+      await connection.query(
+        'UPDATE PaymentService SET ServiceDate = NOW() WHERE ServiceId = ?',
+        [serviceId]
+      );
+      // Set PayDay to 20th of next month if not already set
+      if (!paymentRows[0].PayDay) {
+        const now = new Date();
+        let year = now.getFullYear();
+        let month = now.getMonth() + 1;
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+        const payDayDate = new Date(year, month, 20, 0, 0, 0, 0);
+        await connection.query(
+          'UPDATE PaymentService SET PayDay = ? WHERE ServiceId = ?',
+          [payDayDate, serviceId]
+        );
+      }
+    }
+    
     await connection.commit();
     
     res.status(200).json({ message: 'Payment processed successfully' });
@@ -376,6 +433,71 @@ exports.processServicePayment = async (req, res) => {
     await connection.rollback();
     console.error('Error processing payment:', err);
     res.status(500).json({ message: 'Failed to process payment: ' + err.message });
+  } finally {
+    connection.release();
+  }
+};
+
+exports.userCompleteService = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const serviceId = req.params.id;
+    const userId = req.userData.userId;
+
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ message: 'Invalid service ID' });
+    }
+
+    await connection.beginTransaction();
+
+    const [serviceRows] = await connection.query(
+      'SELECT * FROM Service WHERE ServiceId = ? AND UserAdminId = ?',
+      [serviceId, userId]
+    );
+    if (serviceRows.length === 0) {
+      await connection.rollback();
+      return res.status(403).json({ message: 'Not allowed to complete this service' });
+    }
+
+    if (serviceRows[0].Status !== 'Төлөвлөгдсөн') {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Service must be in "Төлөвлөгдсөн" status to complete' });
+    }
+
+    await connection.query(
+      'UPDATE Service SET Status = ?, SubmitDate = NOW() WHERE ServiceId = ?',
+      ['Дууссан', serviceId]
+    );
+
+    const [paymentRows] = await connection.query(
+      'SELECT * FROM PaymentService WHERE ServiceId = ?',
+      [serviceId]
+    );
+    if (paymentRows.length > 0) {
+      await connection.query(
+        'UPDATE PaymentService SET ServiceDate = NOW() WHERE ServiceId = ?',
+        [serviceId]
+      );
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth() + 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
+      const payDayDate = new Date(year, month, 20, 0, 0, 0, 0);
+      await connection.query(
+        'UPDATE PaymentService SET PayDay = ? WHERE ServiceId = ?',
+        [payDayDate, serviceId]
+      );
+    }
+
+    await connection.commit();
+    res.status(200).json({ message: 'Service marked as complete' });
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error completing service:', err);
+    res.status(500).json({ message: 'Failed to complete service: ' + err.message });
   } finally {
     connection.release();
   }

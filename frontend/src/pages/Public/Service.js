@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api";
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search, Check, X, Pencil } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search, Check, X, Pencil, RotateCcw } from 'lucide-react';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
 import Breadcrumb from '../../components/common/Breadcrumb';
 
@@ -156,7 +156,6 @@ const Service = () => {
     setFormMode(mode);
 
     if ((mode === 'edit' || mode === 'respond') && serviceItem) {
-      // Navigate to ServiceDetails with edit/respond mode
       navigate(`/services/${serviceItem.ServiceId}?mode=${mode}`);
     } else if (mode === 'create') {
       setFormData({
@@ -303,6 +302,91 @@ const Service = () => {
     }
   };
   
+  const handleCancelService = async (serviceId) => {
+    if (!window.confirm('Та энэ үйлчилгээний хүсэлтийг цуцлахдаа итгэлтэй байна уу?')) {
+      return;
+    }
+
+    if (!csrfToken) {
+      alert('CSRF токен байхгүй байна. Хуудас дахин ачааллана уу.');
+      fetchCsrfToken();
+      return;
+    }
+
+    try {
+      api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+      const endpoint = `/services/admin/${serviceId}`;
+      const payload = {
+        status: 'Цуцлагдсан',
+        amount: null 
+      };
+      await api.put(endpoint, payload);
+
+      fetchAllServices();
+    } catch (err) {
+      console.error('Error cancelling service:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Үйлчилгээний хүсэлтийг цуцлахад алдаа гарлаа';
+      alert(errorMessage);
+    }
+  };
+
+  const handleRestoreService = async (serviceId) => {
+    if (!window.confirm('Та энэ үйлчилгээний хүсэлтийг сэргээхдээ итгэлтэй байна уу?')) {
+      return;
+    }
+
+    if (!csrfToken) {
+      alert('CSRF токен байхгүй байна. Хуудас дахин ачааллана уу.');
+      fetchCsrfToken();
+      return;
+    }
+
+    try {
+      api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+      const endpoint = `/services/admin/${serviceId}`;
+      const payload = {
+        status: 'Хүлээгдэж буй'
+      };
+      await api.put(endpoint, payload);
+
+      fetchAllServices();
+    } catch (err) {
+      console.error('Error restoring service:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Үйлчилгээний хүсэлтийг сэргээхэд алдаа гарлаа';
+      alert(errorMessage);
+    }
+  };
+  const handleCompleteService = async (serviceId) => {
+    if (!window.confirm('Та энэ үйлчилгээний хүсэлтийг дууссанд тэмдэглэхдээ итгэлтэй байна уу?')) {
+      return;
+    }
+
+    if (!csrfToken) {
+      alert('CSRF токен байхгүй байна. Хуудас дахин ачааллана уу.');
+      fetchCsrfToken();
+      return;
+    }
+
+    try {
+      api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+      let endpoint, payload;
+      if (isUserAdmin()) {
+        endpoint = `/services/admin/${serviceId}`;
+        payload = { status: 'Дууссан' };
+        await api.put(endpoint, payload);
+        fetchAllServices();
+      } else {
+        endpoint = `/services/${serviceId}/complete`;
+        await api.put(endpoint);
+        fetchUserServices();
+      }
+    } catch (err) {
+      console.error('Error completing service:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Үйлчилгээний хүсэлтийг дууссанд тэмдэглэхэд алдаа гарлаа';
+      alert(errorMessage);
+    }
+  };
+  
   const handleStatusFilterChange = (e) => {
     const newStatus = e.target.value;
     setStatusFilter(newStatus);
@@ -314,8 +398,6 @@ const Service = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'Төлөвлөгдсөн':
         return 'bg-blue-100 text-blue-800';
-      case 'Явагдаж буй':
-        return 'bg-purple-100 text-purple-800';
       case 'Дууссан':
         return 'bg-green-100 text-green-800';
       case 'Цуцлагдсан':
@@ -337,7 +419,7 @@ const Service = () => {
   const canUserEditService = (service) => {
     return (
       !isUserAdmin() &&
-      service.Status === 'Хүлээгдэж буй' &&
+      (service.Status === 'Хүлээгдэж буй' || service.Status === 'Цуцлагдсан') &&
       user &&
       service.UserId === user.id
     );
@@ -462,7 +544,6 @@ const Service = () => {
                   <option value="all">Бүгд</option>
                   <option value="Хүлээгдэж буй">Хүлээгдэж буй</option>
                   <option value="Төлөвлөгдсөн">Төлөвлөгдсөн</option>
-                  <option value="Явагдаж буй">Явагдаж буй</option>
                   <option value="Дууссан">Дууссан</option>
                   <option value="Цуцлагдсан">Цуцлагдсан</option>
                 </select>
@@ -523,7 +604,8 @@ const Service = () => {
                       currentServices.map((service) => (
                         <tr
                           key={service.ServiceId}
-                          className="hover:bg-blue-50 transition group"
+                          className="hover:bg-blue-50 transition group cursor-pointer"
+                          onClick={() => handleOpenModal('view', service)}
                         >
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center text-gray-900">
                             {service.ServiceId}
@@ -556,57 +638,92 @@ const Service = () => {
                               {formatStatus(service.Status)}
                             </span>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium sticky right-0 bg-white z-10 border-l border-gray-100 group-hover:bg-blue-50 transition">
-                            <div className="flex justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenModal('view', service)}
-                                className="text-[#2D6B9F] hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
-                                title="Дэлгэрэнгүй"
-                              >
-                                <Eye size={16} className="mr-0.5" />
-                                <span className="sr-only">Дэлгэрэнгүй</span>
-                              </button>
-                              {isUserAdmin() && (
-                                <>
+                          <td
+                            className="px-4 py-4 whitespace-nowrap text-center text-sm font-medium sticky right-0 bg-white z-10 border-l border-gray-100 group-hover:bg-blue-50 transition"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {(!isUserAdmin() && service.Status === 'Дууссан') ? (
+                              <span className="text-gray-400">—</span>
+                            ) : (
+                              <div className="flex justify-center gap-1">
+                                {isUserAdmin() && (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenModal('edit', service)}
+                                      className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                      title="Хариу өгөх"
+                                    >
+                                      <MessageSquare size={16} className="mr-0.5" />
+                                      <span className="sr-only">Хариу өгөх</span>
+                                    </button>
+                                    {/* Hide Сэргээх and Цуцлах when status is Дууссан */}
+                                    {service.Status !== 'Дууссан' && (
+                                      <>
+                                        {service.Status === 'Цуцлагдсан' ? (
+                                          <button
+                                            onClick={() => handleRestoreService(service.ServiceId)}
+                                            className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                            title="Сэргээх"
+                                          >
+                                            <RotateCcw size={16} strokeWidth={2.5} className="mr-0.5" />
+                                            <span className="sr-only">Сэргээх</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            onClick={() => handleCancelService(service.ServiceId)}
+                                            className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                            title="Цуцлах"
+                                          >
+                                            <Trash2 size={16} strokeWidth={2.5} className="mr-0.5" />
+                                            <span className="sr-only">Цуцлах</span>
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                    {service.Status === 'Төлөвлөгдсөн' && (
+                                      <button
+                                        onClick={() => handleCompleteService(service.ServiceId)}
+                                        className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center"
+                                        title="Дууссан"
+                                      >
+                                        <Check size={16} strokeWidth={2.5} className="mr-0.5" />
+                                        <span className="sr-only">Дууссан</span>
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                                {!isUserAdmin() && service.Status === 'Төлөвлөгдсөн' && user && service.UserId === user.id && (
                                   <button
-                                    onClick={() => handleOpenModal('edit', service)}
-                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                    title="Хариу өгөх"
+                                    onClick={() => handleCompleteService(service.ServiceId)}
+                                    className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center"
+                                    title="Дууссан"
                                   >
-                                    <MessageSquare size={16} className="mr-0.5" />
-                                    <span className="sr-only">Хариу өгөх</span>
+                                    <Check size={16} strokeWidth={2.5} className="mr-0.5" />
+                                    <span className="sr-only">Дууссан</span>
                                   </button>
-                                  <button
-                                    onClick={() => handleDelete(service.ServiceId)}
-                                    className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
-                                    title="Устгах"
-                                  >
-                                    <Trash2 size={16} className="mr-0.5" />
-                                    <span className="sr-only">Устгах</span>
-                                  </button>
-                                </>
-                              )}
-                              {canUserEditService(service) && (
-                                <>
-                                  <button
-                                    onClick={() => handleOpenModal('edit', service)}
-                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                    title="Засах"
-                                  >
-                                    <Edit size={16} className="mr-0.5" />
-                                    <span className="sr-only">Засах</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(service.ServiceId)}
-                                    className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
-                                    title="Устгах"
-                                  >
-                                    <Trash2 size={16} className="mr-0.5" />
-                                    <span className="sr-only">Устгах</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                )}
+                                {canUserEditService(service) && (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenModal('edit', service)}
+                                      className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                      title="Засах"
+                                    >
+                                      <Edit size={16} className="mr-0.5" />
+                                      <span className="sr-only">Засах</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(service.ServiceId)}
+                                      className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                      title="Устгах"
+                                    >
+                                      <Trash2 size={16} className="mr-0.5" />
+                                      <span className="sr-only">Устгах</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -759,7 +876,6 @@ const Service = () => {
                             onChange={handleInputChange}
                             className="w-full p-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 h-40 shadow-sm bg-green-50/30 transition-all"
                             placeholder="Хариу бичнэ үү..."
-                            required
                           />
                           <div className="absolute bottom-2 right-2 text-xs text-gray-500">
                             {formData.respond.length} тэмдэгт
@@ -779,8 +895,7 @@ const Service = () => {
                             required
                           >
                             <option value="pending">Хүлээгдэж буй</option>
-                            <option value="scheduled">Төлөвлөгдсөн</option>
-                            <option value="in_progress">Явагдаж буй</option>
+                            <option value="in_progress">Төлөвлөгдсөн</option>
                             <option value="completed">Дууссан</option>
                             <option value="cancelled">Цуцлагдсан</option>
                           </select>
