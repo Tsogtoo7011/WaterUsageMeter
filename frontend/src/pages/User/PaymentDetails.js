@@ -74,6 +74,16 @@ const PaymentDetail = () => {
     navigate('/user/payment');
   };
 
+  const getStatusKey = (status) => {
+    switch (status) {
+      case 'Төлөгдсөн': return 'paid';
+      case 'Төлөгдөөгүй': return 'pending';
+      case 'Хоцорсон': return 'overdue';
+      case 'Цуцлагдсан': return 'cancelled';
+      default: return 'pending';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -153,13 +163,21 @@ const PaymentDetail = () => {
               <div>
                 <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлөв</h3>
                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  payment.status === 'paid' 
-                    ? 'bg-green-100 text-green-800' 
-                    : new Date(payment.dueDate) < new Date() 
-                      ? 'bg-red-100 text-red-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                  getStatusKey(payment.status) === 'paid'
+                    ? 'bg-green-100 text-green-800'
+                    : getStatusKey(payment.status) === 'overdue'
+                      ? 'bg-red-100 text-red-800'
+                      : getStatusKey(payment.status) === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
                 }`}>
-                  {payment.status === 'paid' ? 'Төлөгдсөн' : new Date(payment.dueDate) < new Date() ? 'Хугацаа хэтэрсэн' : 'Хүлээгдэж буй'}
+                  {getStatusKey(payment.status) === 'paid'
+                    ? 'Төлөгдсөн'
+                    : getStatusKey(payment.status) === 'overdue'
+                      ? 'Хоцорсон'
+                      : getStatusKey(payment.status) === 'pending'
+                        ? 'Хүлээгдэж буй'
+                        : 'Цуцлагдсан'}
                 </span>
               </div>
               <div>

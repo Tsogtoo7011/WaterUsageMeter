@@ -15,26 +15,29 @@ async function getUserApartments(userId) {
 }
 
 function determinePaymentStatus(payment) {
-  const status = payment.Status?.toLowerCase();
-  
-  if (status === 'paid') {
-    return 'paid';  
+  const status = payment.Status;
+  if (status === 'Төлөгдсөн') {
+    return 'paid';
   }
-
-  if (status === 'cancelled') {
-    return 'cancelled';  
+  if (status === 'Цуцлагдсан') {
+    return 'cancelled';
   }
-  
+  if (status === 'Хугацаа хэтэрсэн') {
+    return 'overdue';
+  }
+  // Treat 'Төлөгдөөгүй' as pending, but check for overdue
   const payDate = new Date(payment.PayDate);
   const currentDate = new Date();
-
   const dueDate = new Date(payDate);
   dueDate.setDate(dueDate.getDate() + 30);
-  
-  if (currentDate > dueDate) {
-    return 'overdue';  
+  if (status === 'Төлөгдөөгүй') {
+    if (currentDate > dueDate) {
+      return 'overdue';
+    }
+    return 'pending';
   }
-  return 'pending'; 
+  // fallback
+  return 'pending';
 }
 
 async function getCurrentTariff() {
@@ -424,7 +427,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     const [result] = await pool.execute(
       `INSERT INTO Payment 
         (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
-       VALUES (?, ?, ?, CURRENT_TIMESTAMP, NULL, 'PENDING', ?)`,
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP, NULL, 'Төлөгдөөгүй', ?)`,
       [apartmentId, userId, totalAmount, orderId]
     );
     
@@ -441,7 +444,7 @@ exports.generateMonthlyPayment = async (req, res) => {
         id: paymentId,
         apartmentId: Number(apartmentId),
         amount: totalAmount,
-        status: 'PENDING',
+        status: 'Төлөгдөөгүй',
         dueDate: dueDate.toISOString(),
         orderId: orderId
       },
@@ -493,14 +496,14 @@ exports.processPayment = async (req, res) => {
     const payment = payments[0];
     const calculatedStatus = determinePaymentStatus(payment);
 
-    if (calculatedStatus === 'paid') {
+    if (payment.Status === 'Төлөгдсөн') {
       return res.status(400).json({
         success: false,
         message: 'Payment has already been processed'
       });
     }
 
-    if (calculatedStatus === 'cancelled') {
+    if (payment.Status === 'Цуцлагдсан') {
       return res.status(400).json({
         success: false,
         message: 'Cannot process a cancelled payment'
@@ -513,7 +516,7 @@ exports.processPayment = async (req, res) => {
     try {
       await connection.execute(
         `UPDATE Payment
-         SET Status = 'PAID', PaidDate = CURRENT_TIMESTAMP
+         SET Status = 'Төлөгдсөн', PaidDate = CURRENT_TIMESTAMP
          WHERE PaymentId = ?`,
         [paymentId]
       );
@@ -644,9 +647,9 @@ exports.getPaymentStatistics = async (req, res) => {
     });
 
     const yearlyStatusData = [
-      { name: 'Paid', value: totalPaid, color: '#10B981' },
-      { name: 'Pending', value: totalPending, color: '#F59E0B' },
-      { name: 'Overdue', value: totalOverdue, color: '#EF4444' }
+      { name: 'paid', value: totalPaid, color: '#10B981' },
+      { name: 'pending', value: totalPending, color: '#F59E0B' },
+      { name: 'overdue', value: totalOverdue, color: '#EF4444' }
     ].filter(item => item.value > 0);
 
     const [apartmentObjects] = await pool.execute(

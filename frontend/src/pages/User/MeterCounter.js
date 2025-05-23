@@ -258,8 +258,14 @@ const MeterCounter = () => {
                       if (meter.type === 1) prevHotTotal += meter.indication;
                       else prevColdTotal += meter.indication;
                     });
-                    const hotDiff = prevMeters.length === 0 && hotTotal === 0 ? "-" : (hotTotal - prevHotTotal).toFixed(2);
-                    const coldDiff = prevMeters.length === 0 && coldTotal === 0 ? "-" : (coldTotal - prevColdTotal).toFixed(2);
+
+                    // If no previous readings, show current total instead of "-"
+                    const hotDiff = prevMeters.length === 0
+                      ? hotTotal === 0 ? "-" : hotTotal.toFixed(2)
+                      : (hotTotal - prevHotTotal).toFixed(2);
+                    const coldDiff = prevMeters.length === 0
+                      ? coldTotal === 0 ? "-" : coldTotal.toFixed(2)
+                      : (coldTotal - prevColdTotal).toFixed(2);
 
                     return (
                       <WaterMeterCard

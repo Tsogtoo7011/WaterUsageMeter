@@ -3,7 +3,7 @@ import { Eye, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'; // Ad
 
 const statusNames = {
   paid: 'Төлөгдсөн',
-  overdue: 'Хугацаа хэтэрсэн',
+  overdue: 'Хоцорсон',
   pending: 'Хүлээгдэж буй',
   cancelled: 'Цуцлагдсан'
 };
@@ -17,6 +17,17 @@ const getStatusBadgeColor = (status) => {
     default: return 'bg-blue-100 text-blue-800';
   }
 };
+
+function mapStatus(status) {
+  // Map backend status to UI status key
+  switch (status) {
+    case 'Төлөгдсөн': return 'paid';
+    case 'Төлөгдөөгүй': return 'pending';
+    case 'Хоцорсон': return 'overdue';
+    case 'Цуцлагдсан': return 'cancelled';
+    default: return 'pending';
+  }
+}
 
 const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,7 +72,7 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
       (amountStr && amountStr.includes(searchQuery)) ||
       (payment.status && statusNames[payment.status?.toLowerCase()]?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (payment.id && payment.id.toString().includes(searchQuery));
-    const matchesStatus = statusFilter === 'all' || payment.status?.toLowerCase() === statusFilter;
+    const matchesStatus = statusFilter === 'all' || mapStatus(payment.status) === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -123,7 +134,7 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
         >
           <option value="all">Бүгд</option>
           <option value="pending">Хүлээгдэж буй</option>
-          <option value="overdue">Хугацаа хэтэрсэн</option>
+          <option value="overdue">Хоцорсон</option>
           <option value="paid">Төлөгдсөн</option>
           <option value="cancelled">Цуцлагдсан</option>
         </select>
@@ -175,8 +186,8 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
                     ₮{(payment.amount || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.status)}`}>
-                      {statusNames[payment.status?.toLowerCase()] || 'Тодорхойгүй'}
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(mapStatus(payment.status))}`}>
+                      {statusNames[mapStatus(payment.status)] || 'Тодорхойгүй'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
@@ -188,7 +199,7 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
                       >
                         <Eye size={16} />
                       </button>
-                      {(payment.status?.toLowerCase() === 'pending' || payment.status?.toLowerCase() === 'overdue') && (
+                      {(mapStatus(payment.status) === 'pending' || mapStatus(payment.status) === 'overdue') && (
                         <button
                           onClick={() => onPayNow(payment.id)}
                           disabled={loading}

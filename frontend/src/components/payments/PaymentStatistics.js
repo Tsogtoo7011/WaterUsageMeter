@@ -68,6 +68,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
   };
 
   const getStatusStyles = (status) => {
+    // Accepts 'paid', 'pending', 'overdue', 'cancelled'
     const normalizedStatus = status?.toLowerCase();
     switch (normalizedStatus) {
       case 'paid':

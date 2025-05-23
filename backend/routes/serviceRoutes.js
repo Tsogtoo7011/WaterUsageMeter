@@ -20,5 +20,7 @@ router.get('/admin/status/:status', authMiddleware.verifiedOnly, authMiddleware.
 router.get('/admin/:id', authMiddleware.verifiedOnly, authMiddleware.adminOnly, serviceController.getServiceById);
 router.put('/admin/:id', authMiddleware.verifiedOnly, authMiddleware.adminOnly, serviceController.updateServiceResponse);
 router.delete('/admin/:id', authMiddleware.verifiedOnly, authMiddleware.adminOnly, serviceController.deleteServiceRequest);
+router.put('/admin/:id/cancel', authMiddleware.verifiedOnly, authMiddleware.adminOnly, serviceController.cancelServiceRequest);
+router.put('/admin/:id/restore', authMiddleware.verifiedOnly, authMiddleware.adminOnly, serviceController.restoreServiceRequest);
 
 module.exports = router;

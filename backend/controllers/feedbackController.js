@@ -405,3 +405,98 @@ exports.deleteFeedback = async (req, res) => {
     handleError(res, error, 'Delete feedback');
   }
 };
+
+exports.adminCancelFeedback = async (req, res) => {
+  try {
+    const feedbackId = req.params.id;
+    const { reason } = req.body;
+    const adminId = req.userData.userId;
+
+    if (!feedbackId || isNaN(Number(feedbackId))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу ID форматтай байна.'
+      });
+    }
+
+    const [checkFeedback] = await pool.execute(
+      `SELECT * FROM Feedback WHERE ApplicationId = ?`,
+      [feedbackId]
+    );
+
+    if (checkFeedback.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Санал хүсэлт олдсонгүй.'
+      });
+    }
+
+    // Only allow cancel if status is "Хүлээгдэж байна"
+    if (checkFeedback[0].Status !== 'Хүлээгдэж байна') {
+      return res.status(400).json({
+        success: false,
+        message: 'Зөвхөн хүлээгдэж буй санал хүсэлтийг цуцлах боломжтой.'
+      });
+    }
+
+    const cancelReason = (typeof reason === 'string' && reason.trim()) ? reason.trim() : 'Таны санал хүсэлтийг авах боломжгүй байна. Иймд таны хүсэлтийг цуцалсан болно.';
+
+    await pool.execute(
+      `UPDATE Feedback SET Status = ?, AdminResponse = ?, AdminResponderId = ?, UpdatedAt = CURRENT_TIMESTAMP WHERE ApplicationId = ?`,
+      ['Хүлээн авахаас татгалзсан', cancelReason, adminId, feedbackId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Санал хүсэлт амжилттай цуцлагдлаа.'
+    });
+  } catch (error) {
+    handleError(res, error, 'Admin cancel feedback');
+  }
+};
+
+exports.adminRestoreFeedback = async (req, res) => {
+  try {
+    const feedbackId = req.params.id;
+    const adminId = req.userData.userId;
+
+    if (!feedbackId || isNaN(Number(feedbackId))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Буруу ID форматтай байна.'
+      });
+    }
+
+    const [checkFeedback] = await pool.execute(
+      `SELECT * FROM Feedback WHERE ApplicationId = ?`,
+      [feedbackId]
+    );
+
+    if (checkFeedback.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Санал хүсэлт олдсонгүй.'
+      });
+    }
+
+    // Only allow restore if status is "Хүлээн авахаас татгалзсан"
+    if (checkFeedback[0].Status !== 'Хүлээн авахаас татгалзсан') {
+      return res.status(400).json({
+        success: false,
+        message: 'Зөвхөн татгалзсан санал хүсэлтийг сэргээх боломжтой.'
+      });
+    }
+
+    await pool.execute(
+      `UPDATE Feedback SET Status = ?, AdminResponse = '', AdminResponderId = ?, UpdatedAt = CURRENT_TIMESTAMP WHERE ApplicationId = ?`,
+      ['Хүлээгдэж байна', adminId, feedbackId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Санал хүсэлт амжилттай сэргээгдлээ.'
+    });
+  } catch (error) {
+    handleError(res, error, 'Admin restore feedback');
+  }
+};

@@ -2,7 +2,7 @@ import React from 'react';
 
 const NoApartment = ({ 
   title = "Таньд холбоотой байр байхгүй байна",
-  description = "Үйлчилгээг ашиглахын тулд эхлээд байраа бүртгүүлнэ үү.",
+  description = "Төлбөрийн үйлчилгээг ашиглахын тулд эхлээд байраа бүртгүүлнэ үү.",
   buttonText = "Байр нэмэх",
   buttonHref = "/profile/apartment",
   iconColor = "blue"

@@ -12,8 +12,12 @@ const WaterMeterCard = ({ year, month, hot, cold, meters, apartmentId, status, p
 
     let hotSum = 0, coldSum = 0;
     let hotHasPrev = false, coldHasPrev = false;
+    let hotTotal = 0, coldTotal = 0;
     meters.forEach(m => {
       const prev = prevMap[`${m.location}-${m.type}`];
+      if (m.type === 1) hotTotal += Number(m.indication);
+      else coldTotal += Number(m.indication);
+
       if (prev !== undefined && prev !== null && m.indication !== undefined && m.indication !== null) {
         const diff = Number(m.indication) - Number(prev);
         if (m.type === 1) {
@@ -25,8 +29,8 @@ const WaterMeterCard = ({ year, month, hot, cold, meters, apartmentId, status, p
         }
       }
     });
-    hotDiff = hotHasPrev ? hotSum.toFixed(2) : "-";
-    coldDiff = coldHasPrev ? coldSum.toFixed(2) : "-";
+    hotDiff = hotHasPrev ? hotSum.toFixed(2) : (hotTotal === 0 ? "-" : hotTotal.toFixed(2));
+    coldDiff = coldHasPrev ? coldSum.toFixed(2) : (coldTotal === 0 ? "-" : coldTotal.toFixed(2));
   } else {
     hotDiff = "-";
     coldDiff = "-";
@@ -68,7 +72,7 @@ const WaterMeterCard = ({ year, month, hot, cold, meters, apartmentId, status, p
         </div>
         <div className="p-3">
           <div className="text-sm text-gray-800 mb-3">
-            Халуун ус: - м³&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Хүйтэн ус: - м³
+            Халуун ус: - м³&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Хүйтэн ус: - м³
           </div>
           <div className="text-center bg-[#2D6B9F] text-white text-sm rounded font-medium py-2">
             Заалт өгөх боломжгүй!
@@ -92,10 +96,9 @@ const WaterMeterCard = ({ year, month, hot, cold, meters, apartmentId, status, p
         </div>
       </div>
       <div className="p-3">
-        <div className="text-sm text-gray-800 mb-3">
-          Халуун ус: {hotDiff} м³
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-          Хүйтэн ус: {coldDiff} м³
+        <div className="text-sm text-gray-800 mb-3 flex flex-row gap-6 justify-center">
+          <span>Халуун ус: {hotDiff} м³</span>
+          <span>Хүйтэн ус: {coldDiff} м³</span>
         </div>
         <a 
           href={`/user/metercounter/details?apartmentId=${apartmentId}&month=${monthKey}`}

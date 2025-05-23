@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import SearchBar from '../components/common/searchBar'; 
+import Notification from '../components/common/Notification';
 
 const SidebarLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -318,6 +319,9 @@ const SidebarLayout = ({ children }) => {
             </div>
             <div className="flex-1 md:hidden"></div>
             <div className="flex items-center space-x-4">
+
+              {/* Notification Button */}
+              <Notification />
 
               {/* Profile Dropdown */}
               <div className="relative" ref={dropdownRef}>

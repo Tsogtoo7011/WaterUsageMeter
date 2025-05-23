@@ -537,9 +537,12 @@ const renderMonthlyData = () => {
   const tableRows = readings.map((meter) => {
     const prevKey = `${meter.location}-${meter.type}`;
     const previousIndication = previousMonthReadings[prevKey];
-    const difference = previousIndication !== undefined
-      ? (meter.indication - previousIndication).toFixed(2)
-      : "-";
+    let difference;
+    if (previousIndication !== undefined) {
+      difference = (meter.indication - previousIndication).toFixed(2);
+    } else {
+      difference = meter.type === 1 ? hotDiff : coldDiff;
+    }
     return {
       id: meter.id,
       location: meter.location,
@@ -555,7 +558,7 @@ const renderMonthlyData = () => {
   return (
     <div className="w-full flex flex-col md:flex-row bg-white">
       {/* Left side: summary */}
-      <div className="md:w-1/5 pb-4 pr-2">
+      <div className="md:w-1/5 pb-4 pr-2 pl-2">
         <h1 className="text-lg font-medium text-[#2D6B9F] mb-2">Таны усны хэрэглээ</h1>
         <div className="flex items-center text-sm text-gray-500 mb-4">
           <span>
@@ -563,19 +566,18 @@ const renderMonthlyData = () => {
           </span>
           <span className="mx-1">•</span>
         </div>
-        <div className="grid grid-cols-1 gap-2">
-          {/* Show hot/cold/total difference summary */}
-          <div>
-            <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Халуун ус</h3>
-            <p className="text-gray-700">{hotDiff} м³</p>
+        <div className="flex flex-col gap-2 pl-2">
+          <div className="flex flex-row items-center gap-2">
+            <span className="text-sm text-[#2D6B9F] font-semibold">Халуун ус</span>
+            <span className="text-gray-700">- {hotDiff} м³</span>
           </div>
-          <div>
-            <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Хүйтэн ус</h3>
-            <p className="text-gray-700">{coldDiff} м³</p>
+          <div className="flex flex-row items-center gap-2">
+            <span className="text-sm text-[#2D6B9F] font-semibold">Хүйтэн ус</span>
+            <span className="text-gray-700">- {coldDiff} м³</span>
           </div>
-          <div>
-            <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Нийт ус</h3>
-            <p className="text-gray-700">{totalDiff} м³</p>
+          <div className="flex flex-row items-center gap-2">
+            <span className="text-sm text-[#2D6B9F] font-semibold">Нийт ус</span>
+            <span className="text-gray-700">- {totalDiff} м³</span>
           </div>
         </div>
       </div>

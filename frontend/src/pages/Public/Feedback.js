@@ -30,6 +30,10 @@ export function Feedback() {
 
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelFeedbackId, setCancelFeedbackId] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+
   const feedbackTypeNames = {
     '1': 'Санал',
     '2': 'Хүсэлт',
@@ -155,7 +159,6 @@ export function Feedback() {
       setShowModal(false);
       setCreateForm({ feedbackType: 1, description: '' });
       setCreateError('');
-      // Refresh feedbacks
       if (user) {
         const endpoint = isAdmin ? '/feedback/admin/all' : '/feedback';
         const { data } = await api.get(endpoint);
@@ -188,11 +191,10 @@ export function Feedback() {
     }
   };
 
-  // Add handlers for admin restore/cancel
   const handleRestoreFeedback = async (feedbackId) => {
     if (!window.confirm('Энэ санал хүсэлтийг сэргээх үү?')) return;
     try {
-      const { data } = await api.put(`/feedback/${feedbackId}/restore`);
+      const { data } = await api.put(`/feedback/admin/${feedbackId}/restore`);
       if (data.success) {
         setFeedbacks(feedbacks.map(f =>
           f.ApplicationId === feedbackId ? { ...f, Status: 'Хүлээгдэж байна' } : f
@@ -204,14 +206,32 @@ export function Feedback() {
       setError(err.response?.data?.message || 'Сэргээхэд алдаа гарлаа');
     }
   };
+  const handleOpenCancelModal = (feedbackId) => {
+    setCancelFeedbackId(feedbackId);
+    setCancelReason('');
+    setCancelModalOpen(true);
+  };
 
-  const handleCancelFeedback = async (feedbackId) => {
-    if (!window.confirm('Энэ санал хүсэлтийг цуцлах уу?')) return;
+  // New: close cancel modal
+  const handleCloseCancelModal = () => {
+    setCancelModalOpen(false);
+    setCancelFeedbackId(null);
+    setCancelReason('');
+  };
+
+  // New: submit cancel with reason
+  const handleSubmitCancel = async (e) => {
+    e.preventDefault();
+    let reason = cancelReason.trim();
+    if (!reason) {
+      reason = 'Таны санал хүсэлтийг авах боломжгүй байна. Иймд таны хүсэлтийг цуцалсан болно.';
+    }
     try {
-      const { data } = await api.put(`/feedback/${feedbackId}/cancel`);
+      // Use admin endpoint for cancel
+      const { data } = await api.put(`/feedback/admin/${cancelFeedbackId}/cancel`, { reason });
       if (data.success) {
         setFeedbacks(feedbacks.map(f =>
-          f.ApplicationId === feedbackId ? { ...f, Status: 'Хүлээн авахаас татгалзсан' } : f
+          f.ApplicationId === cancelFeedbackId ? { ...f, Status: 'Хүлээн авахаас татгалзсан' } : f
         ));
       } else {
         setError('Цуцлахад алдаа гарлаа');
@@ -219,6 +239,7 @@ export function Feedback() {
     } catch (err) {
       setError(err.response?.data?.message || 'Цуцлахад алдаа гарлаа');
     }
+    handleCloseCancelModal();
   };
 
   const formatDate = (dateString) => {
@@ -489,60 +510,67 @@ export function Feedback() {
                               onClick={e => e.stopPropagation()}
                             >
                               <div className="flex justify-center gap-1">
-                                {isAdmin && (
-                                  <button
-                                    onClick={() => navigate(`/feedback/${feedback.ApplicationId}?mode=edit`)}
-                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                    title="Хариу өгөх"
-                                  >
-                                    <MessageSquare size={16} />
-                                  </button>
-                                )}
-                                {shouldShowEdit && (
-                                  <button
-                                    onClick={() => handleEditFeedback(feedback)}
-                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                    title="Засах"
-                                  >
-                                    <Edit size={16} />
-                                  </button>
-                                )}
-                                {/* Admin-only: Restore */}
-                                {shouldShowRestore && (
-                                  <button
-                                    onClick={() => handleRestoreFeedback(feedback.ApplicationId)}
-                                    className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                    title="Сэргээх"
-                                  >
-                                    <RotateCcw size={16} />
-                                  </button>
-                                )}
-                                {/* Admin-only: Cancel */}
-                                {shouldShowCancel && (
-                                  <button
-                                    onClick={() => handleCancelFeedback(feedback.ApplicationId)}
-                                    className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
-                                    title="Цуцлах"
-                                  >
-                                    <Ban size={16} />
-                                  </button>
-                                )}
-                                {/* User-only: Delete */}
-                                {shouldShowDelete && (
-                                  <button
-                                    onClick={() => handleDeleteFeedback(feedback.ApplicationId)}
-                                    className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
-                                    title="Устгах"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                )}
-                                {/* Show dash if no actions */}
-                                {!isAdmin && !shouldShowEdit && !shouldShowDelete && !shouldShowRestore && !shouldShowCancel && (
+                                {feedback.Status === 'Хүлээн авахаас татгалзсан' ? (
+                                  <>
+                                    {canRestoreFeedback(feedback.Status) ? (
+                                      <button
+                                        onClick={() => handleRestoreFeedback(feedback.ApplicationId)}
+                                        className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                        title="Сэргээх"
+                                      >
+                                        <RotateCcw size={16} />
+                                      </button>
+                                    ) : (
+                                      <span className="text-gray-400 select-none">—</span>
+                                    )}
+                                  </>
+                                ) : feedback.Status === 'Хүлээн авсан' ? (
                                   <span className="text-gray-400 select-none">—</span>
-                                )}
-                                {isAdmin && !shouldShowEdit && !shouldShowDelete && !shouldShowRestore && !shouldShowCancel && (
-                                  <span className="text-gray-400 select-none">—</span>
+                                ) : (
+                                  <>
+                                    {isAdmin && (
+                                      <button
+                                        onClick={() => navigate(`/feedback/${feedback.ApplicationId}?mode=edit`)}
+                                        className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                        title="Хариу өгөх"
+                                      >
+                                        <MessageSquare size={16} />
+                                      </button>
+                                    )}
+                                    {shouldShowEdit && (
+                                      <button
+                                        onClick={() => handleEditFeedback(feedback)}
+                                        className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                        title="Засах"
+                                      >
+                                        <Edit size={16} />
+                                      </button>
+                                    )}
+                                    {shouldShowCancel && (
+                                      <button
+                                        onClick={() => handleOpenCancelModal(feedback.ApplicationId)}
+                                        className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                        title="Цуцлах"
+                                      >
+                                        <Ban size={16} />
+                                      </button>
+                                    )}
+                                    {shouldShowDelete && (
+                                      <button
+                                        onClick={() => handleDeleteFeedback(feedback.ApplicationId)}
+                                        className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                        title="Устгах"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    )}
+                                    {!isAdmin && !shouldShowEdit && !shouldShowDelete && !shouldShowRestore && !shouldShowCancel && (
+                                      <span className="text-gray-400 select-none">—</span>
+                                    )}
+                                    {isAdmin && !shouldShowEdit && !shouldShowDelete && !shouldShowRestore && !shouldShowCancel && (
+                                      <span className="text-gray-400 select-none">—</span>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </td>
@@ -701,6 +729,55 @@ export function Feedback() {
                         Илгээх
                       </>
                     )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Cancel Reason Modal */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[210]">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-[#2D6B9F]">
+                  Санал хүсэлтийг цуцлах
+                </h2>
+                <button
+                  onClick={handleCloseCancelModal}
+                  className="text-gray-400 hover:text-[#2D6B9F]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSubmitCancel}>
+                <div className="mb-5">
+                  <label className="text-[#2D6B9F] text-sm font-bold mb-2 flex items-center">
+                    <Ban size={16} className="mr-2 text-[#2D6B9F]" />
+                    Цуцлах шалтгаан
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      className="w-full p-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-40 shadow-sm bg-blue-50/30 transition-all"
+                      placeholder="Цуцлах шалтгаанаа бичнэ үү..."
+                      value={cancelReason}
+                      onChange={e => setCancelReason(e.target.value)}
+                    />
+                    <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                      {cancelReason.length} тэмдэгт
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                  <button
+                    type="submit"
+                    className="flex items-center justify-center px-3 py-1.5 bg-red-600 border rounded text-sm font-medium hover:bg-red-700"
+                    style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "110px", fontSize: "14px" }}
+                  >
+                    <Ban size={15} className="mr-1" />
+                    <span>Цуцлах</span>
                   </button>
                 </div>
               </form>

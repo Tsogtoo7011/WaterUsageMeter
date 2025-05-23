@@ -86,6 +86,11 @@ exports.createServiceRequest = async (req, res) => {
     `;
     
     const [results] = await db.query(query, [userId, description, apartmentId || null]);
+
+    await db.query(
+      'INSERT INTO PaymentService (ServiceId, Amount) VALUES (?, 0)',
+      [results.insertId]
+    );
     
     res.status(201).json({
       message: 'Service request created successfully',
@@ -102,7 +107,10 @@ exports.updateServiceResponse = async (req, res) => {
   
   try {
     const serviceId = req.params.id;
-    let { respond, status, amount } = req.body;
+    let { respond, status, amount, cancelReason } = req.body;
+    if (cancelReason && typeof cancelReason === 'string' && cancelReason.trim().length > 0) {
+      respond = cancelReason.trim();
+    }
     
     if (!serviceId || isNaN(parseInt(serviceId))) {
       return res.status(400).json({ message: 'Invalid service ID' });
@@ -124,6 +132,10 @@ exports.updateServiceResponse = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
+    
+    if (status === 'Хүлээгдэж буй') {
+      respond = '';
+    }
 
     const updateQuery = `
       UPDATE Service
@@ -133,7 +145,11 @@ exports.updateServiceResponse = async (req, res) => {
     
     await connection.query(
       updateQuery, 
-      [respond || checkResults[0].Respond, status || checkResults[0].Status, serviceId]
+      [
+        respond !== undefined && respond !== null ? respond : checkResults[0].Respond,
+        status || checkResults[0].Status,
+        serviceId
+      ]
     );
 
     let paymentUpdated = false;
@@ -193,6 +209,12 @@ exports.updateServiceResponse = async (req, res) => {
           [payDay, serviceId]
         );
       }
+    }
+    if (status === 'Төлөвлөгдсөн') {
+      await connection.query(
+        'UPDATE PaymentService SET PayDay = NULL, ServiceDate = NULL WHERE ServiceId = ?',
+        [serviceId]
+      );
     }
 
     await connection.commit();
@@ -498,6 +520,84 @@ exports.userCompleteService = async (req, res) => {
     await connection.rollback();
     console.error('Error completing service:', err);
     res.status(500).json({ message: 'Failed to complete service: ' + err.message });
+  } finally {
+    connection.release();
+  }
+};
+
+exports.cancelServiceRequest = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const serviceId = req.params.id;
+    const { reason } = req.body;
+
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ message: 'Invalid service ID' });
+    }
+
+    await connection.beginTransaction();
+
+    const [serviceRows] = await connection.query(
+      'SELECT * FROM Service WHERE ServiceId = ?',
+      [serviceId]
+    );
+    if (serviceRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    await connection.query(
+      'UPDATE Service SET Status = ?, Respond = ?, SubmitDate = NOW() WHERE ServiceId = ?',
+      ['Цуцлагдсан', reason || '', serviceId]
+    );
+
+    await connection.commit();
+    res.status(200).json({ message: 'Service cancelled successfully' });
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error cancelling service:', err);
+    res.status(500).json({ message: 'Failed to cancel service: ' + err.message });
+  } finally {
+    connection.release();
+  }
+};
+
+exports.restoreServiceRequest = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const serviceId = req.params.id;
+
+    if (!serviceId || isNaN(parseInt(serviceId))) {
+      return res.status(400).json({ message: 'Invalid service ID' });
+    }
+
+    await connection.beginTransaction();
+
+    const [serviceRows] = await connection.query(
+      'SELECT * FROM Service WHERE ServiceId = ?',
+      [serviceId]
+    );
+    if (serviceRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    await connection.query(
+      'UPDATE Service SET Status = ?, Respond = "", SubmitDate = NOW() WHERE ServiceId = ?',
+      ['Хүлээгдэж буй', serviceId]
+    );
+
+    await connection.query(
+      'UPDATE PaymentService SET Amount = 0 WHERE ServiceId = ?',
+      [serviceId]
+    );
+
+    await connection.commit();
+    res.status(200).json({ message: 'Service restored successfully' });
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error restoring service:', err);
+    res.status(500).json({ message: 'Failed to restore service: ' + err.message });
   } finally {
     connection.release();
   }

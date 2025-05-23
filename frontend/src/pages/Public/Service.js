@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from "../../utils/api";
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Eye, Home, MessageSquare, Search, Check, X, Pencil, RotateCcw } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Ban, Home, MessageSquare, Search, Check, X, Pencil, RotateCcw, AlertTriangle } from 'lucide-react';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
 import Breadcrumb from '../../components/common/Breadcrumb';
 
@@ -29,6 +29,8 @@ const Service = () => {
   });
   
   const [user, setUser] = useState(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelServiceId, setCancelServiceId] = useState(null);
   const navigate = useNavigate();
   
   const servicesPerPage = 5;
@@ -302,7 +304,7 @@ const Service = () => {
     }
   };
   
-  const handleCancelService = async (serviceId) => {
+  const handleCancelService = async (serviceId, reason) => {
     if (!window.confirm('Та энэ үйлчилгээний хүсэлтийг цуцлахдаа итгэлтэй байна уу?')) {
       return;
     }
@@ -315,10 +317,9 @@ const Service = () => {
 
     try {
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
-      const endpoint = `/services/admin/${serviceId}`;
+      const endpoint = `/services/admin/${serviceId}/cancel`;
       const payload = {
-        status: 'Цуцлагдсан',
-        amount: null 
+        reason: reason || undefined
       };
       await api.put(endpoint, payload);
 
@@ -341,13 +342,13 @@ const Service = () => {
       return;
     }
 
+    setFormData(prev => ({ ...prev, respond: '' }));
+
     try {
       api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
-      const endpoint = `/services/admin/${serviceId}`;
-      const payload = {
-        status: 'Хүлээгдэж буй'
-      };
-      await api.put(endpoint, payload);
+      // Use new backend endpoint for restore
+      const endpoint = `/services/admin/${serviceId}/restore`;
+      await api.put(endpoint);
 
       fetchAllServices();
     } catch (err) {
@@ -383,6 +384,30 @@ const Service = () => {
     } catch (err) {
       console.error('Error completing service:', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Үйлчилгээний хүсэлтийг дууссанд тэмдэглэхэд алдаа гарлаа';
+      alert(errorMessage);
+    }
+  };
+  
+  const handleBackToPlanned = async (serviceId) => {
+    if (!window.confirm('Та энэ үйлчилгээний хүсэлтийг "Төлөвлөгдсөн" төлөв рүү буцаахдаа итгэлтэй байна уу?')) {
+      return;
+    }
+
+    if (!csrfToken) {
+      alert('CSRF токен байхгүй байна. Хуудас дахин ачааллана уу.');
+      fetchCsrfToken();
+      return;
+    }
+
+    try {
+      api.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+      const endpoint = `/services/admin/${serviceId}`;
+      const payload = { status: 'Төлөвлөгдсөн' };
+      await api.put(endpoint, payload);
+      fetchAllServices();
+    } catch (err) {
+      console.error('Error reverting service to planned:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Үйлчилгээний хүсэлтийг төлөвлөгдсөн төлөв рүү буцаахад алдаа гарлаа';
       alert(errorMessage);
     }
   };
@@ -462,6 +487,29 @@ const Service = () => {
   const renderSortArrow = (key) => {
     if (sortConfig.key !== key) return null;
     return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+  };
+
+  const handleOpenCancelModal = (serviceId) => {
+    setCancelServiceId(serviceId);
+    setFormData(prev => ({ ...prev, respond: '' })); 
+    setCancelModalOpen(true);
+  };
+
+  const handleCloseCancelModal = () => {
+    setCancelModalOpen(false);
+    setFormData(prev => ({ ...prev, respond: '' }));
+    setCancelServiceId(null);
+  };
+
+  const handleSubmitCancel = async (e) => {
+    e.preventDefault();
+    let reason = formData.respond.trim();
+    if (!reason) {
+      reason = 'Таны үйлчилгээний хүсэлтийг авах боломжгүй байна. Иймд таны хүсэлтийг цуцалсан болно.';
+    }
+    setFormData(prev => ({ ...prev, respond: reason }));
+    await handleCancelService(cancelServiceId, reason);
+    handleCloseCancelModal();
   };
 
   if (loading) {
@@ -648,47 +696,61 @@ const Service = () => {
                               <div className="flex justify-center gap-1">
                                 {isUserAdmin() && (
                                   <>
-                                    <button
-                                      onClick={() => handleOpenModal('edit', service)}
-                                      className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                      title="Хариу өгөх"
-                                    >
-                                      <MessageSquare size={16} className="mr-0.5" />
-                                      <span className="sr-only">Хариу өгөх</span>
-                                    </button>
-                                    {/* Hide Сэргээх and Цуцлах when status is Дууссан */}
-                                    {service.Status !== 'Дууссан' && (
+                                    {/* Only show Сэргээх when status is Цуцлагдсан */}
+                                    {service.Status === 'Цуцлагдсан' ? (
+                                      <button
+                                        onClick={() => handleRestoreService(service.ServiceId)}
+                                        className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
+                                        title="Сэргээх"
+                                      >
+                                        <RotateCcw size={16} strokeWidth={2.5} className="mr-0.5" />
+                                        <span className="sr-only">Сэргээх</span>
+                                      </button>
+                                    ) : (
                                       <>
-                                        {service.Status === 'Цуцлагдсан' ? (
+                                        {service.Status !== 'Дууссан' && (
                                           <button
-                                            onClick={() => handleRestoreService(service.ServiceId)}
+                                            onClick={() => handleOpenModal('edit', service)}
                                             className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
-                                            title="Сэргээх"
+                                            title="Хариу өгөх"
                                           >
-                                            <RotateCcw size={16} strokeWidth={2.5} className="mr-0.5" />
-                                            <span className="sr-only">Сэргээх</span>
+                                            <MessageSquare size={16} className="mr-0.5" />
+                                            <span className="sr-only">Хариу өгөх</span>
                                           </button>
-                                        ) : (
+                                        )}
+                                        {service.Status !== 'Дууссан' && (
+                                          <>
+                                            <button
+                                              onClick={() => handleOpenCancelModal(service.ServiceId)}
+                                              className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
+                                              title="Цуцлах"
+                                            >
+                                              <Ban size={16} strokeWidth={2.5} className="mr-0.5" />
+                                              <span className="sr-only">Цуцлах</span>
+                                            </button>
+                                          </>
+                                        )}
+                                        {service.Status === 'Төлөвлөгдсөн' && (
                                           <button
-                                            onClick={() => handleCancelService(service.ServiceId)}
-                                            className="text-red-600 hover:text-red-900 w-8 h-8 flex items-center justify-center"
-                                            title="Цуцлах"
+                                            onClick={() => handleCompleteService(service.ServiceId)}
+                                            className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center"
+                                            title="Дууссан"
                                           >
-                                            <Trash2 size={16} strokeWidth={2.5} className="mr-0.5" />
-                                            <span className="sr-only">Цуцлах</span>
+                                            <Check size={16} strokeWidth={2.5} className="mr-0.5" />
+                                            <span className="sr-only">Дууссан</span>
+                                          </button>
+                                        )}
+                                        {service.Status === 'Дууссан' && (
+                                          <button
+                                            onClick={() => handleBackToPlanned(service.ServiceId)}
+                                            className="text-yellow-600 hover:text-yellow-900 w-8 h-8 flex items-center justify-center"
+                                            title="Төлөвлөгдсөн рүү буцаах"
+                                          >
+                                            <AlertTriangle size={16} strokeWidth={2.5} className="mr-0.5" />
+                                            <span className="sr-only">Төлөвлөгдсөн рүү буцаах</span>
                                           </button>
                                         )}
                                       </>
-                                    )}
-                                    {service.Status === 'Төлөвлөгдсөн' && (
-                                      <button
-                                        onClick={() => handleCompleteService(service.ServiceId)}
-                                        className="text-blue-600 hover:text-blue-900 w-8 h-8 flex items-center justify-center"
-                                        title="Дууссан"
-                                      >
-                                        <Check size={16} strokeWidth={2.5} className="mr-0.5" />
-                                        <span className="sr-only">Дууссан</span>
-                                      </button>
                                     )}
                                   </>
                                 )}
@@ -935,6 +997,56 @@ const Service = () => {
                           <span>Хадгалах</span>
                         </>
                       )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Reason Modal */}
+        {cancelModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[210]">
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold text-[#2D6B9F]">
+                    Үйлчилгээний хүсэлтийг цуцлах
+                  </h2>
+                  <button
+                    onClick={handleCloseCancelModal}
+                    className="text-gray-400 hover:text-[#2D6B9F]"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <form onSubmit={handleSubmitCancel}>
+                  <div className="mb-5">
+                    <label className="text-[#2D6B9F] text-sm font-bold mb-2 flex items-center">
+                      <Ban size={16} className="mr-2 text-[#2D6B9F]" />
+                      Цуцлах шалтгаан
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        className="w-full p-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] h-40 shadow-sm bg-blue-50/30 transition-all"
+                        placeholder="Цуцлах шалтгаанаа бичнэ үү..."
+                        value={formData.respond}
+                        onChange={e => setFormData(prev => ({ ...prev, respond: e.target.value }))}
+                      />
+                      <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                        {formData.respond.length} тэмдэгт
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
+                    <button
+                      type="submit"
+                      className="flex items-center justify-center px-3 py-1.5 bg-red-600 border rounded text-sm font-medium hover:bg-red-700"
+                      style={{ borderColor: "#2D6B9F", color: 'white', minWidth: "110px", fontSize: "14px" }}
+                    >
+                      <Ban size={15} className="mr-1" />
+                      <span>Цуцлах</span>
                     </button>
                   </div>
                 </form>

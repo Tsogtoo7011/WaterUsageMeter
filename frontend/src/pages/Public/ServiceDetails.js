@@ -25,6 +25,7 @@ const ServiceDetails = () => {
     apartmentId: '',
   });
   const [csrfToken, setCsrfToken] = useState(null);
+  const [amountError, setAmountError] = useState(''); 
 
   const navigate = useNavigate();
 
@@ -58,6 +59,16 @@ const ServiceDetails = () => {
       setIsEditing(false);
     }
   }, [service, mode]);
+
+  useEffect(() => {
+    if (service) {
+      if (service.Status === 'Төлөвлөгдсөн' || service.Status === 'Цуцлагдсан') {
+        setShowResponse(true);
+      } else {
+        setShowResponse(false);
+      }
+    }
+  }, [service]);
 
   const fetchCsrfToken = async () => {
     try {
@@ -139,6 +150,16 @@ const ServiceDetails = () => {
       const isAdmin = user && (user.isAdmin === true || user.AdminRight === 1);
 
       if (isAdmin) {
+        if (
+          !formData.amount ||
+          isNaN(parseFloat(formData.amount)) ||
+          parseFloat(formData.amount) <= 0
+        ) {
+          setAmountError('Төлбөр оруулна уу');
+          return;
+        } else {
+          setAmountError('');
+        }
         endpoint = `/services/admin/${service.ServiceId}`;
         let status = formData.status;
         if (formData.amount && parseFloat(formData.amount) > 0) {
@@ -162,7 +183,6 @@ const ServiceDetails = () => {
       await api.put(endpoint, payload);
       setIsEditing(false);
       fetchServiceDetail();
-      alert('Амжилттай хадгаллаа');
       navigate(-1);
     } catch (err) {
       alert(
@@ -328,6 +348,9 @@ const ServiceDetails = () => {
                           placeholder="0"
                           style={{ minWidth: "200px" }} 
                         />
+                        {amountError && (
+                          <div className="text-red-600 text-xs mt-1">{amountError}</div>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row justify-end mt-6 gap-2">
@@ -396,6 +419,15 @@ const ServiceDetails = () => {
               (() => {
                 const contentBoxClass =
                   "text-gray-800 flex-grow overflow-y-auto break-all whitespace-normal border rounded p-3 h-64 md:h-80";
+                // Determine if we should show the response and what label/color to use
+                const isCancelled = service.Status === 'Цуцлагдсан';
+                const isPlanned = service.Status === 'Төлөвлөгдсөн';
+                const responseLabel = isCancelled ? "Цуцлагдсан" : "Хариу";
+                const responseLabelClass = isCancelled ? "text-red-700 font-semibold" : "text-green-700 font-semibold";
+                const responseBoxClass = isCancelled
+                  ? `${contentBoxClass} border-red-200 bg-red-50`
+                  : `${contentBoxClass} border-green-200 bg-green-50`;
+
                 return !showResponse ? (
                   <>
                     <div className="flex justify-between items-center mb-2">
@@ -417,7 +449,7 @@ const ServiceDetails = () => {
                     {user && (
                       <div className="flex justify-end mt-2">
                         {isAdmin ? (
-                          service.Status !== 'Дууссан' && (
+                          service.Status !== 'Дууссан' && service.Status !== 'Цуцлагдсан' && (
                           <button
                             onClick={() => navigate(`/services/${service.ServiceId}?mode=edit`)}
                             className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-blue-50/50"
@@ -445,24 +477,57 @@ const ServiceDetails = () => {
                 ) : (
                   <>
                     <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm text-green-700 font-semibold">Хариу</h3>
+                      <h3 className={`text-sm ${responseLabelClass}`}>{responseLabel}</h3>
                       <button 
                         onClick={toggleResponse} 
-                        className="flex items-center justify-center text-green-700 hover:text-green-800 focus:outline-none"
+                        className={`flex items-center justify-center ${isCancelled ? "text-red-700 hover:text-red-800" : "text-green-700 hover:text-green-800"} focus:outline-none`}
                         aria-label="Show description"
                       >
                         <ChevronLeft size={20} />
                       </button>
                     </div>
-                    <div className={`${contentBoxClass} border-green-200 bg-green-50`}>
-                      {service.Respond || "Одоогоор хариу өгөөгүй байна."}
+                    <div className={responseBoxClass}>
+                      {service.Respond || (isCancelled ? "Одоогоор хариу өгөөгүй байна." : "Одоогоор хариу өгөөгүй байна.")}
                     </div>
-                    {isAdmin && (
+                    {isAdmin && isCancelled && (
+                      <div className="flex justify-end mt-2">
+                        <button
+                          onClick={async () => {
+
+                            try {
+                              await api.put(`/services/admin/${service.ServiceId}`, {
+                                respond: "",
+                                status: service.Status,
+                                amount: service.Amount,
+                              });
+                              fetchServiceDetail();
+                            } catch (err) {
+                              alert('Сэргээх үед алдаа гарлаа');
+                            }
+                          }}
+                          className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-red-100"
+                          style={{
+                            borderColor: "#dc2626",
+                            color: "#dc2626",
+                            minWidth: "70px",
+                            fontSize: "12px"
+                          }}
+                        >
+                          Сэргээх
+                        </button>
+                      </div>
+                    )}
+                    {isAdmin && !isCancelled && (
                       <div className="flex justify-end mt-2">
                         <button
                           onClick={() => navigate(`/services/${service.ServiceId}?mode=edit`)}
-                          className="flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-green-100"
-                          style={{ borderColor: "#16a34a", color: "#16a34a", minWidth: "70px", fontSize: "12px" }}
+                          className={`flex items-center px-2 py-1 border rounded text-xs font-medium hover:bg-green-100`}
+                          style={{
+                            borderColor: "#16a34a",
+                            color: "#16a34a",
+                            minWidth: "70px",
+                            fontSize: "12px"
+                          }}
                         >
                           <Edit size={13} className="mr-1" />
                           Засах
