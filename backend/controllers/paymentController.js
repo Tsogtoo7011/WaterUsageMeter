@@ -6,54 +6,35 @@ async function getUserApartments(userId) {
     'SELECT aua.ApartmentId FROM ApartmentUserAdmin aua WHERE aua.UserId = ?',
     [userId]
   );
-  
-  if (apartments.length === 0) {
-    return [];
-  }
-  
+  if (apartments.length === 0) return [];
   return apartments.map(apt => apt.ApartmentId);
 }
 
 function determinePaymentStatus(payment) {
   const status = payment.Status;
-  if (status === 'Төлөгдсөн') {
-    return 'paid';
-  }
-  if (status === 'Цуцлагдсан') {
-    return 'cancelled';
-  }
-  if (status === 'Хугацаа хэтэрсэн') {
-    return 'overdue';
-  }
-  // Treat 'Төлөгдөөгүй' as pending, but check for overdue
+  if (status === 'Төлөгдсөн') return 'paid';
+  if (status === 'Цуцлагдсан') return 'cancelled';
+  if (status === 'Хугацаа хэтэрсэн') return 'overdue';
   const payDate = new Date(payment.PayDate);
   const currentDate = new Date();
   const dueDate = new Date(payDate);
   dueDate.setDate(dueDate.getDate() + 30);
   if (status === 'Төлөгдөөгүй') {
-    if (currentDate > dueDate) {
-      return 'overdue';
-    }
+    if (currentDate > dueDate) return 'overdue';
     return 'pending';
   }
-  // fallback
   return 'pending';
 }
 
-async function getCurrentTariff() {
+exports.getCurrentTariff = async function() {
   const [tariffs] = await pool.execute(
     'SELECT * FROM Tarif ORDER BY TariffId DESC LIMIT 1'
   );
-  
-  if (tariffs.length === 0) {
-    throw new Error('No tariff information found in the system');
-  }
-  
+  if (tariffs.length === 0) throw new Error('No tariff information found in the system');
   return tariffs[0];
 }
 
-async function calculateWaterUsage(apartmentId, month, year) {
-
+async function getPreviousReadingsForMonth(apartmentId, month, year) {
   let prevMonth = month - 1;
   let prevYear = year;
   if (prevMonth === 0) {
@@ -61,52 +42,52 @@ async function calculateWaterUsage(apartmentId, month, year) {
     prevYear = year - 1;
   }
 
+  const [prevReadings] = await pool.execute(
+    `SELECT 
+      Location,
+      Type,
+      MAX(Indication) as latest_reading,
+      MAX(WaterMeterDate) as last_date
+    FROM WaterMeter
+    WHERE ApartmentId = ?
+      AND (
+        (YEAR(WaterMeterDate) < ?)
+        OR (YEAR(WaterMeterDate) = ? AND MONTH(WaterMeterDate) < ?)
+      )
+    GROUP BY Location, Type`,
+    [apartmentId, year, year, month]
+  );
+  return prevReadings;
+}
 
+async function calculateWaterUsage(apartmentId, month, year) {
   const [currentReadings] = await pool.execute(
     `SELECT 
+      Location,
       Type,
       MAX(Indication) as latest_reading
     FROM WaterMeter
     WHERE ApartmentId = ?
-    AND MONTH(WaterMeterDate) = ?
-    AND YEAR(WaterMeterDate) = ?
-    GROUP BY Type`,
+      AND MONTH(WaterMeterDate) = ?
+      AND YEAR(WaterMeterDate) = ?
+    GROUP BY Location, Type`,
     [apartmentId, month, year]
   );
 
+  const prevReadings = await getPreviousReadingsForMonth(apartmentId, month, year);
 
-  const [prevReadings] = await pool.execute(
-    `SELECT 
-      Type,
-      MAX(Indication) as latest_reading
-    FROM WaterMeter
-    WHERE ApartmentId = ?
-    AND MONTH(WaterMeterDate) = ?
-    AND YEAR(WaterMeterDate) = ?
-    GROUP BY Type`,
-    [apartmentId, prevMonth, prevYear]
-  );
-
-  const usage = {
-    cold: 0,
-    hot: 0
-  };
-  
-
+  let usage = { cold: 0, hot: 0 };
   currentReadings.forEach(current => {
-    const prevReading = prevReadings.find(prev => prev.Type === current.Type);
-    const previousValue = prevReading ? Number(prevReading.latest_reading) : 0;
-    const currentValue = Number(current.latest_reading);
-    
-    const usageValue = currentValue >= previousValue ? currentValue - previousValue : currentValue;
-    
-    if (current.Type === 0) {
-      usage.cold = usageValue;
-    } else if (current.Type === 1) {
-      usage.hot = usageValue;
-    }
+    const prev = prevReadings.find(
+      p => p.Location === current.Location && p.Type === current.Type
+    );
+    const prevValue = prev ? Number(prev.latest_reading) : 0;
+    const currValue = Number(current.latest_reading);
+    const diff = currValue - prevValue;
+    if (current.Type === 0) usage.cold += diff > 0 ? diff : 0;
+    else if (current.Type === 1) usage.hot += diff > 0 ? diff : 0;
   });
-  
+
   return usage;
 }
 
@@ -116,7 +97,7 @@ exports.getUserPayments = async (req, res) => {
     const apartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
 
     const apartmentIds = await getUserApartments(userId);
-    
+
     if (apartmentIds.length === 0) {
       return res.status(200).json({
         success: true,
@@ -132,15 +113,15 @@ exports.getUserPayments = async (req, res) => {
         hasApartments: false
       });
     }
-    
-    const whereClause = apartmentId && apartmentIds.includes(apartmentId) 
-      ? 'p.ApartmentId = ?' 
+
+    const whereClause = apartmentId && apartmentIds.includes(apartmentId)
+      ? 'p.ApartmentId = ?'
       : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
-    
-    const queryParams = apartmentId && apartmentIds.includes(apartmentId) 
+
+    const queryParams = apartmentId && apartmentIds.includes(apartmentId)
       ? [apartmentId, userId]
       : [...apartmentIds, userId];
-    
+
     const [payments] = await pool.execute(
       `SELECT 
         p.PaymentId,
@@ -149,6 +130,8 @@ exports.getUserPayments = async (req, res) => {
         p.PayDate,
         p.PaidDate,
         p.Status,
+        p.PaymentType,
+        p.TariffId,
         a.ApartmentName,
         a.BlockNumber,
         a.UnitNumber
@@ -161,13 +144,11 @@ exports.getUserPayments = async (req, res) => {
     );
 
     const formattedPayments = payments.map(payment => {
-
       const calculatedStatus = determinePaymentStatus(payment);
-      
       const payDate = new Date(payment.PayDate);
       const dueDate = new Date(payDate);
       dueDate.setDate(dueDate.getDate() + 30);
-      
+
       return {
         id: payment.PaymentId,
         apartmentId: payment.ApartmentId,
@@ -176,6 +157,8 @@ exports.getUserPayments = async (req, res) => {
         paidDate: payment.PaidDate,
         dueDate: dueDate.toISOString(),
         status: calculatedStatus,
+        paymentType: payment.PaymentType,
+        tariffId: payment.TariffId,
         apartment: {
           name: payment.ApartmentName,
           block: payment.BlockNumber,
@@ -184,15 +167,15 @@ exports.getUserPayments = async (req, res) => {
         }
       };
     });
-  
+
     let totalAmount = 0;
     let paidAmount = 0;
     let pendingAmount = 0;
     let overdueAmount = 0;
-    
+
     formattedPayments.forEach(payment => {
       totalAmount += Number(payment.amount);
-      
+
       if (payment.status === 'paid') {
         paidAmount += Number(payment.amount);
       } else if (payment.status === 'overdue') {
@@ -201,14 +184,14 @@ exports.getUserPayments = async (req, res) => {
         pendingAmount += Number(payment.amount);
       }
     });
-    
+
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
        FROM Apartment a
        WHERE a.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
       apartmentIds
     );
-    
+
     const apartments = apartmentObjects.map(apt => ({
       id: apt.ApartmentId,
       name: apt.ApartmentName,
@@ -216,7 +199,7 @@ exports.getUserPayments = async (req, res) => {
       unit: apt.UnitNumber,
       displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
     }));
-    
+
     return res.status(200).json({
       success: true,
       payments: formattedPayments,
@@ -229,7 +212,7 @@ exports.getUserPayments = async (req, res) => {
       apartments: apartments,
       hasApartments: true
     });
-    
+
   } catch (error) {
     handleError(res, error, 'Get user payments');
   }
@@ -239,7 +222,7 @@ exports.getPaymentById = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const paymentId = req.params.id;
-    
+
     if (!paymentId || isNaN(Number(paymentId))) {
       return res.status(400).json({
         success: false,
@@ -255,7 +238,8 @@ exports.getPaymentById = async (req, res) => {
         p.PayDate,
         p.PaidDate,
         p.Status,
-        p.OrderOrderId,
+        p.PaymentType,
+        p.TariffId,
         a.ApartmentName,
         a.BlockNumber,
         a.UnitNumber
@@ -265,40 +249,39 @@ exports.getPaymentById = async (req, res) => {
       AND p.UserAdminId = ?`,
       [paymentId, userId]
     );
-    
+
     if (payments.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Payment not found or you do not have access'
       });
     }
-    
+
     const payment = payments[0];
-    
 
     const calculatedStatus = determinePaymentStatus(payment);
-    
+
     const payDate = new Date(payment.PayDate);
     const dueDate = new Date(payDate);
     dueDate.setDate(dueDate.getDate() + 30);
-    
+
     const paymentDate = new Date(payment.PayDate);
-    const month = paymentDate.getMonth() + 1; 
+    const month = paymentDate.getMonth() + 1;
     const year = paymentDate.getFullYear();
-    
+
     const waterUsage = await calculateWaterUsage(
       payment.ApartmentId,
       month,
       year
     );
 
-    const tariff = await getCurrentTariff();
+    const tariff = await exports.getCurrentTariff();
 
     const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
     const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
-    
+
     return res.status(200).json({
       success: true,
       payment: {
@@ -309,7 +292,8 @@ exports.getPaymentById = async (req, res) => {
         paidDate: payment.PaidDate,
         dueDate: dueDate.toISOString(),
         status: calculatedStatus,
-        orderId: payment.OrderOrderId,
+        paymentType: payment.PaymentType,
+        tariffId: payment.TariffId,
         apartment: {
           name: payment.ApartmentName,
           block: payment.BlockNumber,
@@ -334,7 +318,7 @@ exports.getPaymentById = async (req, res) => {
         dirtyWater: tariff.DirtyWaterTariff
       }
     });
-    
+
   } catch (error) {
     handleError(res, error, 'Get payment by ID');
   }
@@ -346,7 +330,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     const { apartmentId } = req.body;
 
     const apartmentIds = await getUserApartments(userId);
-    
+
     if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
       return res.status(403).json({
         success: false,
@@ -354,11 +338,12 @@ exports.generateMonthlyPayment = async (req, res) => {
         hasApartments: false
       });
     }
-    
+
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    
+    const payDate = getLastDayOfNextMonth(now);
+
     const [existingPayments] = await pool.execute(
       `SELECT PaymentId
        FROM Payment
@@ -369,7 +354,7 @@ exports.generateMonthlyPayment = async (req, res) => {
        LIMIT 1`,
       [apartmentId, userId, currentMonth, currentYear]
     );
-    
+
     if (existingPayments.length > 0) {
 
       const [paymentDetails] = await pool.execute(
@@ -379,19 +364,22 @@ exports.generateMonthlyPayment = async (req, res) => {
           p.Amount,
           p.PayDate,
           p.PaidDate,
-          p.Status,
-          p.OrderOrderId
+          p.Status
         FROM Payment p
         WHERE p.PaymentId = ?`,
         [existingPayments[0].PaymentId]
       );
-      
+
       if (paymentDetails.length > 0) {
         const payment = paymentDetails[0];
-        const payDate = new Date(payment.PayDate);
-        const dueDate = new Date(payDate);
-        dueDate.setDate(dueDate.getDate() + 30);
-        
+        const payDateObj = new Date(payment.PayDate);
+        let year = payDateObj.getFullYear();
+        let month = payDateObj.getMonth() + 1;
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+        const dueDate = new Date(year, month + 1, 0, 0, 0, 0, 0);
         return res.status(200).json({
           success: true,
           message: 'Payment for current month already exists',
@@ -401,42 +389,37 @@ exports.generateMonthlyPayment = async (req, res) => {
             amount: payment.Amount,
             status: payment.Status,
             payDate: payment.PayDate,
-            dueDate: dueDate.toISOString(),
-            orderId: payment.OrderOrderId
+            dueDate: dueDate.toISOString()
           },
           exists: true
         });
       }
     }
-    
+
     const waterUsage = await calculateWaterUsage(
       apartmentId,
       currentMonth,
       currentYear
     );
-    
-    const tariff = await getCurrentTariff();
-    
+
+    const tariff = await exports.getCurrentTariff();
+
     const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
     const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
-    const orderId = Math.floor(Math.random() * 1000000) + 1;
-
     const [result] = await pool.execute(
       `INSERT INTO Payment 
-        (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
-       VALUES (?, ?, ?, CURRENT_TIMESTAMP, NULL, 'Төлөгдөөгүй', ?)`,
-      [apartmentId, userId, totalAmount, orderId]
+        (ApartmentId, UserAdminId, PaymentType, Amount, PayDate, PaidDate, Status, TariffId)
+       VALUES (?, ?, ?, ?, ?, NULL, 'Төлөгдөөгүй', ?)`,
+      [apartmentId, userId, 'water', totalAmount, payDate, tariff.TariffId]
     );
-    
+
     const paymentId = result.insertId;
 
-    const now2 = new Date();
-    const dueDate = new Date(now2);
-    dueDate.setDate(dueDate.getDate() + 30);
-    
+    const dueDate = new Date(payDate);
+
     return res.status(201).json({
       success: true,
       message: 'Monthly payment generated successfully',
@@ -444,9 +427,9 @@ exports.generateMonthlyPayment = async (req, res) => {
         id: paymentId,
         apartmentId: Number(apartmentId),
         amount: totalAmount,
-        status: 'Төлөгдөөгүй',
+        status: 'Төлөгдөлгүй',
         dueDate: dueDate.toISOString(),
-        orderId: orderId
+        tariffId: tariff.TariffId
       },
       waterUsage: {
         cold: waterUsage.cold,
@@ -460,24 +443,24 @@ exports.generateMonthlyPayment = async (req, res) => {
         total: totalAmount
       }
     });
-    
+
   } catch (error) {
     handleError(res, error, 'Generate monthly payment');
   }
-}; 
+};
 
 exports.processPayment = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const { paymentId } = req.body;
-    
+
     if (!paymentId) {
       return res.status(400).json({
         success: false,
         message: 'Payment ID is required'
       });
     }
-    
+
     const [payments] = await pool.execute(
       `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentId, p.PayDate
        FROM Payment p
@@ -485,14 +468,14 @@ exports.processPayment = async (req, res) => {
        AND p.UserAdminId = ?`,
       [paymentId, userId]
     );
-    
+
     if (payments.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Payment not found or access denied'
       });
     }
-    
+
     const payment = payments[0];
     const calculatedStatus = determinePaymentStatus(payment);
 
@@ -512,7 +495,7 @@ exports.processPayment = async (req, res) => {
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
-    
+
     try {
       await connection.execute(
         `UPDATE Payment
@@ -520,9 +503,9 @@ exports.processPayment = async (req, res) => {
          WHERE PaymentId = ?`,
         [paymentId]
       );
-      
+
       await connection.commit();
-      
+
       return res.status(200).json({
         success: true,
         message: 'Payment processed successfully',
@@ -534,19 +517,27 @@ exports.processPayment = async (req, res) => {
     } finally {
       connection.release();
     }
-    
+
   } catch (error) {
     handleError(res, error, 'Process payment');
   }
+};
+
+exports.getPaymentServiceByServiceId = async (req, res) => {
+  return res.status(410).json({ success: false, message: 'PaymentService is merged into Payment. Use Payment endpoints.' });
+};
+
+exports.processPaymentService = async (req, res) => {
+  return res.status(410).json({ success: false, message: 'PaymentService is merged into Payment. Use Payment endpoints.' });
 };
 
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const apartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
- 
+
     const apartmentIds = await getUserApartments(userId);
-    
+
     if (apartmentIds.length === 0) {
       return res.status(200).json({
         success: true,
@@ -567,11 +558,11 @@ exports.getPaymentStatistics = async (req, res) => {
 
     const currentYear = new Date().getFullYear();
 
-    const whereClause = apartmentId 
-      ? 'p.ApartmentId = ?' 
+    const whereClause = apartmentId
+      ? 'p.ApartmentId = ?'
       : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
-    
-    const queryParams = apartmentId 
+
+    const queryParams = apartmentId
       ? [apartmentId, userId, currentYear]
       : [...apartmentIds, userId, currentYear];
 
@@ -596,7 +587,7 @@ exports.getPaymentStatistics = async (req, res) => {
         calculatedStatus: determinePaymentStatus(payment)
       };
     });
-    
+
     const monthStats = {};
     monthlyPayments.forEach(payment => {
       const month = payment.month;
@@ -609,7 +600,7 @@ exports.getPaymentStatistics = async (req, res) => {
           overdueCount: 0
         };
       }
-      
+
       monthStats[month].totalAmount += Number(payment.Amount);
       if (payment.calculatedStatus === 'paid') {
         monthStats[month].paidCount++;
@@ -623,7 +614,7 @@ exports.getPaymentStatistics = async (req, res) => {
     const months = Array(12).fill().map((_, i) => i + 1);
     const formattedStats = months.map(month => {
       const monthData = monthStats[month];
-      
+
       return {
         month: month,
         monthName: new Date(currentYear, month - 1, 1).toLocaleString('default', { month: 'long' }),
@@ -639,7 +630,7 @@ exports.getPaymentStatistics = async (req, res) => {
     let totalPaid = 0;
     let totalPending = 0;
     let totalOverdue = 0;
-    
+
     formattedStats.forEach(month => {
       totalPaid += month.paidCount || 0;
       totalPending += month.pendingCount || 0;
@@ -658,7 +649,7 @@ exports.getPaymentStatistics = async (req, res) => {
        WHERE a.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
       apartmentIds
     );
-    
+
     const apartments = apartmentObjects.map(apt => ({
       id: apt.ApartmentId,
       name: apt.ApartmentName,
@@ -666,17 +657,116 @@ exports.getPaymentStatistics = async (req, res) => {
       unit: apt.UnitNumber,
       displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
     }));
-    
+
     return res.status(200).json({
       success: true,
       monthlyStats: formattedStats,
       yearlyTotal: yearlyTotal,
-      yearlyStatusData: yearlyStatusData, 
+      yearlyStatusData: yearlyStatusData,
       apartments: apartments,
       hasApartments: true
     });
-    
+
   } catch (error) {
     handleError(res, error, 'Get payment statistics');
   }
 };
+
+exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId, pool, monthArg, yearArg) {
+
+  const now = new Date();
+  const currentMonth = monthArg || (now.getMonth() + 1);
+  const currentYear = yearArg || now.getFullYear();
+  // Use helper to get last day of next month
+  const payDate = getLastDayOfNextMonth(new Date(currentYear, currentMonth - 1, 1));
+
+  const [existingPayments] = await pool.execute(
+    `SELECT PaymentId
+     FROM Payment
+     WHERE ApartmentId = ?
+     AND UserAdminId = ?
+     AND MONTH(PayDate) = ?
+     AND YEAR(PayDate) = ?
+     LIMIT 1`,
+    [apartmentId, userId, currentMonth, currentYear]
+  );
+
+  if (existingPayments.length > 0) {
+    const [paymentDetails] = await pool.execute(
+      `SELECT 
+        p.PaymentId,
+        p.ApartmentId,
+        p.Amount,
+        p.PayDate,
+        p.PaidDate,
+        p.Status,
+        p.PaymentType,
+        p.TariffId
+      FROM Payment p
+      WHERE p.PaymentId = ?`,
+      [existingPayments[0].PaymentId]
+    );
+    if (paymentDetails.length > 0) {
+      const payment = paymentDetails[0];
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+      return {
+        id: payment.PaymentId,
+        apartmentId: Number(apartmentId),
+        amount: payment.Amount,
+        status: payment.Status,
+        payDate: payment.PayDate,
+        dueDate: dueDate.toISOString(),
+        paymentType: payment.PaymentType,
+        tariffId: payment.TariffId,
+        exists: true
+      };
+    }
+  }
+
+  const usage = await calculateWaterUsage(apartmentId, currentMonth, currentYear);
+
+  const tariff = await exports.getCurrentTariff();
+
+  const coldWaterCost = (usage.cold + usage.hot) * tariff.ColdWaterTariff;
+  const hotWaterCost = usage.hot * tariff.HeatWaterTariff;
+  const dirtyWaterCost = (usage.cold + usage.hot) * tariff.DirtyWaterTariff;
+  const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
+
+  // Insert payment with TariffId, no OrderOrderId
+  const [result] = await pool.execute(
+    `INSERT INTO Payment 
+      (ApartmentId, UserAdminId, PaymentType, Amount, PayDate, PaidDate, Status, TariffId)
+     VALUES (?, ?, 'water', ?, ?, NULL, 'Төлөгдөөгүй', ?)`,
+    [apartmentId, userId, totalAmount, payDate, tariff.TariffId]
+  );
+  const dueDate = new Date(payDate);
+
+  return {
+    id: result.insertId,
+    apartmentId: Number(apartmentId),
+    amount: totalAmount,
+    status: 'Төлөгдөлгүй',
+    payDate: dueDate.toISOString(),
+    dueDate: dueDate.toISOString(),
+    paymentType: 'water',
+    tariffId: tariff.TariffId,
+    exists: false
+  };
+};
+
+// Helper to get last day of next month as yyyy-mm-dd
+function getLastDayOfNextMonth(date = new Date()) {
+  let year = date.getFullYear();
+  let month = date.getMonth() + 1; // JS: 0=Jan, 11=Dec; +1 to get 1-based
+  if (month === 12) {
+    year += 1;
+    month = 1;
+  } else {
+    month += 1;
+  }
+  // new Date(year, month, 0) gives last day of previous month, so pass next month
+  const lastDay = new Date(year, month, 0);
+  return lastDay.toISOString().slice(0, 10);
+}

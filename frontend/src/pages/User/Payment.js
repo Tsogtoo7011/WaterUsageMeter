@@ -30,12 +30,10 @@ const Payment = () => {
         if (response.data && response.data.hasApartments) {
           setApartments(response.data.apartments || []);
           
-          // Set default selected apartment if none is selected
           if (!selectedApartment && response.data.apartments && response.data.apartments.length > 0) {
             setSelectedApartment(response.data.apartments[0].id);
           }
         } else {
-          // No apartments assigned to user
           setApartments([]);
         }
       } catch (err) {
@@ -57,11 +55,9 @@ const Payment = () => {
       setError(null);
       
       try {
-        // Modified to send apartmentId as a query parameter
         const response = await api.get(`/payments?apartmentId=${selectedApartment}`);
         
         if (response.data) {
-          // Filter payments for the selected apartment only
           const filteredPayments = response.data.payments ? 
             response.data.payments.filter(payment => payment.apartmentId === selectedApartment) : 
             [];

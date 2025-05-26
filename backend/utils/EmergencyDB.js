@@ -115,23 +115,25 @@ async function createWaterUsageDB() {
 
     // Payment
     const [paymentResult] = await connection.query(`
-      CREATE TABLE IF NOT EXISTS Payment (
-        PaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        ApartmentId INT UNSIGNED NOT NULL,
-        UserAdminId INT UNSIGNED NOT NULL,
-        PaymentType ENUM('water', 'service') NOT NULL,
-        Amount DECIMAL(10,2) NOT NULL,
-        PayDate DATE NOT NULL,  
-        PaidDate TIMESTAMP NULL,
-        Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
-        OrderOrderId INT UNSIGNED NOT NULL,
-        TariffId INT UNSIGNED NULL,
-        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
-        FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
-        FOREIGN KEY (TariffId) REFERENCES Tarif(TariffId) ON DELETE SET NULL
-      );
+      CREATE TABLE Payment (
+    PaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    ApartmentId INT UNSIGNED NOT NULL,
+    UserAdminId INT UNSIGNED NOT NULL,
+    ServiceId INT UNSIGNED NULL,
+    TariffId INT UNSIGNED NULL,
+    PaymentType ENUM('water', 'service') NOT NULL,
+    Amount DECIMAL(10,2) NOT NULL,
+    PayDate DATE NOT NULL,  
+    PaidDate TIMESTAMP NULL,
+    Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
+    FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
+    FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE SET NULL,
+    FOREIGN KEY (TariffId) REFERENCES Tarif(TariffId) ON DELETE SET NULL
+    );
     `);
     if (paymentResult.warningStatus === 0) console.log('Payment table created.');
 
@@ -151,23 +153,6 @@ async function createWaterUsageDB() {
       );
     `);
     if (serviceResult.warningStatus === 0) console.log('Service table created.');
-
-    // PaymentService
-    const [paymentServiceResult] = await connection.query(`
-      CREATE TABLE IF NOT EXISTS PaymentService (
-        PaymentServiceId INT UNSIGNED NOT NULL AUTO_INCREMENT,
-        ServiceId INT UNSIGNED NOT NULL,
-        Amount DECIMAL(10,2) NOT NULL,
-        ServiceDate TIMESTAMP NULL DEFAULT NULL,
-        PaidDay TIMESTAMP NULL DEFAULT NULL,
-        PayDay DATE NULL DEFAULT NULL,
-        Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
-        PRIMARY KEY (PaymentServiceId),
-        UNIQUE KEY idx_service_id (ServiceId),
-        FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE CASCADE
-      );
-    `);
-    if (paymentServiceResult.warningStatus === 0) console.log('PaymentService table created.');
 
     // Feedback
     const [feedbackResult] = await connection.query(`
@@ -210,7 +195,7 @@ async function createWaterUsageDB() {
     // Insert sample tariff data if not exists
     await connection.query(`
       INSERT INTO Tarif (ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom, EffectiveTo, IsActive)
-      SELECT 38, 58, 42, '2025-01-01', NULL, 1
+      SELECT 50, 75, 100, '2025-01-01', NULL, 1
       WHERE NOT EXISTS (SELECT 1 FROM Tarif WHERE IsActive = 1)
     `);
 

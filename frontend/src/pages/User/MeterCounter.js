@@ -259,13 +259,13 @@ const MeterCounter = () => {
                       else prevColdTotal += meter.indication;
                     });
 
-                    // If no previous readings, show current total instead of "-"
+                    // Use integer values for diffs
                     const hotDiff = prevMeters.length === 0
-                      ? hotTotal === 0 ? "-" : hotTotal.toFixed(2)
-                      : (hotTotal - prevHotTotal).toFixed(2);
+                      ? hotTotal === 0 ? "0" : Math.round(hotTotal).toString()
+                      : Math.round(hotTotal - prevHotTotal).toString();
                     const coldDiff = prevMeters.length === 0
-                      ? coldTotal === 0 ? "-" : coldTotal.toFixed(2)
-                      : (coldTotal - prevColdTotal).toFixed(2);
+                      ? coldTotal === 0 ? "0" : Math.round(coldTotal).toString()
+                      : Math.round(coldTotal - prevColdTotal).toString();
 
                     return (
                       <WaterMeterCard

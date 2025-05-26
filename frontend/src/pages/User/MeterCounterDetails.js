@@ -530,16 +530,25 @@ const renderMonthlyData = () => {
     }
   });
 
-  const hotDiff = (hotTotal - prevHotTotal).toFixed(2);
-  const coldDiff = (coldTotal - prevColdTotal).toFixed(2);
-  const totalDiff = (hotTotal + coldTotal - prevHotTotal - prevColdTotal).toFixed(2);
+  // Use integer values for diffs
+  const hotDiff = Object.keys(previousMonthReadings).length === 0
+    ? Math.round(hotTotal).toString()
+    : Math.round(hotTotal - prevHotTotal).toString();
+  const coldDiff = Object.keys(previousMonthReadings).length === 0
+    ? Math.round(coldTotal).toString()
+    : Math.round(coldTotal - prevColdTotal).toString();
+  const totalDiff = Object.keys(previousMonthReadings).length === 0
+    ? Math.round(hotTotal + coldTotal).toString()
+    : Math.round(hotTotal + coldTotal - prevHotTotal - prevColdTotal).toString();
 
   const tableRows = readings.map((meter) => {
     const prevKey = `${meter.location}-${meter.type}`;
     const previousIndication = previousMonthReadings[prevKey];
     let difference;
     if (previousIndication !== undefined) {
-      difference = (meter.indication - previousIndication).toFixed(2);
+      difference = Math.round(meter.indication - previousIndication).toString();
+    } else if (Object.keys(previousMonthReadings).length === 0) {
+      difference = Math.round(meter.indication).toString();
     } else {
       difference = meter.type === 1 ? hotDiff : coldDiff;
     }
@@ -548,8 +557,8 @@ const renderMonthlyData = () => {
       location: meter.location,
       type: meter.type,
       typeText: meter.type === 1 ? "Халуун ус" : "Хүйтэн ус",
-      prev: previousIndication !== undefined ? previousIndication : "-",
-      curr: meter.indication,
+      prev: previousIndication !== undefined ? Math.round(previousIndication).toString() : (Object.keys(previousMonthReadings).length === 0 ? "0" : "-"),
+      curr: Math.round(meter.indication).toString(),
       diff: difference,
       date: formatDate(meter.date)
     };

@@ -12,4 +12,7 @@ router.get('/:id', authMiddleware.verifiedOnly, paymentController.getPaymentById
 router.post('/process', authMiddleware.verifiedOnly, paymentController.processPayment);
 router.post('/generate', authMiddleware.verifiedOnly, paymentController.generateMonthlyPayment);
 
+router.get('/service/:serviceId', authMiddleware.verifiedOnly, paymentController.getPaymentServiceByServiceId);
+router.post('/service/process', authMiddleware.verifiedOnly, paymentController.processPaymentService);
+
 module.exports = router;

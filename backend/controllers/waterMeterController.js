@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
+const paymentController = require('./paymentController');
 
 async function getUserApartments(userId) {
   const [apartments] = await pool.execute(
@@ -121,124 +122,6 @@ async function getCurrentTariff() {
     throw new Error('No tariff information found in the system');
   }
   return tariffs[0];
-}
-
-async function generateMonthlyPaymentForApartment(apartmentId, userId, pool) {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  const [existingPayments] = await pool.execute(
-    `SELECT PaymentId
-     FROM Payment
-     WHERE ApartmentId = ?
-     AND UserAdminId = ?
-     AND MONTH(PayDate) = ?
-     AND YEAR(PayDate) = ?
-     LIMIT 1`,
-    [apartmentId, userId, currentMonth, currentYear]
-  );
-
-  if (existingPayments.length > 0) {
-    const [paymentDetails] = await pool.execute(
-      `SELECT 
-        p.PaymentId,
-        p.ApartmentId,
-        p.Amount,
-        p.PayDate,
-        p.PaidDate,
-        p.Status,
-        p.OrderOrderId
-      FROM Payment p
-      WHERE p.PaymentId = ?`,
-      [existingPayments[0].PaymentId]
-    );
-    if (paymentDetails.length > 0) {
-      const payment = paymentDetails[0];
-      const payDate = new Date(payment.PayDate);
-      const dueDate = new Date(payDate);
-      dueDate.setDate(dueDate.getDate() + 30);
-      return {
-        id: payment.PaymentId,
-        apartmentId: Number(apartmentId),
-        amount: payment.Amount,
-        status: payment.Status,
-        payDate: payment.PayDate,
-        dueDate: dueDate.toISOString(),
-        orderId: payment.OrderOrderId,
-        exists: true
-      };
-    }
-  }
-
-  let prevMonth = currentMonth - 1;
-  let prevYear = currentYear;
-  if (prevMonth === 0) {
-    prevMonth = 12;
-    prevYear = currentYear - 1;
-  }
-  const [currentReadings] = await pool.execute(
-    `SELECT 
-      Type,
-      MAX(Indication) as latest_reading
-    FROM WaterMeter
-    WHERE ApartmentId = ?
-    AND MONTH(WaterMeterDate) = ?
-    AND YEAR(WaterMeterDate) = ?
-    GROUP BY Type`,
-    [apartmentId, currentMonth, currentYear]
-  );
-  const [prevReadings] = await pool.execute(
-    `SELECT 
-      Type,
-      MAX(Indication) as latest_reading
-    FROM WaterMeter
-    WHERE ApartmentId = ?
-    AND MONTH(WaterMeterDate) = ?
-    AND YEAR(WaterMeterDate) = ?
-    GROUP BY Type`,
-    [apartmentId, prevMonth, prevYear]
-  );
-  const usage = { cold: 0, hot: 0 };
-  currentReadings.forEach(current => {
-    const prevReading = prevReadings.find(prev => prev.Type === current.Type);
-    const previousValue = prevReading ? Number(prevReading.latest_reading) : 0;
-    const currentValue = Number(current.latest_reading);
-    const usageValue = currentValue >= previousValue ? currentValue - previousValue : currentValue;
-    if (current.Type === 0) usage.cold = usageValue;
-    else if (current.Type === 1) usage.hot = usageValue;
-  });
-
-  const tariff = await getCurrentTariff();
-
-  const coldWaterCost = (usage.cold + usage.hot) * tariff.ColdWaterTariff;
-  const hotWaterCost = usage.hot * tariff.HeatWaterTariff;
-  const dirtyWaterCost = (usage.cold + usage.hot) * tariff.DirtyWaterTariff;
-  const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
-
-  const orderId = Math.floor(Math.random() * 1000000) + 1;
-
-  const [result] = await pool.execute(
-    `INSERT INTO Payment 
-      (ApartmentId, UserAdminId, Amount, PayDate, PaidDate, Status, OrderOrderId)
-     VALUES (?, ?, ?, CURRENT_TIMESTAMP, NULL, 'PENDING', ?)`,
-    [apartmentId, userId, totalAmount, orderId]
-  );
-  const paymentId = result.insertId;
-  const payDate = new Date();
-  const dueDate = new Date(payDate);
-  dueDate.setDate(dueDate.getDate() + 30);
-
-  return {
-    id: paymentId,
-    apartmentId: Number(apartmentId),
-    amount: totalAmount,
-    status: 'PENDING',
-    payDate: payDate.toISOString(),
-    dueDate: dueDate.toISOString(),
-    orderId: orderId,
-    exists: false
-  };
 }
 
 exports.getUserWaterMeters = async (req, res) => {
@@ -502,6 +385,7 @@ exports.getWaterMeterDetails = async (req, res) => {
       [validApartmentId]
     );
 
+    // Group by month
     const groupedByMonth = {};
     waterMeters.forEach(meter => {
       const date = new Date(meter.WaterMeterDate);
@@ -519,6 +403,7 @@ exports.getWaterMeterDetails = async (req, res) => {
       });
     });
 
+    // Prepare months list
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -531,7 +416,12 @@ exports.getWaterMeterDetails = async (req, res) => {
       if (m > 12) { m = 1; y++; }
     }
 
-    const monthsWithStatus = months.map(monthKey => {
+    // Calculate hotDiff and coldDiff for each month
+    function sumByType(arr, type) {
+      return arr.filter(x => x.type === type).reduce((sum, x) => sum + Number(x.indication), 0);
+    }
+
+    const monthsWithStatus = months.map((monthKey, idx) => {
       const readings = groupedByMonth[monthKey] || [];
       let status = "done";
       const [year, month] = monthKey.split('-').map(Number);
@@ -540,14 +430,41 @@ exports.getWaterMeterDetails = async (req, res) => {
         if (isCurrentMonth) status = "not_done";
         else status = "missing";
       }
+
+      // Find previous month
+      let prevMonthIdx = idx + 1;
+      let prevReadings = [];
+      while (prevMonthIdx < months.length) {
+        const prevKey = months[prevMonthIdx];
+        if (groupedByMonth[prevKey] && groupedByMonth[prevKey].length > 0) {
+          prevReadings = groupedByMonth[prevKey];
+          break;
+        }
+        prevMonthIdx++;
+      }
+
+      const hot = sumByType(readings, 1);
+      const cold = sumByType(readings, 0);
+      const prevHot = sumByType(prevReadings, 1);
+      const prevCold = sumByType(prevReadings, 0);
+
+      const hotDiff = readings.length > 0
+        ? (prevReadings.length === 0 ? Math.round(hot).toString() : Math.round(hot - prevHot).toString())
+        : "-";
+      const coldDiff = readings.length > 0
+        ? (prevReadings.length === 0 ? Math.round(cold).toString() : Math.round(cold - prevCold).toString())
+        : "-";
+
       return {
         monthKey,
         year,
         month,
         status,
-        readings
+        readings,
+        hotDiff,
+        coldDiff
       };
-    }).reverse(); 
+    }).reverse();
 
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
@@ -726,7 +643,7 @@ exports.addMeterReading = async (req, res) => {
 
     let paymentInfo = null;
     try {
-      paymentInfo = await generateMonthlyPaymentForApartment(apartmentId, userId, pool);
+      paymentInfo = await paymentController.generateMonthlyPaymentForApartment(apartmentId, userId, pool);
     } catch (err) {
       console.error('Payment generation failed:', err.message);
     }

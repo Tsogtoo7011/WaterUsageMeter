@@ -71,7 +71,7 @@ const PaymentDetail = () => {
   };
 
   const handleGoBack = () => {
-    navigate('/user/payment');
+    navigate('/user/payment-info');
   };
 
   const getStatusKey = (status) => {

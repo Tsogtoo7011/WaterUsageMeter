@@ -19,7 +19,6 @@ const getStatusBadgeColor = (status) => {
 };
 
 function mapStatus(status) {
-  // Map backend status to UI status key
   switch (status) {
     case 'Төлөгдсөн': return 'paid';
     case 'Төлөгдөөгүй': return 'pending';
@@ -28,6 +27,11 @@ function mapStatus(status) {
     default: return 'pending';
   }
 }
+
+const paymentTypeNames = {
+  water: 'Усны хэрэглээ',
+  service: 'Үйлчилгээ'
+};
 
 const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +80,12 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
     return matchesSearch && matchesStatus;
   });
 
+  const getPaymentTypeForSort = (payment) => {
+    if (payment.paymentType) return payment.paymentType;
+    if (payment.serviceId) return 'service';
+    return 'water';
+  };
+
   const sortedPayments = useMemo(() => {
     let sortable = [...filteredPayments];
     if (sortConfig.key) {
@@ -89,6 +99,10 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
         if (sortConfig.key === 'amount') {
           aValue = Number(a.amount);
           bValue = Number(b.amount);
+        }
+        if (sortConfig.key === 'paymentType') {
+          aValue = paymentTypeNames[getPaymentTypeForSort(a)] || '';
+          bValue = paymentTypeNames[getPaymentTypeForSort(b)] || '';
         }
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           aValue = aValue.toLowerCase();
@@ -157,6 +171,12 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
               </th>
               <th
                 className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
+                onClick={() => handleSort('paymentType')}
+              >
+                Төрөл{renderSortArrow('paymentType')}
+              </th>
+              <th
+                className="px-6 py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none"
                 onClick={() => handleSort('amount')}
               >
                 Дүн{renderSortArrow('amount')}
@@ -174,50 +194,62 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedPayments.length > 0 ? (
-              paginatedPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-blue-50 transition group text-center">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    {payment.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    {formatDate(payment.payDate)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2D6B9F] text-center">
-                    ₮{(payment.amount || 0).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(mapStatus(payment.status))}`}>
-                      {statusNames[mapStatus(payment.status)] || 'Тодорхойгүй'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <div className="flex items-center justify-center space-x-2">
-                      <button
-                        onClick={() => onViewPayment(payment.id)} 
-                        className="text-[#2D6B9F] hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
-                        title="Дэлгэрэнгүй"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      {(mapStatus(payment.status) === 'pending' || mapStatus(payment.status) === 'overdue') && (
-                        <button
-                          onClick={() => onPayNow(payment.id)}
-                          disabled={loading}
-                          className={`w-8 h-8 flex items-center justify-center rounded text-xs font-medium ${
-                            loading ? 'text-gray-400 cursor-not-allowed bg-gray-100' : 'text-green-600 hover:bg-green-100'
-                          }`}
-                          title="Төлөх"
-                        >
-                          <CreditCard size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+              paginatedPayments.map((payment) => {
+                const canPay = (mapStatus(payment.status) === 'pending' || mapStatus(payment.status) === 'overdue');
+                return (
+                  <tr
+                    key={payment.id}
+                    className="hover:bg-blue-50 transition group text-center cursor-pointer"
+                    onClick={() => onViewPayment(payment.id)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                      {payment.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                      {formatDate(payment.payDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                      {paymentTypeNames[
+                        payment.paymentType
+                          ? payment.paymentType
+                          : (payment.amount && payment.id && payment.status && payment.apartmentId ? 'service' : 'water')
+                      ] || payment.paymentType || 'Тодорхойгүй'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2D6B9F] text-center">
+                      ₮{(payment.amount || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(mapStatus(payment.status))}`}>
+                        {statusNames[mapStatus(payment.status)] || 'Тодорхойгүй'}
+                      </span>
+                    </td>
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium sticky right-0 bg-white z-10 border-l border-gray-100 group-hover:bg-blue-50 transition"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        {canPay ? (
+                          <button
+                            onClick={() => onPayNow(payment.id)}
+                            disabled={loading}
+                            className={`w-8 h-8 flex items-center justify-center rounded text-xs font-medium ${
+                              loading ? 'text-gray-400 cursor-not-allowed bg-gray-100' : 'text-green-600 hover:bg-green-100'
+                            }`}
+                            title="Төлөх"
+                          >
+                            <CreditCard size={16} />
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                   Төлбөр олдсонгүй
                 </td>
               </tr>
