@@ -13,21 +13,23 @@ const PaymentDetail = () => {
   const [error, setError] = useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
 
-  const [costs, setCosts] = useState(null);
-  const [waterUsage, setWaterUsage] = useState(null);
-  const [tariff, setTariff] = useState(null);
-
   useEffect(() => {
     const fetchPaymentDetail = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/payments/${id}`); 
-        
+        const response = await api.get(
+          `/payments/${id}?t=${Date.now()}`
+        ); 
+        console.log('API response:', response.data); // <-- Debug log
         if (response.data && response.data.payment) {
-          setPayment(response.data.payment);
-          if (response.data.costs) setCosts(response.data.costs);
-          if (response.data.waterUsage) setWaterUsage(response.data.waterUsage);
-          if (response.data.tariff) setTariff(response.data.tariff);
+          const mappedPayment = {
+            ...response.data.payment,
+            costs: response.data.payment.costs || response.data.costs,
+            waterUsage: response.data.payment.waterUsage || response.data.waterUsage,
+            tariff: response.data.payment.tariff || response.data.tariff
+          };
+          console.log('Mapped payment:', mappedPayment); // <-- Debug log
+          setPayment(mappedPayment);
         } else {
           setError('Payment details not found.');
         }
@@ -53,7 +55,6 @@ const PaymentDetail = () => {
       const response = await api.post('/payments/process', { paymentId: id }); // <-- use id
       
       if (response.data && response.data.success) {
-        // Update payment status locally
         setPayment(prev => ({
           ...prev,
           status: 'paid',
@@ -147,9 +148,15 @@ const PaymentDetail = () => {
           <div className="md:flex-[3_3_0%] pr-4 pb-6">
             <h1 className="text-xl font-bold text-[#2D6B9F] mb-4">Төлбөр #{payment.id}</h1>
             <div className="flex items-center text-sm text-gray-500 mb-6">
-              <span>{payment.apartmentName || 'Огноо'}</span>
+              <span>
+                {payment.apartment?.displayName || payment.apartmentName || 'Орон сууц'}
+              </span>
               <span className="mx-2">•</span>
-              <span>{new Date(payment.dueDate).toLocaleDateString()}</span>
+              <span>
+                {payment.payDate
+                  ? new Date(payment.payDate).toLocaleDateString()
+                  : ''}
+              </span>
             </div>
             <div className="mb-4 grid grid-cols-1 gap-4">
               <div>
@@ -182,7 +189,11 @@ const PaymentDetail = () => {
               </div>
               <div>
                 <h3 className="text-sm text-[#2D6B9F] font-semibold mb-1">Төлөх хугацаа</h3>
-                <p className="text-gray-700">{new Date(payment.dueDate).toLocaleDateString()}</p>
+                <p className="text-gray-700">
+                  {payment.payDate
+                    ? new Date(payment.payDate).toLocaleDateString()
+                    : ''}
+                </p>
               </div>
               {payment.status === 'paid' && payment.paidDate && (
                 <div>
@@ -211,56 +222,48 @@ const PaymentDetail = () => {
                 <p>{error}</p>
               </div>
             )}
-
-            {(costs || waterUsage) && (
-              <div className="mb-6">
-                <div className=" border border-gray-200 rounded-lg p-0 shadow-sm divide-y divide-[#2D6B9F]/50">
-                  <h3 className="text-lg font-semibold text-[#2D6B9F]  px-4 pt-4 pb-2">Төлбөрийн задаргаа</h3>
-                  <ul className="divide-y divide-gray-200 ">
-                    {waterUsage && (
-                      <>
-                        <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
-                          <span className="text-gray-600">Хүйтэн усны хэрэглээ</span>
-                          <span className="text-[#2D6B9F]">{waterUsage.cold} м³</span>
-                        </li>
-                        <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
-                          <span className="text-gray-600">Халуун усны хэрэглээ</span>
-                          <span className="text-[#2D6B9F]">{waterUsage.hot} м³</span>
-                        </li>
-                        <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
-                          <span className="text-gray-600">Нийт хэрэглээ</span>
-                          <span className="text-[#2D6B9F]">{waterUsage.total} м³</span>
-                        </li>
-                        <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
-                          <span className="text-gray-600">Хүйтэн усны төлбөр</span>
-                          <span className="text-[#2D6B9F]">₮{Number(costs.coldWater).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </li>
-                        <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
-                          <span className="text-gray-600">Халуун усны төлбөр</span>
-                          <span className="text-[#2D6B9F]">₮{Number(costs.hotWater).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </li>
-                        <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
-                          <span className="text-gray-600">Бохир усны төлбөр</span>
-                          <span className="text-[#2D6B9F]">₮{Number(costs.dirtyWater).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </li>
-                        <li className="flex justify-between px-4 py-2 bg-blue-50 font-bold text-[#2D6B9F]">
-                          <span>Нийт төлбөр</span>
-                          <span className="text-[#2D6B9F]">₮{Number(costs.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
-                  {tariff && (
-                    <div className="px-4 py-2 text-xs text-gray-500 border-t border-gray-100 bg-gray-50">
-                      Тариф: Хүйтэн ус <span className="text-[#2D6B9F]">₮{tariff.coldWater}</span>, Халуун ус <span className="text-[#2D6B9F]">₮{tariff.hotWater}</span>, Бохир ус <span className="text-[#2D6B9F]">₮{tariff.dirtyWater}</span> /м³
-                    </div>
-                  )}
-                </div>
+            <div className="mb-6">
+              <div className=" border border-gray-200 rounded-lg p-0 shadow-sm divide-y divide-[#2D6B9F]/50">
+                <h3 className="text-lg font-semibold text-[#2D6B9F]  px-4 pt-4 pb-2">Төлбөрийн задаргаа</h3>
+                <ul className="divide-y divide-gray-200 ">
+                  <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
+                    <span className="text-gray-600">Хүйтэн усны хэрэглээ</span>
+                    <span className="text-[#2D6B9F]">{payment.waterUsage?.cold ?? 0} м³</span>
+                  </li>
+                  <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
+                    <span className="text-gray-600">Халуун усны хэрэглээ</span>
+                    <span className="text-[#2D6B9F]">{payment.waterUsage?.hot ?? 0} м³</span>
+                  </li>
+                  <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
+                    <span className="text-gray-600">Нийт хэрэглээ</span>
+                    <span className="text-[#2D6B9F]">{payment.waterUsage?.total ?? 0} м³</span>
+                  </li>
+                  <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
+                    <span className="text-gray-600">Хүйтэн усны төлбөр</span>
+                    <span className="text-[#2D6B9F]">₮{Number(payment.costs?.coldWater ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </li>
+                  <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
+                    <span className="text-gray-600">Халуун усны төлбөр</span>
+                    <span className="text-[#2D6B9F]">₮{Number(payment.costs?.hotWater ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </li>
+                  <li className="flex justify-between px-4 py-2 hover:bg-blue-50/50 transition">
+                    <span className="text-gray-600">Бохир усны төлбөр</span>
+                    <span className="text-[#2D6B9F]">₮{Number(payment.costs?.dirtyWater ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </li>
+                  <li className="flex justify-between px-4 py-2 bg-blue-50 font-bold text-[#2D6B9F]">
+                    <span>Нийт төлбөр</span>
+                    <span className="text-[#2D6B9F]">₮{Number(payment.costs?.total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </li>
+                </ul>
+                {payment.tariff && (
+                  <div className="px-4 py-2 text-xs text-gray-500 border-t border-gray-100 bg-gray-50">
+                    Тариф: Хүйтэн ус <span className="text-[#2D6B9F]">₮{payment.tariff.coldWater}</span>, Халуун ус <span className="text-[#2D6B9F]">₮{payment.tariff.hotWater}</span>, Бохир ус <span className="text-[#2D6B9F]">₮{payment.tariff.dirtyWater}</span> /м³
+                  </div>
+                )}
               </div>
-            )}
+            </div>
             <div className="flex flex-col justify-between h-full">
               <div className="flex-1">
-                {/* Additional details or payment info can go here */}
               </div>
               {payment.status !== 'paid' && (
                 <div className="flex justify-end mt-6">

@@ -28,10 +28,20 @@ const SidebarLayout = ({ children }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [scrollOpacity, setScrollOpacity] = useState(1);
   const [headerHeight, setHeaderHeight] = useState(64); 
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef(null);
   const mainContentRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Load sidebar state from localStorage on component mount
+  useEffect(() => {
+    const savedSidebarState = localStorage.getItem('sidebarState');
+    if (savedSidebarState !== null) {
+      setIsSidebarOpen(savedSidebarState === 'true');
+    }
+  }, []);
 
   useEffect(() => {
     const checkAdminStatus = () => {
@@ -60,13 +70,6 @@ const SidebarLayout = ({ children }) => {
     
     return () => clearInterval(intervalId);
   }, [navigate, location.pathname]);
-
-  useEffect(() => {
-    const savedSidebarState = localStorage.getItem('sidebarState');
-    if (savedSidebarState !== null) {
-      setIsSidebarOpen(savedSidebarState === 'true');
-    }
-  }, []);
   
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -190,21 +193,38 @@ const SidebarLayout = ({ children }) => {
     return 'Ц';
   };
 
+  const handleNotificationClick = () => {
+    setShowNotifications(!showNotifications);
+    setHasUnreadNotifications(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div 
-        className={`hidden md:flex flex-col ${isSidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full transition-all duration-300 ease-in-out z-10`}
+        className={`hidden md:flex flex-col bg-white border-r border-[#2D6B9F] shadow-sm fixed h-full z-10 ${
+          isSidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'
+        }`}
+        style={{
+          width: isSidebarOpen ? '16rem' : '5rem',
+          transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)'
+        }}
       >
         <div className="flex flex-col h-full p-4">  
           {/* Logo */}
-          <div className="p-4 mb-6 flex items-center justify-center cursor-pointer" onClick={toggleSidebar}>
+          <div className="p-4 mb-6 flex items-center justify-center">
             {isSidebarOpen ? (
-              <h2 className="text-xl font-bold text-[#2D6B9F] whitespace-nowrap">
+              <h2
+                className="text-xl font-bold text-[#2D6B9F] whitespace-nowrap cursor-pointer"
+                onClick={toggleSidebar}
+              >
                 {isAdmin ? 'Админ' : 'Диплом'}
               </h2>
             ) : (
-              <div className="flex items-center justify-center">
+              <div
+                className="flex items-center justify-center cursor-pointer"
+                onClick={toggleSidebar}
+              >
                 <Droplet className="w-8 h-8 text-[#2D6B9F]" />
               </div>
             )}
@@ -321,7 +341,16 @@ const SidebarLayout = ({ children }) => {
             <div className="flex items-center space-x-4">
 
               {/* Notification Button */}
-              <Notification />
+              <Notification onClick={handleNotificationClick} hasUnread={hasUnreadNotifications} />
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-20 mt-2 w-80 bg-white rounded-md shadow-lg py-2 z-50 border border-gray-200">
+                  <div className="px-4 py-2 text-gray-700 text-sm">
+                    Мэдэгдэл байхгүй байна.
+                  </div>
+                </div>
+              )}
 
               {/* Profile Dropdown */}
               <div className="relative" ref={dropdownRef}>
@@ -383,9 +412,16 @@ const SidebarLayout = ({ children }) => {
           style={{ 
             marginTop: "-4rem",
             paddingTop: "4rem", 
-            position: "relative"
-          }}
-        >
+            position: "relative",
+            scrollbarWidth: "none", 
+            msOverflowStyle: "none", 
+          }}><style>
+            {`
+              main::-webkit-scrollbar {
+                display: none;
+              }
+            `}
+          </style>
           {children}
         </main>
       </div>

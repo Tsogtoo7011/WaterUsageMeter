@@ -243,7 +243,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
           <div className="hidden md:block w-px bg-gray-200"></div>
           <div className="md:flex-[3_3_0%] bg-white p-4 rounded-lg shadow-sm">
             <h3 className="text-lg text-[#2D6B9F] font-medium mb-4">Төлбөрийн төлөвийн харьцаа</h3>
-            <div className="h-64 flex justify-center">
+            <div className="h-64 flex justify-center" style={{ pointerEvents: 'none' }}>
               {statistics.yearlyStatusData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart
@@ -254,7 +254,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      outerRadius={80}
+                      outerRadius={70}
                       fill="#8884d8"
                       dataKey="value"
                       nameKey="name"

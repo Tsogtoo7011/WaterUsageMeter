@@ -18,6 +18,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const AdminUserRoutes = require('./routes/AdminUserRoutes');
 const AdminReportRoutes = require('./routes/AdminReportRoutes');
+const notificationRoutes = require('./routes/NotificationRoutes');
 
 require('dotenv').config();
 
@@ -91,6 +92,7 @@ const createWaterUsageDB = require('./utils/EmergencyDB');
   app.use('/api/services', serviceRoutes);
   app.use('/api/AdminUser', AdminUserRoutes);
   app.use('/api/AdminReport', AdminReportRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   // CSRF token endpoint
   app.get('/api/csrf-token', csrfProtection, (req, res) => {

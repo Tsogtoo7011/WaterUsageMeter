@@ -127,7 +127,7 @@ const SignIn = () => {
           style={{
             left: '62%',
             width: '1px',
-            backgroundColor: 'rgba(45, 107, 159, 0.5)', // #2D6B9F/50
+            backgroundColor: 'rgba(45, 107, 159, 0.5)', 
             top: '40px',
             bottom: '40px',
             borderRadius: '1px',
@@ -136,79 +136,81 @@ const SignIn = () => {
         ></div>
         {/* Left Side */}
         <div className="w-full md:w-3/5 p-10 border-b md:border-b-0 flex flex-col justify-between" style={{ paddingTop: '40px' }}>
-          <div>
-            <h2 className="text-lg font-medium mb-4" style={{ color: '#2D6B9F' }}>
-              Орон сууцан дахь айл өрхийн усны хэрэглээ бүртгэх вэбсайт
-            </h2>
+          {isSubmitting ? (
+            <div className="flex flex-1 items-center justify-center h-full min-h-[400px]">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <>
+              <div>
+                <h2 className="text-lg font-medium mb-4" style={{ color: '#2D6B9F' }}>
+                  Орон сууцан дахь айл өрхийн усны хэрэглээ бүртгэх вэбсайт
+                </h2>
 
-            <ul className="space-y-3 mb-8 pl-6">
-              <li className="flex items-center">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
-                <span className="text-base" style={{ color: '#2D6B9F' }}>Усны хэрэглээгээ хянах</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
-                <span className="text-base" style={{ color: '#2D6B9F' }}>Төлбөрийн дэлгэрэнгүйтэй танилцах</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
-                <span className="text-base" style={{ color: '#2D6B9F' }}>Онлайнаар төлбөрөө төлөх</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
-                <span className="text-base" style={{ color: '#2D6B9F' }}>Өргөдөл гомдол, санал хүсэлт өгөх</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
-                <span className="text-base" style={{ color: '#2D6B9F' }}>Ажлын захиалга болон дуудлага өгөх</span>
-              </li>
-              <li className="flex items-center">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
-                <span className="text-base" style={{ color: '#2D6B9F' }}>Тоолуурын мэдээлэл, бичилт харах, заалт илгээх</span>
-              </li>
-            </ul>
-          </div>
+                <ul className="space-y-3 mb-8 pl-6">
+                  <li className="flex items-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                    <span className="text-base" style={{ color: '#2D6B9F' }}>Усны хэрэглээгээ хянах</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                    <span className="text-base" style={{ color: '#2D6B9F' }}>Төлбөрийн дэлгэрэнгүйтэй танилцах</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                    <span className="text-base" style={{ color: '#2D6B9F' }}>Онлайнаар төлбөрөө төлөх</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                    <span className="text-base" style={{ color: '#2D6B9F' }}>Өргөдөл гомдол, санал хүсэлт өгөх</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                    <span className="text-base" style={{ color: '#2D6B9F' }}>Ажлын захиалга болон дуудлага өгөх</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#2D6B9F', marginRight: '8px' }}></div>
+                    <span className="text-base" style={{ color: '#2D6B9F' }}>Тоолуурын мэдээлэл, бичилт харах, заалт илгээх</span>
+                  </li>
+                </ul>
+              </div>
 
-          {/* Bottom Cards */}
-          <div className="flex flex-row justify-between gap-3 mt-auto">
-            <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
-              <div className="mb-2 flex items-center justify-center">
-                <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
+              {/* Bottom Cards */}
+              <div className="flex flex-row justify-between gap-3 mt-auto">
+                <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
+                  <div className="mb-2 flex items-center justify-center">
+                    <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Хэрэгцээт мэдээллийг өдөр тутамд хүргэнэ</span>
+                </div>
+                <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
+                  <div className="mb-2 flex items-center justify-center">
+                    <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Усны төлбөрийн задаргааг харуулна</span>
+                </div>
+                <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
+                  <div className="mb-2 flex items-center justify-center">
+                    <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M12 8V16M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Хэрэглэгчийн санал хүсэлтэд хариулна </span>
+                </div>
               </div>
-              <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Хэрэгцээт мэдээллийг өдөр тутамд хүргэнэ</span>
-            </div>
-            <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
-              <div className="mb-2 flex items-center justify-center">
-                <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Усны төлбөрийн задаргааг харуулна</span>
-            </div>
-            <div className="bg-white rounded-lg shadow p-3 w-1/3 flex flex-col items-center" style={{ borderColor: '#2D6B9F', borderWidth: '1.5px' }}>
-              <div className="mb-2 flex items-center justify-center">
-                <svg className="w-8 h-8" style={{ color: '#2D6B9F' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 8V16M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <span className="text-base text-center" style={{ color: '#2D6B9F' }}>Хэрэглэгчийн санал хүсэлтэд хариулна </span>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* Right Side - Login Form */}
         <div className="w-full md:w-2/5 p-6 flex items-center justify-center">
           <div className="w-full max-w-sm">
-            {/* Show spinner above form if submitting */}
-            {isSubmitting && (
-              <div className="mb-4">
-                <LoadingSpinner />
-              </div>
-            )}
             <h2 className="text-xl font-medium mb-4" style={{ color: '#2D6B9F' }}>Нэвтрэх</h2>
             
             {error && (

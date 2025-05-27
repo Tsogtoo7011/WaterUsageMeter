@@ -74,7 +74,20 @@ async function calculateWaterUsage(apartmentId, month, year) {
     [apartmentId, month, year]
   );
 
-  const prevReadings = await getPreviousReadingsForMonth(apartmentId, month, year);
+  const [prevReadings] = await pool.execute(
+    `SELECT 
+      Location,
+      Type,
+      MAX(Indication) as latest_reading
+    FROM WaterMeter
+    WHERE ApartmentId = ?
+      AND (
+        (YEAR(WaterMeterDate) < ?)
+        OR (YEAR(WaterMeterDate) = ? AND MONTH(WaterMeterDate) < ?)
+      )
+    GROUP BY Location, Type`,
+    [apartmentId, year, year, month]
+  );
 
   let usage = { cold: 0, hot: 0 };
   currentReadings.forEach(current => {
@@ -143,12 +156,24 @@ exports.getUserPayments = async (req, res) => {
       queryParams
     );
 
-    const formattedPayments = payments.map(payment => {
+    // Calculate details for each payment
+    const tariff = await exports.getCurrentTariff();
+    const formattedPayments = await Promise.all(payments.map(async payment => {
       const calculatedStatus = determinePaymentStatus(payment);
       let dueDate = payment.PayDate;
       if (dueDate instanceof Date) {
         dueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
       }
+      const paymentDate = new Date(payment.PayDate);
+      const month = paymentDate.getMonth() + 1;
+      const year = paymentDate.getFullYear();
+      const waterUsage = await calculateWaterUsage(payment.ApartmentId, month, year);
+
+      const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
+      const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
+      const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
+      const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
+
       return {
         id: payment.PaymentId,
         apartmentId: payment.ApartmentId,
@@ -164,9 +189,25 @@ exports.getUserPayments = async (req, res) => {
           block: payment.BlockNumber,
           unit: payment.UnitNumber,
           displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
+        },
+        waterUsage: {
+          cold: waterUsage.cold,
+          hot: waterUsage.hot,
+          total: waterUsage.cold + waterUsage.hot
+        },
+        costs: {
+          coldWater: coldWaterCost,
+          hotWater: hotWaterCost,
+          dirtyWater: dirtyWaterCost,
+          total: totalAmount
+        },
+        tariff: {
+          coldWater: tariff.ColdWaterTariff,
+          hotWater: tariff.HeatWaterTariff,
+          dirtyWater: tariff.DirtyWaterTariff
         }
       };
-    });
+    }));
 
     let totalAmount = 0;
     let paidAmount = 0;
@@ -223,6 +264,8 @@ exports.getPaymentById = async (req, res) => {
     const userId = req.userData.userId;
     const paymentId = req.params.id;
 
+    console.log('getPaymentById called:', { userId, paymentId }); // Debug log
+
     if (!paymentId || isNaN(Number(paymentId))) {
       return res.status(400).json({
         success: false,
@@ -250,6 +293,7 @@ exports.getPaymentById = async (req, res) => {
       [paymentId, userId]
     );
 
+    console.log('Payment query result:', payments); 
     if (payments.length === 0) {
       return res.status(404).json({
         success: false,
@@ -277,9 +321,13 @@ exports.getPaymentById = async (req, res) => {
 
     const tariff = await exports.getCurrentTariff();
 
-    const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
-    const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
-    const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
+    const coldTariff = Number(tariff.ColdWaterTariff || tariff.coldWater || 0);
+    const hotTariff = Number(tariff.HeatWaterTariff || tariff.hotWater || 0);
+    const dirtyTariff = Number(tariff.DirtyWaterTariff || tariff.dirtyWater || 0);
+
+    const coldWaterCost = waterUsage.cold * coldTariff;
+    const hotWaterCost = waterUsage.hot * hotTariff;
+    const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * dirtyTariff;
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
     return res.status(200).json({
@@ -288,7 +336,7 @@ exports.getPaymentById = async (req, res) => {
         id: payment.PaymentId,
         apartmentId: payment.ApartmentId,
         amount: payment.Amount,
-        payDate: payment.PayDate,
+        payDate: payment.PayDate, 
         paidDate: payment.PaidDate,
         dueDate: `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`,
         status: calculatedStatus,
@@ -299,23 +347,23 @@ exports.getPaymentById = async (req, res) => {
           block: payment.BlockNumber,
           unit: payment.UnitNumber,
           displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
+        },
+        waterUsage: {
+          cold: waterUsage.cold,
+          hot: waterUsage.hot,
+          total: waterUsage.cold + waterUsage.hot
+        },
+        costs: {
+          coldWater: coldWaterCost,
+          hotWater: hotWaterCost,
+          dirtyWater: dirtyWaterCost,
+          total: totalAmount
+        },
+        tariff: {
+          coldWater: coldTariff,
+          hotWater: hotTariff,
+          dirtyWater: dirtyTariff
         }
-      },
-      waterUsage: {
-        cold: waterUsage.cold,
-        hot: waterUsage.hot,
-        total: waterUsage.cold + waterUsage.hot
-      },
-      costs: {
-        coldWater: coldWaterCost,
-        hotWater: hotWaterCost,
-        dirtyWater: dirtyWaterCost,
-        total: coldWaterCost + hotWaterCost + dirtyWaterCost
-      },
-      tariff: {
-        coldWater: tariff.ColdWaterTariff,
-        hotWater: tariff.HeatWaterTariff,
-        dirtyWater: tariff.DirtyWaterTariff
       }
     });
 
@@ -342,7 +390,6 @@ exports.generateMonthlyPayment = async (req, res) => {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    // Always use last day of next month for PayDate
     const payDate = getLastDayOfNextMonth(now);
 
     const [existingPayments] = await pool.execute(
@@ -411,7 +458,6 @@ exports.generateMonthlyPayment = async (req, res) => {
       [apartmentId, userId, 'water', totalAmount, payDate, tariff.TariffId]
     );
 
-    // Always use last day of next month for dueDate
     const dueDate = getLastDayOfNextMonth(new Date(payDate));
 
     return res.status(201).json({
@@ -728,7 +774,7 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   const [result] = await pool.execute(
     `INSERT INTO Payment 
       (ApartmentId, UserAdminId, PaymentType, Amount, PayDate, PaidDate, Status, TariffId)
-     VALUES (?, ?, 'water', ?, ?, NULL, 'Төлөгдөөгүй', ?)`,
+     VALUES (?, ?, 'water', ?, ?, NULL, 'Төлөгдөлгүй', ?)`,
     [apartmentId, userId, totalAmount, payDate, tariff.TariffId]
   );
 
@@ -746,11 +792,9 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
     exists: false
   };
 };
-
-// Helper to get last day of next month as yyyy-mm-dd (local time, not UTC)
 function getLastDayOfNextMonth(date = new Date()) {
   let year = date.getFullYear();
-  let month = date.getMonth() + 1; // JS: 0=Jan, 11=Dec; +1 to get 1-based
+  let month = date.getMonth() + 1; 
   if (month === 12) {
     year += 1;
     month = 1;

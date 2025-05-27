@@ -53,7 +53,7 @@ const WaterMeterCard = ({ year, month, hot, cold, meters, apartmentId, status, p
           </div>
           <a 
             href={`/user/metercounter/details?apartmentId=${apartmentId}&month=${monthKey}`}
-            className="block w-full bg-[#2D6B9F]/90 hover:bg-[#2D6B9F] font-medium text-white py-2 rounded text-sm text-center"
+            className="block w-full bg-[#2D6B9F] font-medium text-white py-2 rounded text-sm text-center"
           >
             Заалт өгөх
           </a>
