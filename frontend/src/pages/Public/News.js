@@ -3,6 +3,7 @@ import api from "../../utils/api";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const News = () => {
   const [news, setNews] = useState([]);
@@ -245,9 +246,7 @@ const News = () => {
         <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
           <Breadcrumb />
         </div>
-        <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }

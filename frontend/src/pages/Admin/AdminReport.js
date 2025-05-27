@@ -20,6 +20,7 @@ import api from "../../utils/api";
 import Breadcrumb from '../../components/common/Breadcrumb'; 
 import AdminReportStatistics from '../../components/AdminReports/AdminReportStatistics';
 import AdminReportTable from '../../components/AdminReports/AdminReportTable';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function AdminReport() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -285,9 +286,7 @@ export default function AdminReport() {
   const renderReport = () => {
     if (loading) {
       return (
-        <div className="bg-white rounded-lg p-6 text-center">
-          <p className="text-gray-500">Тайлан ачааллаж байна...</p>
-        </div>
+        <LoadingSpinner />
       );
     }
 

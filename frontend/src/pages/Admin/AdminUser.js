@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, User, Users, Shield, Edit, Trash2, Eye, ChevronLeft, ChevronRight, PlusCircle, X, Check } from 'lucide-react';
 import api from "../../utils/api";
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function AdminUser() {
   const [users, setUsers] = useState([]);
@@ -231,9 +232,7 @@ export default function AdminUser() {
         <div className="max-w-7xl mx-auto px-4 pt-2 sm:px-0">
           <Breadcrumb />
         </div>
-        <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }

@@ -3,6 +3,7 @@ import api from "../../utils/api";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Pencil, Edit, MessageSquare, X } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const feedbackTypeNames = {
   '1': 'Санал',
@@ -190,9 +191,7 @@ const FeedbackDetails = () => {
         <div className="px-4 sm:px-8 pt-4">
           <Breadcrumb />
         </div>
-        <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }

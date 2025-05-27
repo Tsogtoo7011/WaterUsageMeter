@@ -166,7 +166,7 @@ const Payment = () => {
           overdue: wasOverdue ? prevSummary.overdue - Number(paymentAmount) : prevSummary.overdue
         };
       });
-      handleRefresh();
+      setRefreshKey(prev => prev + 1); 
     } catch (err) {
       setError('Төлбөрийн процессын үед алдаа гарлаа. Дахин оролдоно уу.');
       console.error('Error processing payment:', err);

@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import watermeterImage from '../../figures/images/watermeter.png';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export function About() {
+  const [imgLoading, setImgLoading] = useState(true);
+
   return (
     <div className="bg-white min-h-screen mt-2">
       <div className="max-w-6xl mx-auto p-6 mt-2">
@@ -20,12 +23,18 @@ export function About() {
             </p>
           </div>
           
-          <div className="flex justify-center mt-2">
+          <div className="flex justify-center mt-2 min-h-[180px]">
+            {imgLoading && (
+              <div className="flex items-center justify-center w-full h-full">
+                <LoadingSpinner />
+              </div>
+            )}
             <img
               src={watermeterImage}
               alt="Усны тоолуур"
               className="rounded-lg shadow-md max-w-md h-auto border"
-              style={{ borderColor: '#2D6B9F' }}
+              style={{ borderColor: '#2D6B9F', display: imgLoading ? 'none' : 'block' }}
+              onLoad={() => setImgLoading(false)}
             />
           </div>
         </div>

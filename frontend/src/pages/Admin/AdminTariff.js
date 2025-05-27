@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import api from "../../utils/api";
 import Breadcrumb from '../../components/common/Breadcrumb';
 import { ChevronLeft, ChevronRight, Search, FileText, History as HistoryIcon } from 'lucide-react';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function AdminTariff() {
   const [tariff, setTariff] = useState({
@@ -238,9 +239,7 @@ export default function AdminTariff() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
+      <LoadingSpinner />
     );
   }
 

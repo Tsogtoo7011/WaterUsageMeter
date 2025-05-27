@@ -4,6 +4,7 @@ import api from "../../utils/api";
 import Breadcrumb from '../../components/common/Breadcrumb';
 import { Camera, ChevronLeft } from 'lucide-react';
 import * as Tesseract from 'tesseract.js';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function MeterCounterDetails() {
   const [searchParams] = useSearchParams();
@@ -901,8 +902,8 @@ const renderMonthlyData = () => {
         <div className="px-4 sm:px-8 pt-4">
           <Breadcrumb />
         </div>
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
+        <div className="w-full max-w-4xl mx-auto mt-10 p-6 text-center">
+          <LoadingSpinner />
         </div>
       </div>
     );

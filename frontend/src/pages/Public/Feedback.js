@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from "../../utils/api";
 import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Search, Edit, Trash2, PlusCircle, ChevronLeft, ChevronRight, Check, X, MessageSquare, RotateCcw, Ban } from 'lucide-react';
 
 export function Feedback() {
@@ -425,9 +426,7 @@ export function Feedback() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center items-center py-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
+            <LoadingSpinner />
           ) : (
             <div className="overflow-x-auto">
               <div className="align-middle inline-block min-w-full shadow overflow-hidden rounded-lg">

@@ -4,6 +4,7 @@ import VerificationReminder from '../../components/common/verificationReminder';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import api from "../../utils/api";
 import { PlusCircle, Home as HomeIcon, BarChart2, Newspaper, CreditCard, MessageCircle, HelpCircle, Building2, Users, Settings, User } from 'lucide-react';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 function Home() {
   const [user, setUser] = useState(null);
@@ -57,7 +58,7 @@ function Home() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <LoadingSpinner />
       </div>
     );
   }

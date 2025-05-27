@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../utils/api"; 
 import VerificationReminder from "../../components/common/verificationReminder";
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 export function Profile() {
   const navigate = useNavigate();
@@ -80,7 +81,6 @@ export function Profile() {
       ...prev,
       [name]: value
     }));
-    // Clear previous messages when typing
     setPasswordError("");
     setPasswordSuccess("");
   };
@@ -176,11 +176,13 @@ export function Profile() {
     return (
       <div className="min-h-screen bg-white">
         <div className="px-4 sm:px-8 pt-4"> 
-          <div className="max-w-7xl mx-auto pt-4"> {/* Increased top padding */}
+          <div className="max-w-7xl mx-auto pt-4">
             <h1 className="text-2xl font-bold mb-4 text-gray-600">Хэрэглэгчийн булан</h1>
             <Breadcrumb />
           </div>
-          <div className="w-full max-w-4xl mx-auto mt-10 p-6 text-center">Ачааллаж байна...</div>
+          <div className="w-full max-w-4xl mx-auto mt-10 p-6 text-center">
+            <LoadingSpinner />
+          </div>
         </div>
       </div>
     );

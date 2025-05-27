@@ -145,17 +145,17 @@ exports.getUserPayments = async (req, res) => {
 
     const formattedPayments = payments.map(payment => {
       const calculatedStatus = determinePaymentStatus(payment);
-      const payDate = new Date(payment.PayDate);
-      const dueDate = new Date(payDate);
-      dueDate.setDate(dueDate.getDate() + 30);
-
+      let dueDate = payment.PayDate;
+      if (dueDate instanceof Date) {
+        dueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+      }
       return {
         id: payment.PaymentId,
         apartmentId: payment.ApartmentId,
         amount: payment.Amount,
         payDate: payment.PayDate,
         paidDate: payment.PaidDate,
-        dueDate: dueDate.toISOString(),
+        dueDate: dueDate,
         status: calculatedStatus,
         paymentType: payment.PaymentType,
         tariffId: payment.TariffId,
@@ -290,7 +290,7 @@ exports.getPaymentById = async (req, res) => {
         amount: payment.Amount,
         payDate: payment.PayDate,
         paidDate: payment.PaidDate,
-        dueDate: dueDate.toISOString(),
+        dueDate: `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`,
         status: calculatedStatus,
         paymentType: payment.PaymentType,
         tariffId: payment.TariffId,
@@ -342,6 +342,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
+    // Always use last day of next month for PayDate
     const payDate = getLastDayOfNextMonth(now);
 
     const [existingPayments] = await pool.execute(
@@ -372,14 +373,8 @@ exports.generateMonthlyPayment = async (req, res) => {
 
       if (paymentDetails.length > 0) {
         const payment = paymentDetails[0];
-        const payDateObj = new Date(payment.PayDate);
-        let year = payDateObj.getFullYear();
-        let month = payDateObj.getMonth() + 1;
-        if (month > 11) {
-          month = 0;
-          year += 1;
-        }
-        const dueDate = new Date(year, month + 1, 0, 0, 0, 0, 0);
+        // Always calculate dueDate as last day of next month from PayDate
+        const dueDate = getLastDayOfNextMonth(new Date(payment.PayDate));
         return res.status(200).json({
           success: true,
           message: 'Payment for current month already exists',
@@ -389,7 +384,7 @@ exports.generateMonthlyPayment = async (req, res) => {
             amount: payment.Amount,
             status: payment.Status,
             payDate: payment.PayDate,
-            dueDate: dueDate.toISOString()
+            dueDate: dueDate
           },
           exists: true
         });
@@ -416,19 +411,18 @@ exports.generateMonthlyPayment = async (req, res) => {
       [apartmentId, userId, 'water', totalAmount, payDate, tariff.TariffId]
     );
 
-    const paymentId = result.insertId;
-
-    const dueDate = new Date(payDate);
+    // Always use last day of next month for dueDate
+    const dueDate = getLastDayOfNextMonth(new Date(payDate));
 
     return res.status(201).json({
       success: true,
       message: 'Monthly payment generated successfully',
       payment: {
-        id: paymentId,
+        id: result.insertId,
         apartmentId: Number(apartmentId),
         amount: totalAmount,
         status: 'Төлөгдөлгүй',
-        dueDate: dueDate.toISOString(),
+        dueDate: dueDate,
         tariffId: tariff.TariffId
       },
       waterUsage: {
@@ -677,7 +671,6 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   const now = new Date();
   const currentMonth = monthArg || (now.getMonth() + 1);
   const currentYear = yearArg || now.getFullYear();
-  // Use helper to get last day of next month
   const payDate = getLastDayOfNextMonth(new Date(currentYear, currentMonth - 1, 1));
 
   const [existingPayments] = await pool.execute(
@@ -708,16 +701,14 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
     );
     if (paymentDetails.length > 0) {
       const payment = paymentDetails[0];
-      const payDate = new Date(payment.PayDate);
-      const dueDate = new Date(payDate);
-      dueDate.setDate(dueDate.getDate() + 30);
+      const dueDate = getLastDayOfNextMonth(new Date(payment.PayDate));
       return {
         id: payment.PaymentId,
         apartmentId: Number(apartmentId),
         amount: payment.Amount,
         status: payment.Status,
         payDate: payment.PayDate,
-        dueDate: dueDate.toISOString(),
+        dueDate: dueDate,
         paymentType: payment.PaymentType,
         tariffId: payment.TariffId,
         exists: true
@@ -734,29 +725,29 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   const dirtyWaterCost = (usage.cold + usage.hot) * tariff.DirtyWaterTariff;
   const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
-  // Insert payment with TariffId, no OrderOrderId
   const [result] = await pool.execute(
     `INSERT INTO Payment 
       (ApartmentId, UserAdminId, PaymentType, Amount, PayDate, PaidDate, Status, TariffId)
      VALUES (?, ?, 'water', ?, ?, NULL, 'Төлөгдөөгүй', ?)`,
     [apartmentId, userId, totalAmount, payDate, tariff.TariffId]
   );
-  const dueDate = new Date(payDate);
+
+  const dueDate = getLastDayOfNextMonth(new Date(payDate));
 
   return {
     id: result.insertId,
     apartmentId: Number(apartmentId),
     amount: totalAmount,
     status: 'Төлөгдөлгүй',
-    payDate: dueDate.toISOString(),
-    dueDate: dueDate.toISOString(),
+    payDate: dueDate,
+    dueDate: dueDate,
     paymentType: 'water',
     tariffId: tariff.TariffId,
     exists: false
   };
 };
 
-// Helper to get last day of next month as yyyy-mm-dd
+// Helper to get last day of next month as yyyy-mm-dd (local time, not UTC)
 function getLastDayOfNextMonth(date = new Date()) {
   let year = date.getFullYear();
   let month = date.getMonth() + 1; // JS: 0=Jan, 11=Dec; +1 to get 1-based
@@ -766,7 +757,6 @@ function getLastDayOfNextMonth(date = new Date()) {
   } else {
     month += 1;
   }
-  // new Date(year, month, 0) gives last day of previous month, so pass next month
   const lastDay = new Date(year, month, 0);
-  return lastDay.toISOString().slice(0, 10);
+  return `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
 }

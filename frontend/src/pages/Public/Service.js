@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { PlusCircle, Edit, Trash2, ChevronLeft, ChevronRight, Ban, Home, MessageSquare, Search, Check, X, Pencil, RotateCcw, AlertTriangle } from 'lucide-react';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 const Service = () => {
   const [services, setServices] = useState([]);
@@ -519,7 +520,7 @@ const Service = () => {
           <Breadcrumb />
         </div>
         <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <LoadingSpinner />
         </div>
       </div>
     );

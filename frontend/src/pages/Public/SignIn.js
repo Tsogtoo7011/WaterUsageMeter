@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from "../../utils/api";
+import LoadingSpinner from '../../components/common/LoadingSpinner'; // Add import
 
 const SignIn = () => {
   const [formData, setFormData] = useState({
@@ -202,6 +203,12 @@ const SignIn = () => {
         {/* Right Side - Login Form */}
         <div className="w-full md:w-2/5 p-6 flex items-center justify-center">
           <div className="w-full max-w-sm">
+            {/* Show spinner above form if submitting */}
+            {isSubmitting && (
+              <div className="mb-4">
+                <LoadingSpinner />
+              </div>
+            )}
             <h2 className="text-xl font-medium mb-4" style={{ color: '#2D6B9F' }}>Нэвтрэх</h2>
             
             {error && (

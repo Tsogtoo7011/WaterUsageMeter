@@ -90,8 +90,8 @@ const PaymentDetail = () => {
         <div className="px-4 sm:px-8 pt-4">
           <Breadcrumb />
         </div>
-        <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
+        <div className="w-full max-w-4xl mx-auto mt-10 p-6 text-center">
+          <LoadingSpinner />
         </div>
       </div>
     );

@@ -115,25 +115,24 @@ async function createWaterUsageDB() {
 
     // Payment
     const [paymentResult] = await connection.query(`
-      CREATE TABLE Payment (
-    PaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    ApartmentId INT UNSIGNED NOT NULL,
-    UserAdminId INT UNSIGNED NOT NULL,
-    ServiceId INT UNSIGNED NULL,
-    TariffId INT UNSIGNED NULL,
-    PaymentType ENUM('water', 'service') NOT NULL,
-    Amount DECIMAL(10,2) NOT NULL,
-    PayDate DATE NOT NULL,  
-    PaidDate TIMESTAMP NULL,
-    Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
-    FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
-    FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE SET NULL,
-    FOREIGN KEY (TariffId) REFERENCES Tarif(TariffId) ON DELETE SET NULL
-    );
+      CREATE TABLE IF NOT EXISTS Payment (
+        PaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        ApartmentId INT UNSIGNED NOT NULL,
+        UserAdminId INT UNSIGNED NOT NULL,
+        ServiceId INT UNSIGNED NULL,
+        TariffId INT UNSIGNED NULL,
+        PaymentType ENUM('water', 'service') NOT NULL,
+        Amount DECIMAL(10,2) NOT NULL,
+        PayDate DATE NOT NULL,  
+        PaidDate TIMESTAMP NULL,
+        Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
+        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
+        FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
+        FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE SET NULL,
+        FOREIGN KEY (TariffId) REFERENCES Tarif(TariffId) ON DELETE SET NULL
+      );
     `);
     if (paymentResult.warningStatus === 0) console.log('Payment table created.');
 

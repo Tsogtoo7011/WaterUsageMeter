@@ -3,6 +3,7 @@ import api from "../../utils/api";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, PlusCircle, Edit, MessageSquare, X, Pencil } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 const ServiceDetails = () => {
   const { id } = useParams();
@@ -200,7 +201,7 @@ const ServiceDetails = () => {
           <Breadcrumb />
         </div>
         <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
+          <LoadingSpinner />
         </div>
       </div>
     );

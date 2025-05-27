@@ -5,6 +5,7 @@ import NoApartments from '../../components/common/NoApartment';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import ApartmentSelector from '../../components/common/ApartmentSelector';
 import WaterMeterCard from '../../components/MeterCounters/WaterMeterCard';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const MeterCounter = () => {
   const [user, setUser] = useState(null);
@@ -191,9 +192,7 @@ const MeterCounter = () => {
           )}
 
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6B9F]"></div>
-            </div>
+            <LoadingSpinner />
           ) : error ? (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mt-6 max-w-md mx-auto">
               <strong className="font-bold">Алдаа!</strong>
