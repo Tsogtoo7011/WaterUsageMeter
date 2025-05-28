@@ -58,46 +58,31 @@ const Payment = () => {
         const response = await api.get(`/payments?apartmentId=${selectedApartment}`);
         
         if (response.data) {
-          const filteredPayments = response.data.payments ? 
-            response.data.payments.filter(payment => payment.apartmentId === selectedApartment) : 
-            [];
+          const filteredPayments = response.data.payments
+            ? response.data.payments.filter(payment => payment.ApartmentId === selectedApartment)
+            : [];
           
           setPayments(filteredPayments);
-
-          let totalAmount = 0;
-          let paidAmount = 0;
-          let pendingAmount = 0;
-          let overdueAmount = 0;
-          
-          const today = new Date();
-          
-          filteredPayments.forEach(payment => {
-            totalAmount += Number(payment.amount);
-
-            let status = payment.status;
-            let statusKey;
-            switch (status) {
-              case 'Төлөгдсөн': statusKey = 'paid'; break;
-              case 'Төлөгдөөгүй': statusKey = 'pending'; break;
-              case 'Хоцорсон': statusKey = 'overdue'; break;
-              case 'Цуцлагдсан': statusKey = 'cancelled'; break;
-              default: statusKey = 'pending';
-            }
-            if (statusKey === 'paid') {
-              paidAmount += Number(payment.amount);
-            } else if (statusKey === 'overdue') {
-              overdueAmount += Number(payment.amount);
-            } else if (statusKey === 'pending') {
-              pendingAmount += Number(payment.amount);
-            }
-          });
-          
-          setSummary({
-            total: totalAmount,
-            paid: paidAmount,
-            pending: pendingAmount,
-            overdue: overdueAmount
-          });
+          if (response.data.summary) {
+            setSummary(response.data.summary);
+          } else {
+            let totalAmount = 0;
+            let paidAmount = 0;
+            let pendingAmount = 0;
+            let overdueAmount = 0;
+            filteredPayments.forEach(payment => {
+              totalAmount += Number(payment.amount);
+              if (payment.status === 'paid') paidAmount += Number(payment.amount);
+              else if (payment.status === 'overdue') overdueAmount += Number(payment.amount);
+              else if (payment.status === 'pending') pendingAmount += Number(payment.amount);
+            });
+            setSummary({
+              total: totalAmount,
+              paid: paidAmount,
+              pending: pendingAmount,
+              overdue: overdueAmount
+            });
+          }
         }
       } catch (err) {
         setError('Төлбөрийн мэдээлэл авахад алдаа гарлаа. Дахин оролдоно уу.');
@@ -123,41 +108,22 @@ const Payment = () => {
       await api.post('/payments/process', { paymentId });
       const paymentToUpdate = payments.find(p => p.id === paymentId);
       const paymentAmount = paymentToUpdate?.amount || 0;
-      // Map DB status to UI status
-      let status = paymentToUpdate?.status;
-      let statusKey;
-      switch (status) {
-        case 'Төлөгдсөн': statusKey = 'paid'; break;
-        case 'Төлөгдөөгүй': statusKey = 'pending'; break;
-        case 'Хоцорсон': statusKey = 'overdue'; break;
-        case 'Цуцлагдсан': statusKey = 'cancelled'; break;
-        default: statusKey = 'pending';
-      }
-      const wasOverdue = statusKey === 'overdue';
+      // Use backend status directly
+      const status = paymentToUpdate?.status;
+      const wasOverdue = status === 'overdue';
 
-      const translateStatus = (status) => {
-        switch (status) {
-          case 'paid': return 'Төлөгдсөн';
-          case 'pending': return 'Хүлээгдэж буй';
-          case 'overdue': return 'Хоцорсон';
-          case 'cancelled': return 'Цуцлагдсан';
-          default: return status;
-        }
-      };
-      
       setPayments(prevPayments => 
         prevPayments.map(payment => 
           payment.id === paymentId 
             ? { 
                 ...payment, 
-                status: 'Төлөгдсөн', 
-                statusMn: 'Төлөгдсөн',
+                status: 'paid', 
                 paidDate: new Date().toISOString() 
               } 
             : payment
         )
       );
- 
+
       setSummary(prevSummary => {
         return {
           total: prevSummary.total,
@@ -189,13 +155,13 @@ const Payment = () => {
         <div className="max-w-7xl mx-auto pt-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-[#2D6B9F]">
-              Усны хэрэглээний төлбөр
+              Төлбөрүүд (Ус, үйлчилгээ)
             </h1>
             <div className="px-4 pt-2 sm:px-0">
               <Breadcrumb />
             </div>
             <p className="text-gray-600 mt-2">
-              Өөрийн байрны усны төлбөрийн мэдээлэл, төлөлтийн түүх
+              Өөрийн байрны ус болон үйлчилгээний төлбөрийн мэдээлэл, төлөлтийн түүх
             </p>
           </div>
           <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 w-full md:w-auto">

@@ -14,7 +14,7 @@ function determinePaymentStatus(payment) {
   const status = payment.Status;
   if (status === 'Төлөгдсөн') return 'paid';
   if (status === 'Цуцлагдсан') return 'cancelled';
-  if (status === 'Хугацаа хэтэрсэн') return 'overdue';
+  if (status === 'Хоцорсон') return 'overdue';
   const payDate = new Date(payment.PayDate);
   const currentDate = new Date();
   const dueDate = new Date(payDate);
@@ -74,20 +74,7 @@ async function calculateWaterUsage(apartmentId, month, year) {
     [apartmentId, month, year]
   );
 
-  const [prevReadings] = await pool.execute(
-    `SELECT 
-      Location,
-      Type,
-      MAX(Indication) as latest_reading
-    FROM WaterMeter
-    WHERE ApartmentId = ?
-      AND (
-        (YEAR(WaterMeterDate) < ?)
-        OR (YEAR(WaterMeterDate) = ? AND MONTH(WaterMeterDate) < ?)
-      )
-    GROUP BY Location, Type`,
-    [apartmentId, year, year, month]
-  );
+  const prevReadings = await getPreviousReadingsForMonth(apartmentId, month, year);
 
   let usage = { cold: 0, hot: 0 };
   currentReadings.forEach(current => {
@@ -103,12 +90,10 @@ async function calculateWaterUsage(apartmentId, month, year) {
 
   return usage;
 }
-
 exports.getUserPayments = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const apartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
-
     const apartmentIds = await getUserApartments(userId);
 
     if (apartmentIds.length === 0) {
@@ -116,123 +101,155 @@ exports.getUserPayments = async (req, res) => {
         success: true,
         message: 'No apartments found for this user',
         payments: [],
-        summary: {
-          total: 0,
-          paid: 0,
-          pending: 0,
-          overdue: 0
-        },
+        summary: { total: 0, paid: 0, pending: 0, overdue: 0 },
         apartments: [],
         hasApartments: false
       });
     }
 
-    const whereClause = apartmentId && apartmentIds.includes(apartmentId)
-      ? 'p.ApartmentId = ?'
-      : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
-
-    const queryParams = apartmentId && apartmentIds.includes(apartmentId)
+    // Water payments
+    const waterWhereClause = apartmentId && apartmentIds.includes(apartmentId)
+      ? 'wp.ApartmentId = ?'
+      : `wp.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
+    const waterQueryParams = apartmentId && apartmentIds.includes(apartmentId)
       ? [apartmentId, userId]
       : [...apartmentIds, userId];
 
-    const [payments] = await pool.execute(
+    const [waterPayments] = await pool.execute(
       `SELECT 
-        p.PaymentId,
-        p.ApartmentId,
-        p.Amount,
-        p.PayDate,
-        p.PaidDate,
-        p.Status,
-        p.PaymentType,
-        p.TariffId,
+        wp.WaterPaymentId as id,
+        wp.ApartmentId,
+        wp.TotalAmount as amount,
+        wp.PayDate,
+        wp.PaidDate,
+        wp.Status,
+        wp.TariffId,
+        wp.ColdWaterUsage,
+        wp.HotWaterUsage,
+        wp.ColdWaterCost,
+        wp.HotWaterCost,
+        wp.DirtyWaterCost,
         a.ApartmentName,
         a.BlockNumber,
         a.UnitNumber
-      FROM Payment p
-      JOIN Apartment a ON p.ApartmentId = a.ApartmentId
-      WHERE ${whereClause}
-      AND p.UserAdminId = ?
-      ORDER BY p.PayDate DESC`,
-      queryParams
+      FROM WaterPayment wp
+      JOIN Apartment a ON wp.ApartmentId = a.ApartmentId
+      WHERE ${waterWhereClause}
+      AND wp.UserAdminId = ?
+      ORDER BY wp.PayDate DESC`,
+      waterQueryParams
     );
 
-    // Calculate details for each payment
-    const tariff = await exports.getCurrentTariff();
-    const formattedPayments = await Promise.all(payments.map(async payment => {
-      const calculatedStatus = determinePaymentStatus(payment);
-      let dueDate = payment.PayDate;
-      if (dueDate instanceof Date) {
-        dueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
-      }
-      const paymentDate = new Date(payment.PayDate);
-      const month = paymentDate.getMonth() + 1;
-      const year = paymentDate.getFullYear();
-      const waterUsage = await calculateWaterUsage(payment.ApartmentId, month, year);
+    // Service payments
+    const serviceWhereClause = apartmentId && apartmentIds.includes(apartmentId)
+      ? 'sp.ApartmentId = ?'
+      : `sp.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
+    const serviceQueryParams = apartmentId && apartmentIds.includes(apartmentId)
+      ? [apartmentId, userId]
+      : [...apartmentIds, userId];
 
-      const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
-      const hotWaterCost = waterUsage.hot * tariff.HeatWaterTariff;
-      const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
-      const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
+    const [servicePayments] = await pool.execute(
+      `SELECT 
+        sp.ServicePaymentId as id,
+        sp.ApartmentId,
+        sp.Amount as amount,
+        sp.PayDate,
+        sp.PaidDate,
+        sp.Status,
+        sp.ServiceId,
+        sp.Description,
+        a.ApartmentName,
+        a.BlockNumber,
+        a.UnitNumber
+      FROM ServicePayment sp
+      JOIN Apartment a ON sp.ApartmentId = a.ApartmentId
+      JOIN Service s ON sp.ServiceId = s.ServiceId
+      WHERE ${serviceWhereClause}
+      AND sp.UserAdminId = ?
+      ORDER BY sp.PayDate DESC`,
+      serviceQueryParams
+    );
+
+    // Format water payments
+    const formattedWaterPayments = waterPayments.map(payment => {
+      const calculatedStatus = determinePaymentStatus(payment);
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
 
       return {
-        id: payment.PaymentId,
-        apartmentId: payment.ApartmentId,
-        amount: payment.Amount,
-        payDate: payment.PayDate,
-        paidDate: payment.PaidDate,
-        dueDate: dueDate,
+        ...payment,
+        payDate: payment.PayDate, 
+        paidDate: payment.PaidDate, 
+        paymentType: 'water',
+        dueDate: dueDate.toISOString(),
         status: calculatedStatus,
-        paymentType: payment.PaymentType,
-        tariffId: payment.TariffId,
+        waterUsage: {
+          cold: payment.ColdWaterUsage,
+          hot: payment.HotWaterUsage,
+          total: Number(payment.ColdWaterUsage) + Number(payment.HotWaterUsage)
+        },
+        costs: {
+          coldWater: payment.ColdWaterCost,
+          hotWater: payment.HotWaterCost,
+          dirtyWater: payment.DirtyWaterCost,
+          total: payment.amount
+        },
         apartment: {
           name: payment.ApartmentName,
           block: payment.BlockNumber,
           unit: payment.UnitNumber,
           displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
-        },
-        waterUsage: {
-          cold: waterUsage.cold,
-          hot: waterUsage.hot,
-          total: waterUsage.cold + waterUsage.hot
-        },
-        costs: {
-          coldWater: coldWaterCost,
-          hotWater: hotWaterCost,
-          dirtyWater: dirtyWaterCost,
-          total: totalAmount
-        },
-        tariff: {
-          coldWater: tariff.ColdWaterTariff,
-          hotWater: tariff.HeatWaterTariff,
-          dirtyWater: tariff.DirtyWaterTariff
         }
       };
-    }));
-
-    let totalAmount = 0;
-    let paidAmount = 0;
-    let pendingAmount = 0;
-    let overdueAmount = 0;
-
-    formattedPayments.forEach(payment => {
-      totalAmount += Number(payment.amount);
-
-      if (payment.status === 'paid') {
-        paidAmount += Number(payment.amount);
-      } else if (payment.status === 'overdue') {
-        overdueAmount += Number(payment.amount);
-      } else if (payment.status === 'pending') {
-        pendingAmount += Number(payment.amount);
-      }
     });
 
+    // Format service payments
+    const formattedServicePayments = servicePayments.map(payment => {
+      const calculatedStatus = determinePaymentStatus(payment);
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      return {
+        ...payment,
+        payDate: payment.PayDate, // ensure camelCase
+        paidDate: payment.PaidDate, // ensure camelCase
+        paymentType: 'service',
+        dueDate: dueDate.toISOString(),
+        status: calculatedStatus,
+        service: {
+          id: payment.ServiceId,
+        },
+        apartment: {
+          name: payment.ApartmentName,
+          block: payment.BlockNumber,
+          unit: payment.UnitNumber,
+          displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
+        }
+      };
+    });
+
+    const allPayments = [...formattedWaterPayments, ...formattedServicePayments].sort(
+      (a, b) => new Date(b.payDate) - new Date(a.payDate)
+    );
+
+    // Summary
+    let totalAmount = 0, paidAmount = 0, pendingAmount = 0, overdueAmount = 0;
+    allPayments.forEach(payment => {
+      totalAmount += Number(payment.amount);
+      if (payment.status === 'paid') paidAmount += Number(payment.amount);
+      else if (payment.status === 'overdue') overdueAmount += Number(payment.amount);
+      else if (payment.status === 'pending') pendingAmount += Number(payment.amount);
+    });
+
+    // Apartments
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
        FROM Apartment a
        WHERE a.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
       apartmentIds
     );
-
     const apartments = apartmentObjects.map(apt => ({
       id: apt.ApartmentId,
       name: apt.ApartmentName,
@@ -243,14 +260,9 @@ exports.getUserPayments = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      payments: formattedPayments,
-      summary: {
-        total: totalAmount,
-        paid: paidAmount,
-        pending: pendingAmount,
-        overdue: overdueAmount
-      },
-      apartments: apartments,
+      payments: allPayments,
+      summary: { total: totalAmount, paid: paidAmount, pending: pendingAmount, overdue: overdueAmount },
+      apartments,
       hasApartments: true
     });
 
@@ -259,124 +271,147 @@ exports.getUserPayments = async (req, res) => {
   }
 };
 
+// Get a single payment by ID (water or service)
 exports.getPaymentById = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const paymentId = req.params.id;
 
-    console.log('getPaymentById called:', { userId, paymentId }); // Debug log
-
     if (!paymentId || isNaN(Number(paymentId))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid payment ID'
-      });
+      return res.status(400).json({ success: false, message: 'Invalid payment ID' });
     }
 
-    const [payments] = await pool.execute(
+    // Try water payment first
+    const [waterPayments] = await pool.execute(
       `SELECT 
-        p.PaymentId,
-        p.ApartmentId,
-        p.Amount,
-        p.PayDate,
-        p.PaidDate,
-        p.Status,
-        p.PaymentType,
-        p.TariffId,
+        wp.WaterPaymentId as id,
+        wp.ApartmentId,
+        wp.TotalAmount as amount,
+        wp.PayDate,
+        wp.PaidDate,
+        wp.Status,
+        wp.TariffId,
+        wp.ColdWaterUsage,
+        wp.HotWaterUsage,
+        wp.ColdWaterCost,
+        wp.HotWaterCost,
+        wp.DirtyWaterCost,
         a.ApartmentName,
         a.BlockNumber,
         a.UnitNumber
-      FROM Payment p
-      JOIN Apartment a ON p.ApartmentId = a.ApartmentId
-      WHERE p.PaymentId = ?
-      AND p.UserAdminId = ?`,
+      FROM WaterPayment wp
+      JOIN Apartment a ON wp.ApartmentId = a.ApartmentId
+      WHERE wp.WaterPaymentId = ?
+      AND wp.UserAdminId = ?`,
       [paymentId, userId]
     );
 
-    console.log('Payment query result:', payments); 
-    if (payments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment not found or you do not have access'
+    if (waterPayments.length > 0) {
+      const payment = waterPayments[0];
+      const calculatedStatus = determinePaymentStatus(payment);
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
+      const tariff = await exports.getCurrentTariff();
+
+      return res.status(200).json({
+        success: true,
+        payment: {
+          ...payment,
+          payDate: payment.PayDate, 
+          paidDate: payment.PaidDate, 
+          paymentType: 'water',
+          dueDate: dueDate.toISOString(),
+          status: calculatedStatus,
+          waterUsage: {
+            cold: payment.ColdWaterUsage,
+            hot: payment.HotWaterUsage,
+            total: Number(payment.ColdWaterUsage) + Number(payment.HotWaterUsage)
+          },
+          costs: {
+            coldWater: payment.ColdWaterCost,
+            hotWater: payment.HotWaterCost,
+            dirtyWater: payment.DirtyWaterCost,
+            total: payment.amount
+          },
+          apartment: {
+            name: payment.ApartmentName,
+            block: payment.BlockNumber,
+            unit: payment.UnitNumber,
+            displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
+          }
+        },
+        tariff: {
+          coldWater: tariff.ColdWaterTariff,
+          hotWater: tariff.HeatWaterTariff,
+          dirtyWater: tariff.DirtyWaterTariff
+        }
       });
     }
 
-    const payment = payments[0];
-
-    const calculatedStatus = determinePaymentStatus(payment);
-
-    const payDate = new Date(payment.PayDate);
-    const dueDate = new Date(payDate);
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    const paymentDate = new Date(payment.PayDate);
-    const month = paymentDate.getMonth() + 1;
-    const year = paymentDate.getFullYear();
-
-    const waterUsage = await calculateWaterUsage(
-      payment.ApartmentId,
-      month,
-      year
+    // Try service payment
+    const [servicePayments] = await pool.execute(
+      `SELECT 
+        sp.ServicePaymentId as id,
+        sp.ApartmentId,
+        sp.Amount as amount,
+        sp.PayDate,
+        sp.PaidDate,
+        sp.Status,
+        sp.ServiceId,
+        sp.Description,
+        a.ApartmentName,
+        a.BlockNumber,
+        a.UnitNumber
+      FROM ServicePayment sp
+      JOIN Apartment a ON sp.ApartmentId = a.ApartmentId
+      JOIN Service s ON sp.ServiceId = s.ServiceId
+      WHERE sp.ServicePaymentId = ?
+      AND sp.UserAdminId = ?`,
+      [paymentId, userId]
     );
 
-    const tariff = await exports.getCurrentTariff();
+    if (servicePayments.length > 0) {
+      const payment = servicePayments[0];
+      const calculatedStatus = determinePaymentStatus(payment);
+      const payDate = new Date(payment.PayDate);
+      const dueDate = new Date(payDate);
+      dueDate.setDate(dueDate.getDate() + 30);
 
-    const coldTariff = Number(tariff.ColdWaterTariff || tariff.coldWater || 0);
-    const hotTariff = Number(tariff.HeatWaterTariff || tariff.hotWater || 0);
-    const dirtyTariff = Number(tariff.DirtyWaterTariff || tariff.dirtyWater || 0);
-
-    const coldWaterCost = waterUsage.cold * coldTariff;
-    const hotWaterCost = waterUsage.hot * hotTariff;
-    const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * dirtyTariff;
-    const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
-
-    return res.status(200).json({
-      success: true,
-      payment: {
-        id: payment.PaymentId,
-        apartmentId: payment.ApartmentId,
-        amount: payment.Amount,
-        payDate: payment.PayDate, 
-        paidDate: payment.PaidDate,
-        dueDate: `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`,
-        status: calculatedStatus,
-        paymentType: payment.PaymentType,
-        tariffId: payment.TariffId,
-        apartment: {
-          name: payment.ApartmentName,
-          block: payment.BlockNumber,
-          unit: payment.UnitNumber,
-          displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
-        },
-        waterUsage: {
-          cold: waterUsage.cold,
-          hot: waterUsage.hot,
-          total: waterUsage.cold + waterUsage.hot
-        },
-        costs: {
-          coldWater: coldWaterCost,
-          hotWater: hotWaterCost,
-          dirtyWater: dirtyWaterCost,
-          total: totalAmount
-        },
-        tariff: {
-          coldWater: coldTariff,
-          hotWater: hotTariff,
-          dirtyWater: dirtyTariff
+      return res.status(200).json({
+        success: true,
+        payment: {
+          ...payment,
+          payDate: payment.PayDate, // <-- add this
+          paidDate: payment.PaidDate, // <-- add this
+          paymentType: 'service',
+          dueDate: dueDate.toISOString(),
+          status: calculatedStatus,
+          service: {
+            id: payment.ServiceId,
+          },
+          apartment: {
+            name: payment.ApartmentName,
+            block: payment.BlockNumber,
+            unit: payment.UnitNumber,
+            displayName: `${payment.ApartmentName}, Блок ${payment.BlockNumber}${payment.UnitNumber ? ', Тоот ' + payment.UnitNumber : ''}`
+          }
         }
-      }
-    });
+      });
+    }
+
+    return res.status(404).json({ success: false, message: 'Payment not found or you do not have access' });
 
   } catch (error) {
     handleError(res, error, 'Get payment by ID');
   }
 };
 
+// Generate monthly water payment for an apartment
 exports.generateMonthlyPayment = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const { apartmentId } = req.body;
-
     const apartmentIds = await getUserApartments(userId);
 
     if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
@@ -393,8 +428,8 @@ exports.generateMonthlyPayment = async (req, res) => {
     const payDate = getLastDayOfNextMonth(now);
 
     const [existingPayments] = await pool.execute(
-      `SELECT PaymentId
-       FROM Payment
+      `SELECT WaterPaymentId
+       FROM WaterPayment
        WHERE ApartmentId = ?
        AND UserAdminId = ?
        AND MONTH(PayDate) = ?
@@ -404,34 +439,34 @@ exports.generateMonthlyPayment = async (req, res) => {
     );
 
     if (existingPayments.length > 0) {
-
       const [paymentDetails] = await pool.execute(
         `SELECT 
-          p.PaymentId,
-          p.ApartmentId,
-          p.Amount,
-          p.PayDate,
-          p.PaidDate,
-          p.Status
-        FROM Payment p
-        WHERE p.PaymentId = ?`,
-        [existingPayments[0].PaymentId]
+          wp.WaterPaymentId,
+          wp.ApartmentId,
+          wp.TotalAmount,
+          wp.PayDate,
+          wp.PaidDate,
+          wp.Status
+        FROM WaterPayment wp
+        WHERE wp.WaterPaymentId = ?`,
+        [existingPayments[0].WaterPaymentId]
       );
-
       if (paymentDetails.length > 0) {
         const payment = paymentDetails[0];
-        // Always calculate dueDate as last day of next month from PayDate
-        const dueDate = getLastDayOfNextMonth(new Date(payment.PayDate));
+        const payDateObj = new Date(payment.PayDate);
+        const dueDate = new Date(payDateObj);
+        dueDate.setDate(dueDate.getDate() + 30);
         return res.status(200).json({
           success: true,
           message: 'Payment for current month already exists',
           payment: {
-            id: payment.PaymentId,
+            id: payment.WaterPaymentId,
             apartmentId: Number(apartmentId),
-            amount: payment.Amount,
+            amount: payment.TotalAmount,
             status: payment.Status,
             payDate: payment.PayDate,
-            dueDate: dueDate
+            paidDate: payment.PaidDate, // will be null/blank until paid
+            dueDate: dueDate.toISOString()
           },
           exists: true
         });
@@ -443,7 +478,6 @@ exports.generateMonthlyPayment = async (req, res) => {
       currentMonth,
       currentYear
     );
-
     const tariff = await exports.getCurrentTariff();
 
     const coldWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.ColdWaterTariff;
@@ -452,23 +486,38 @@ exports.generateMonthlyPayment = async (req, res) => {
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
     const [result] = await pool.execute(
-      `INSERT INTO Payment 
-        (ApartmentId, UserAdminId, PaymentType, Amount, PayDate, PaidDate, Status, TariffId)
-       VALUES (?, ?, ?, ?, ?, NULL, 'Төлөгдөөгүй', ?)`,
-      [apartmentId, userId, 'water', totalAmount, payDate, tariff.TariffId]
+      `INSERT INTO WaterPayment 
+        (ApartmentId, UserAdminId, TariffId, ColdWaterUsage, HotWaterUsage, ColdWaterCost, HotWaterCost, DirtyWaterCost, TotalAmount, PayDate, Status, PaidDate)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Төлөгдөөгүй', NULL)`,
+      [
+        apartmentId,
+        userId,
+        tariff.TariffId,
+        waterUsage.cold,
+        waterUsage.hot,
+        coldWaterCost,
+        hotWaterCost,
+        dirtyWaterCost,
+        totalAmount,
+        payDate
+      ]
     );
 
-    const dueDate = getLastDayOfNextMonth(new Date(payDate));
+    const paymentId = result.insertId;
+    const dueDate = new Date(payDate);
+    dueDate.setDate(dueDate.getDate() + 30);
 
     return res.status(201).json({
       success: true,
       message: 'Monthly payment generated successfully',
       payment: {
-        id: result.insertId,
+        id: paymentId,
         apartmentId: Number(apartmentId),
         amount: totalAmount,
         status: 'Төлөгдөлгүй',
-        dueDate: dueDate,
+        payDate: payDate,
+        paidDate: null, 
+        dueDate: dueDate.toISOString(),
         tariffId: tariff.TariffId
       },
       waterUsage: {
@@ -489,6 +538,7 @@ exports.generateMonthlyPayment = async (req, res) => {
   }
 };
 
+// Process a payment (water or service)
 exports.processPayment = async (req, res) => {
   try {
     const userId = req.userData.userId;
@@ -501,81 +551,99 @@ exports.processPayment = async (req, res) => {
       });
     }
 
-    const [payments] = await pool.execute(
-      `SELECT p.PaymentId, p.Status, p.Amount, p.ApartmentId, p.PayDate
-       FROM Payment p
-       WHERE p.PaymentId = ?
-       AND p.UserAdminId = ?`,
+    // Try water payment
+    const [waterPayments] = await pool.execute(
+      `SELECT wp.WaterPaymentId as id, wp.Status
+       FROM WaterPayment wp
+       WHERE wp.WaterPaymentId = ?
+       AND wp.UserAdminId = ?`,
       [paymentId, userId]
     );
-
-    if (payments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment not found or access denied'
-      });
+    if (waterPayments.length > 0) {
+      const payment = waterPayments[0];
+      if (payment.Status === 'Төлөгдсөн') {
+        return res.status(400).json({ success: false, message: 'Payment has already been processed' });
+      }
+      if (payment.Status === 'Цуцлагдсан') {
+        return res.status(400).json({ success: false, message: 'Cannot process a cancelled payment' });
+      }
+      const connection = await pool.getConnection();
+      await connection.beginTransaction();
+      try {
+        await connection.execute(
+          `UPDATE WaterPayment
+           SET Status = 'Төлөгдсөн', PaidDate = CURRENT_TIMESTAMP
+           WHERE WaterPaymentId = ?`,
+          [paymentId]
+        );
+        await connection.commit();
+        return res.status(200).json({
+          success: true,
+          message: 'Payment processed successfully',
+          paymentId: payment.id
+        });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     }
 
-    const payment = payments[0];
-    const calculatedStatus = determinePaymentStatus(payment);
-
-    if (payment.Status === 'Төлөгдсөн') {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment has already been processed'
-      });
+    // Try service payment
+    const [servicePayments] = await pool.execute(
+      `SELECT sp.ServicePaymentId as id, sp.Status
+       FROM ServicePayment sp
+       WHERE sp.ServicePaymentId = ?
+       AND sp.UserAdminId = ?`,
+      [paymentId, userId]
+    );
+    if (servicePayments.length > 0) {
+      const payment = servicePayments[0];
+      if (payment.Status === 'Төлөгдсөн') {
+        return res.status(400).json({ success: false, message: 'Payment has already been processed' });
+      }
+      if (payment.Status === 'Цуцлагдсан') {
+        return res.status(400).json({ success: false, message: 'Cannot process a cancelled payment' });
+      }
+      const connection = await pool.getConnection();
+      await connection.beginTransaction();
+      try {
+        await connection.execute(
+          `UPDATE ServicePayment
+           SET Status = 'Төлөгдсөн', PaidDate = CURRENT_TIMESTAMP
+           WHERE ServicePaymentId = ?`,
+          [paymentId]
+        );
+        await connection.commit();
+        return res.status(200).json({
+          success: true,
+          message: 'Payment processed successfully',
+          paymentId: payment.id
+        });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     }
 
-    if (payment.Status === 'Цуцлагдсан') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot process a cancelled payment'
-      });
-    }
-
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    try {
-      await connection.execute(
-        `UPDATE Payment
-         SET Status = 'Төлөгдсөн', PaidDate = CURRENT_TIMESTAMP
-         WHERE PaymentId = ?`,
-        [paymentId]
-      );
-
-      await connection.commit();
-
-      return res.status(200).json({
-        success: true,
-        message: 'Payment processed successfully',
-        paymentId: payment.PaymentId
-      });
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
+    return res.status(404).json({
+      success: false,
+      message: 'Payment not found or access denied'
+    });
 
   } catch (error) {
     handleError(res, error, 'Process payment');
   }
 };
 
-exports.getPaymentServiceByServiceId = async (req, res) => {
-  return res.status(410).json({ success: false, message: 'PaymentService is merged into Payment. Use Payment endpoints.' });
-};
-
-exports.processPaymentService = async (req, res) => {
-  return res.status(410).json({ success: false, message: 'PaymentService is merged into Payment. Use Payment endpoints.' });
-};
-
+// Payment statistics for water payments
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const userId = req.userData.userId;
     const apartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
-
     const apartmentIds = await getUserApartments(userId);
 
     if (apartmentIds.length === 0) {
@@ -599,8 +667,8 @@ exports.getPaymentStatistics = async (req, res) => {
     const currentYear = new Date().getFullYear();
 
     const whereClause = apartmentId
-      ? 'p.ApartmentId = ?'
-      : `p.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
+      ? 'wp.ApartmentId = ?'
+      : `wp.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
 
     const queryParams = apartmentId
       ? [apartmentId, userId, currentYear]
@@ -608,25 +676,23 @@ exports.getPaymentStatistics = async (req, res) => {
 
     const [monthlyData] = await pool.execute(
       `SELECT 
-        MONTH(p.PayDate) as month,
-        p.PaymentId,
-        p.Status,
-        p.PayDate,
-        p.Amount
-      FROM Payment p
+        MONTH(wp.PayDate) as month,
+        wp.WaterPaymentId,
+        wp.Status,
+        wp.PayDate,
+        wp.TotalAmount
+      FROM WaterPayment wp
       WHERE ${whereClause}
-      AND p.UserAdminId = ?
-      AND YEAR(p.PayDate) = ?
-      ORDER BY MONTH(p.PayDate)`,
+      AND wp.UserAdminId = ?
+      AND YEAR(wp.PayDate) = ?
+      ORDER BY MONTH(wp.PayDate)`,
       queryParams
     );
 
-    const monthlyPayments = monthlyData.map(payment => {
-      return {
-        ...payment,
-        calculatedStatus: determinePaymentStatus(payment)
-      };
-    });
+    const monthlyPayments = monthlyData.map(payment => ({
+      ...payment,
+      calculatedStatus: determinePaymentStatus(payment)
+    }));
 
     const monthStats = {};
     monthlyPayments.forEach(payment => {
@@ -640,23 +706,17 @@ exports.getPaymentStatistics = async (req, res) => {
           overdueCount: 0
         };
       }
-
-      monthStats[month].totalAmount += Number(payment.Amount);
-      if (payment.calculatedStatus === 'paid') {
-        monthStats[month].paidCount++;
-      } else if (payment.calculatedStatus === 'pending') {
-        monthStats[month].pendingCount++;
-      } else if (payment.calculatedStatus === 'overdue') {
-        monthStats[month].overdueCount++;
-      }
+      monthStats[month].totalAmount += Number(payment.TotalAmount);
+      if (payment.calculatedStatus === 'paid') monthStats[month].paidCount++;
+      else if (payment.calculatedStatus === 'pending') monthStats[month].pendingCount++;
+      else if (payment.calculatedStatus === 'overdue') monthStats[month].overdueCount++;
     });
 
     const months = Array(12).fill().map((_, i) => i + 1);
     const formattedStats = months.map(month => {
       const monthData = monthStats[month];
-
       return {
-        month: month,
+        month,
         monthName: new Date(currentYear, month - 1, 1).toLocaleString('default', { month: 'long' }),
         totalAmount: monthData ? Number(monthData.totalAmount) : 0,
         paidCount: monthData ? monthData.paidCount : 0,
@@ -667,10 +727,7 @@ exports.getPaymentStatistics = async (req, res) => {
 
     const yearlyTotal = formattedStats.reduce((acc, stat) => acc + stat.totalAmount, 0);
 
-    let totalPaid = 0;
-    let totalPending = 0;
-    let totalOverdue = 0;
-
+    let totalPaid = 0, totalPending = 0, totalOverdue = 0;
     formattedStats.forEach(month => {
       totalPaid += month.paidCount || 0;
       totalPending += month.pendingCount || 0;
@@ -701,9 +758,9 @@ exports.getPaymentStatistics = async (req, res) => {
     return res.status(200).json({
       success: true,
       monthlyStats: formattedStats,
-      yearlyTotal: yearlyTotal,
-      yearlyStatusData: yearlyStatusData,
-      apartments: apartments,
+      yearlyTotal,
+      yearlyStatusData,
+      apartments,
       hasApartments: true
     });
 
@@ -712,16 +769,16 @@ exports.getPaymentStatistics = async (req, res) => {
   }
 };
 
+// Helper for monthly payment generation (for batch/cron)
 exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId, pool, monthArg, yearArg) {
-
   const now = new Date();
   const currentMonth = monthArg || (now.getMonth() + 1);
   const currentYear = yearArg || now.getFullYear();
   const payDate = getLastDayOfNextMonth(new Date(currentYear, currentMonth - 1, 1));
 
   const [existingPayments] = await pool.execute(
-    `SELECT PaymentId
-     FROM Payment
+    `SELECT WaterPaymentId
+     FROM WaterPayment
      WHERE ApartmentId = ?
      AND UserAdminId = ?
      AND MONTH(PayDate) = ?
@@ -733,29 +790,30 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   if (existingPayments.length > 0) {
     const [paymentDetails] = await pool.execute(
       `SELECT 
-        p.PaymentId,
-        p.ApartmentId,
-        p.Amount,
-        p.PayDate,
-        p.PaidDate,
-        p.Status,
-        p.PaymentType,
-        p.TariffId
-      FROM Payment p
-      WHERE p.PaymentId = ?`,
-      [existingPayments[0].PaymentId]
+        wp.WaterPaymentId,
+        wp.ApartmentId,
+        wp.TotalAmount,
+        wp.PayDate,
+        wp.PaidDate,
+        wp.Status,
+        wp.TariffId
+      FROM WaterPayment wp
+      WHERE wp.WaterPaymentId = ?`,
+      [existingPayments[0].WaterPaymentId]
     );
     if (paymentDetails.length > 0) {
       const payment = paymentDetails[0];
-      const dueDate = getLastDayOfNextMonth(new Date(payment.PayDate));
+      const payDateObj = new Date(payment.PayDate);
+      const dueDate = new Date(payDateObj);
+      dueDate.setDate(dueDate.getDate() + 30);
       return {
-        id: payment.PaymentId,
+        id: payment.WaterPaymentId,
         apartmentId: Number(apartmentId),
-        amount: payment.Amount,
+        amount: payment.TotalAmount,
         status: payment.Status,
         payDate: payment.PayDate,
-        dueDate: dueDate,
-        paymentType: payment.PaymentType,
+        paidDate: payment.PaidDate, // will be null/blank until paid
+        dueDate: dueDate.toISOString(),
         tariffId: payment.TariffId,
         exists: true
       };
@@ -763,7 +821,6 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   }
 
   const usage = await calculateWaterUsage(apartmentId, currentMonth, currentYear);
-
   const tariff = await exports.getCurrentTariff();
 
   const coldWaterCost = (usage.cold + usage.hot) * tariff.ColdWaterTariff;
@@ -772,29 +829,41 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
   const [result] = await pool.execute(
-    `INSERT INTO Payment 
-      (ApartmentId, UserAdminId, PaymentType, Amount, PayDate, PaidDate, Status, TariffId)
-     VALUES (?, ?, 'water', ?, ?, NULL, 'Төлөгдөлгүй', ?)`,
-    [apartmentId, userId, totalAmount, payDate, tariff.TariffId]
+    `INSERT INTO WaterPayment 
+      (ApartmentId, UserAdminId, TariffId, ColdWaterUsage, HotWaterUsage, ColdWaterCost, HotWaterCost, DirtyWaterCost, TotalAmount, PayDate, Status, PaidDate)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Төлөгдөөгүй', NULL)`,
+    [
+      apartmentId,
+      userId,
+      tariff.TariffId,
+      usage.cold,
+      usage.hot,
+      coldWaterCost,
+      hotWaterCost,
+      dirtyWaterCost,
+      totalAmount,
+      payDate
+    ]
   );
-
-  const dueDate = getLastDayOfNextMonth(new Date(payDate));
+  const dueDate = new Date(payDate);
+  dueDate.setDate(dueDate.getDate() + 30);
 
   return {
     id: result.insertId,
     apartmentId: Number(apartmentId),
     amount: totalAmount,
-    status: 'Төлөгдөлгүй',
-    payDate: dueDate,
-    dueDate: dueDate,
-    paymentType: 'water',
+    status: 'Төлөгдөөгүй',
+    payDate: payDate,
+    paidDate: null, // explicitly blank until paid
+    dueDate: dueDate.toISOString(),
     tariffId: tariff.TariffId,
     exists: false
   };
 };
+
 function getLastDayOfNextMonth(date = new Date()) {
   let year = date.getFullYear();
-  let month = date.getMonth() + 1; 
+  let month = date.getMonth() + 1;
   if (month === 12) {
     year += 1;
     month = 1;
@@ -802,5 +871,5 @@ function getLastDayOfNextMonth(date = new Date()) {
     month += 1;
   }
   const lastDay = new Date(year, month, 0);
-  return `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+  return lastDay.toISOString().slice(0, 10);
 }

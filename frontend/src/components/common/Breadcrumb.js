@@ -30,6 +30,7 @@ const Breadcrumb = () => {
   const getDisplayName = (segment, idx) => {
     if (segment.match(/^\d+$/)) {
       const prev = pathnames[idx - 1];
+      if (prev === 'payment') return 'Payment Details';
       if (
         prev === 'details' ||
         prev === 'news' ||
@@ -90,6 +91,8 @@ const Breadcrumb = () => {
           if ((name === 'admin' || name === 'user') && pathnames.length > 1) {
             return null;
           }
+          const isPayment = name === 'payment-info' || (name === 'payment' && displayName === 'Payment');
+          const paymentUrl = '/user/payment-info';
 
           return (
             <li key={index} className="flex items-center">
@@ -98,9 +101,9 @@ const Breadcrumb = () => {
               ) : (
                 <>
                   <Link 
-                    to={url} 
+                    to={isPayment ? paymentUrl : url}
                     className="text-[#2D6B9F] hover:text-[#2D6B9F] font-medium"
-                    onClick={(e) => handleBreadcrumbClick(url, e)}
+                    onClick={(e) => handleBreadcrumbClick(isPayment ? paymentUrl : url, e)}
                   >
                     {displayName}
                   </Link>

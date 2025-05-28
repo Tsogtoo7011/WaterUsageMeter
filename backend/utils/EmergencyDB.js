@@ -20,14 +20,14 @@ async function createWaterUsageDB() {
     const [userAdminResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS UserAdmin (
         UserId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        AdminRight TINYINT(1) NOT NULL,
+        AdminRight TINYINT(1) NOT NULL COMMENT '0 = Regular user, 1 = Admin',
         Username VARCHAR(100) NOT NULL UNIQUE,
         Password VARCHAR(255) NOT NULL,
         Firstname VARCHAR(100) NOT NULL,
         Lastname VARCHAR(100) NOT NULL,
         Phonenumber CHAR(8) NOT NULL, 
         Email VARCHAR(150) NOT NULL UNIQUE,
-        IsVerified TINYINT(1) DEFAULT 0 NOT NULL,
+        IsVerified TINYINT(1) DEFAULT 0 NOT NULL COMMENT '0 = Not verified, 1 = Verified',
         VerificationToken VARCHAR(255),
         TokenExpiry DATETIME,
         RefreshToken VARCHAR(255),
@@ -67,7 +67,7 @@ async function createWaterUsageDB() {
       CREATE TABLE IF NOT EXISTS ApartmentUserAdmin (
         ApartmentId INT UNSIGNED NOT NULL,
         UserId INT UNSIGNED NOT NULL,
-        UserRole TINYINT(1) NOT NULL,
+        UserRole TINYINT(1) NOT NULL COMMENT '0 = landlord, 1 = renter',
         StartDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         EndDate TIMESTAMP NULL,
         PRIMARY KEY (ApartmentId, UserId),
@@ -83,8 +83,8 @@ async function createWaterUsageDB() {
       CREATE TABLE IF NOT EXISTS WaterMeter (
         WaterMeterId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         ApartmentId INT UNSIGNED NOT NULL,
-        Type TINYINT UNSIGNED NOT NULL,
-        Location ENUM('Гал тогоо', 'Нойл', 'Ванн') NOT NULL,
+        Type TINYINT UNSIGNED NOT NULL COMMENT '0 = Хүйтэн ус (Cold water), 1 = Халуун ус (Hot water)',
+        Location ENUM('Гал тогоо', 'Нойл', 'Ванн') NOT NULL COMMENT 'Гал тогоо = Kitchen, Нойл = Toilet, Ванн = Bathroom',
         Indication INT UNSIGNED NOT NULL,
         WaterMeterDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CreatedBy INT UNSIGNED NULL,
@@ -105,7 +105,7 @@ async function createWaterUsageDB() {
         DirtyWaterTariff INT UNSIGNED NOT NULL,
         EffectiveFrom DATE NOT NULL,
         EffectiveTo DATE NULL,
-        IsActive TINYINT(1) NOT NULL DEFAULT 1,
+        IsActive TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0 = Inactive, 1 = Active',
         CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
         CONSTRAINT chk_is_active CHECK (IsActive IN (0, 1))
@@ -113,56 +113,79 @@ async function createWaterUsageDB() {
     `);
     if (tarifResult.warningStatus === 0) console.log('Tarif table created.');
 
-    // Payment
-    const [paymentResult] = await connection.query(`
-      CREATE TABLE IF NOT EXISTS Payment (
-        PaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        ApartmentId INT UNSIGNED NOT NULL,
-        UserAdminId INT UNSIGNED NOT NULL,
-        ServiceId INT UNSIGNED NULL,
-        TariffId INT UNSIGNED NULL,
-        PaymentType ENUM('water', 'service') NOT NULL,
-        Amount DECIMAL(10,2) NOT NULL,
-        PayDate DATE NOT NULL,  
-        PaidDate TIMESTAMP NULL,
-        Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
-        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
-        FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
-        FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE SET NULL,
-        FOREIGN KEY (TariffId) REFERENCES Tarif(TariffId) ON DELETE SET NULL
-      );
-    `);
-    if (paymentResult.warningStatus === 0) console.log('Payment table created.');
-
     // Service
     const [serviceResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS Service (
         ServiceId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         UserAdminId INT UNSIGNED NOT NULL,
         ApartmentId INT UNSIGNED NULL,
+        ServiceName VARCHAR(255) NOT NULL, -- Added column for service name
         Description TEXT NOT NULL,
         Respond TEXT NOT NULL,
         RequestDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         SubmitDate TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-        Status ENUM('Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Дууссан', 'Цуцлагдсан') NOT NULL DEFAULT 'Хүлээгдэж буй',
         FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
         FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE SET NULL
       );
     `);
     if (serviceResult.warningStatus === 0) console.log('Service table created.');
 
+    // WaterPayment
+    const [waterPaymentResult] = await connection.query(`
+      CREATE TABLE IF NOT EXISTS WaterPayment (
+        WaterPaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        ApartmentId INT UNSIGNED NOT NULL,
+        UserAdminId INT UNSIGNED NOT NULL,
+        TariffId INT UNSIGNED NOT NULL,
+        ColdWaterUsage DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+        HotWaterUsage DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+        ColdWaterCost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        HotWaterCost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        DirtyWaterCost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        TotalAmount DECIMAL(10,2) NOT NULL,
+        PayDate DATE NOT NULL,
+        PaidDate TIMESTAMP NULL,
+        Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
+        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
+        FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
+        FOREIGN KEY (TariffId) REFERENCES Tarif(TariffId) ON DELETE RESTRICT
+      );
+    `);
+    if (waterPaymentResult.warningStatus === 0) console.log('WaterPayment table created.');
+
+    // ServicePayment
+    const [servicePaymentResult] = await connection.query(`
+      CREATE TABLE IF NOT EXISTS ServicePayment (
+        ServicePaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        ApartmentId INT UNSIGNED NOT NULL,
+        UserAdminId INT UNSIGNED NOT NULL,
+        ServiceId INT UNSIGNED NOT NULL,
+        Amount DECIMAL(10,2) NOT NULL,
+        PayDate DATE NOT NULL,
+        PaidDate TIMESTAMP NULL,
+        Status ENUM('Төлөгдөөгүй', 'Төлөгдсөн', 'Хоцорсон', 'Цуцлагдсан') NOT NULL DEFAULT 'Төлөгдөөгүй',
+        Description TEXT NULL,
+        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
+        FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
+        FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE RESTRICT
+      );
+    `);
+    if (servicePaymentResult.warningStatus === 0) console.log('ServicePayment table created.');
+
     // Feedback
     const [feedbackResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS Feedback (
         ApplicationId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         UserAdminId INT UNSIGNED NOT NULL,
-        Type ENUM('1', '2', '3') NOT NULL,
+        Type ENUM('1', '2', '3') NOT NULL COMMENT '1: Санал (Suggestion), 2: Хүсэлт (Request), 3: Гомдол (Complaint)',
         Description TEXT NOT NULL,
         AdminResponse TEXT NULL,
         AdminResponderId INT UNSIGNED NULL,
-        Status ENUM('Хүлээгдэж байна', 'Хүлээн авсан', 'Хүлээн авахаас татгалзсан') NOT NULL DEFAULT 'Хүлээгдэж байна',
+        Status ENUM('Хүлээгдэж байна', 'Хүлээн авсан', 'Хүлээн авахаас татгалзсан') NOT NULL DEFAULT 'Хүлээгдэж байна' COMMENT 'Хүлээгдэж байна (Pending), Хүлээн авсан (Accepted), Хүлээн авахаас татгалзсан (Rejected)',
         CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
@@ -180,7 +203,7 @@ async function createWaterUsageDB() {
         NewsDescription TEXT NOT NULL,
         CoverImageType VARCHAR(10) NOT NULL,
         CoverImageData MEDIUMBLOB NOT NULL,
-        IsPublished TINYINT(1) NOT NULL DEFAULT 1,
+        IsPublished TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0 = Draft, 1 = Published',
         PublishDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         ExpiryDate TIMESTAMP NULL,
         CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -5,11 +5,11 @@ exports.getAllServices = async (req, res) => {
     const query = `
       SELECT s.ServiceId, s.Description, s.Respond, s.RequestDate, s.SubmitDate, s.Status, 
              u.Username, s.ApartmentId, a.ApartmentName, a.UnitNumber, a.BlockNumber,
-             p.Amount, p.PaidDate, p.PayDate 
+             sp.Amount, sp.PaidDate, sp.PayDate 
       FROM Service s
       JOIN UserAdmin u ON s.UserAdminId = u.UserId
       LEFT JOIN Apartment a ON s.ApartmentId = a.ApartmentId
-      LEFT JOIN Payment p ON s.ServiceId = p.ServiceId AND p.PaymentType = 'service'
+      LEFT JOIN ServicePayment sp ON s.ServiceId = sp.ServiceId
       ORDER BY s.ServiceId DESC
     `;
     const [results] = await db.query(query);
@@ -28,11 +28,11 @@ exports.getServiceById = async (req, res) => {
     }
     const query = `
       SELECT s.*, u.Username, a.ApartmentName, a.UnitNumber, a.BlockNumber,
-             p.Amount, p.PaidDate, p.PayDate 
+             sp.Amount, sp.PaidDate, sp.PayDate 
       FROM Service s
       JOIN UserAdmin u ON s.UserAdminId = u.UserId
       LEFT JOIN Apartment a ON s.ApartmentId = a.ApartmentId
-      LEFT JOIN Payment p ON s.ServiceId = p.ServiceId AND p.PaymentType = 'service'
+      LEFT JOIN ServicePayment sp ON s.ServiceId = sp.ServiceId
       WHERE s.ServiceId = ?
     `;
     const [results] = await db.query(query, [serviceId]);
@@ -72,8 +72,8 @@ exports.createServiceRequest = async (req, res) => {
     `;
     const [results] = await db.query(query, [userId, description, apartmentId || null]);
     await db.query(
-      `INSERT INTO Payment (ApartmentId, UserAdminId, ServiceId, PaymentType, Amount, PayDate, Status, PaidDate)
-       VALUES (?, ?, ?, 'service', 0, CURDATE(), 'Төлөгдөөгүй', NULL)`,
+      `INSERT INTO ServicePayment (ApartmentId, UserAdminId, ServiceId, Amount, PayDate, Status, PaidDate)
+       VALUES (?, ?, ?, 0, CURDATE(), 'Төлөгдөөгүй', NULL)`,
       [
         apartmentId || null,
         userId,
@@ -136,20 +136,20 @@ exports.updateServiceResponse = async (req, res) => {
       if (amount === null || amount === undefined || isNaN(Number(amount))) {
         amount = 0;
       }
-      const checkPaymentQuery = 'SELECT * FROM Payment WHERE ServiceId = ? AND PaymentType = "service"';
+      const checkPaymentQuery = 'SELECT * FROM ServicePayment WHERE ServiceId = ?';
       const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
       if (paymentResults.length > 0) {
         const updatePaymentQuery = `
-          UPDATE Payment
+          UPDATE ServicePayment
           SET Amount = ?
-          WHERE ServiceId = ? AND PaymentType = "service"
+          WHERE ServiceId = ?
         `;
         await connection.query(updatePaymentQuery, [amount, serviceId]);
         paymentUpdated = true;
       } else if (amount && amount > 0) {
         await connection.query(
-          `INSERT INTO Payment (ApartmentId, UserAdminId, ServiceId, PaymentType, Amount, PayDate, Status)
-           VALUES (?, ?, ?, 'service', ?, CURDATE(), 'Төлөгдөөгүй')`,
+          `INSERT INTO ServicePayment (ApartmentId, UserAdminId, ServiceId, Amount, PayDate, Status)
+           VALUES (?, ?, ?, ?, CURDATE(), 'Төлөгдөөгүй')`,
           [
             checkResults[0].ApartmentId || null,
             checkResults[0].UserAdminId,
@@ -162,12 +162,12 @@ exports.updateServiceResponse = async (req, res) => {
     }
     if (status === 'Дууссан') {
       await connection.query(
-        `UPDATE Payment SET PaidDate = NOW() WHERE ServiceId = ? AND PaymentType = "service"`,
+        `UPDATE ServicePayment SET PaidDate = NOW() WHERE ServiceId = ?`,
         [serviceId]
       );
       setServiceDate = true;
       const [paymentRows] = await connection.query(
-        'SELECT * FROM Payment WHERE ServiceId = ? AND PaymentType = "service"',
+        'SELECT * FROM ServicePayment WHERE ServiceId = ?',
         [serviceId]
       );
       if (paymentRows.length > 0) {
@@ -180,14 +180,14 @@ exports.updateServiceResponse = async (req, res) => {
         }
         const payDay = new Date(year, month + 1, 0, 0, 0, 0, 0);
         await connection.query(
-          'UPDATE Payment SET PayDate = ? WHERE ServiceId = ? AND PaymentType = "service"',
+          'UPDATE ServicePayment SET PayDate = ? WHERE ServiceId = ?',
           [payDay, serviceId]
         );
       }
     }
     if (status === 'Төлөвлөгдсөн') {
       await connection.query(
-        'UPDATE Payment SET PaidDate = NULL, PayDate = CURDATE() WHERE ServiceId = ? AND PaymentType = "service"',
+        'UPDATE ServicePayment SET PaidDate = NULL, PayDate = CURDATE() WHERE ServiceId = ?',
         [serviceId]
       );
     }
@@ -215,10 +215,10 @@ exports.getUserServiceRequests = async (req, res) => {
     const query = `
       SELECT s.ServiceId, s.Description, s.Respond, s.RequestDate, s.SubmitDate, s.Status,
              s.ApartmentId, a.ApartmentName, a.UnitNumber, a.BlockNumber,
-             p.Amount, p.PaidDate, p.PayDate
+             sp.Amount, sp.PaidDate, sp.PayDate
       FROM Service s
       LEFT JOIN Apartment a ON s.ApartmentId = a.ApartmentId
-      LEFT JOIN Payment p ON s.ServiceId = p.ServiceId AND p.PaymentType = 'service'
+      LEFT JOIN ServicePayment sp ON s.ServiceId = sp.ServiceId
       WHERE s.UserAdminId = ?
       ORDER BY s.ServiceId DESC
     `;
@@ -242,11 +242,11 @@ exports.getServicesByStatus = async (req, res) => {
     const query = `
       SELECT s.ServiceId, s.Description, s.Respond, s.RequestDate, s.SubmitDate, s.Status, 
              u.Username, s.ApartmentId, a.ApartmentName, a.UnitNumber, a.BlockNumber,
-             p.Amount, p.PaidDate, p.PayDate 
+             sp.Amount, sp.PaidDate, sp.PayDate 
       FROM Service s
       JOIN UserAdmin u ON s.UserAdminId = u.UserId
       LEFT JOIN Apartment a ON s.ApartmentId = a.ApartmentId
-      LEFT JOIN Payment p ON s.ServiceId = p.ServiceId AND p.PaymentType = 'service'
+      LEFT JOIN ServicePayment sp ON s.ServiceId = sp.ServiceId
       WHERE s.Status = ?
       ORDER BY s.ServiceId DESC
     `;
@@ -299,7 +299,7 @@ exports.deleteServiceRequest = async (req, res) => {
       return res.status(404).json({ message: 'Service not found' });
     }
     const checkPaymentQuery = `
-      SELECT * FROM Payment WHERE ServiceId = ? AND PaymentType = "service" AND PaidDate IS NOT NULL
+      SELECT * FROM ServicePayment WHERE ServiceId = ? AND PaidDate IS NOT NULL
     `;
     const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
     if (paymentResults.length > 0) {
@@ -309,7 +309,7 @@ exports.deleteServiceRequest = async (req, res) => {
       });
     }
     const deletePaymentQuery = `
-      DELETE FROM Payment WHERE ServiceId = ? AND PaymentType = "service" AND PaidDate IS NULL
+      DELETE FROM ServicePayment WHERE ServiceId = ? AND PaidDate IS NULL
     `;
     await connection.query(deletePaymentQuery, [serviceId]);
     const deleteServiceQuery = 'DELETE FROM Service WHERE ServiceId = ?';
@@ -340,16 +340,16 @@ exports.processServicePayment = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
-    const checkPaymentQuery = 'SELECT * FROM Payment WHERE ServiceId = ? AND PaymentType = "service"';
+    const checkPaymentQuery = 'SELECT * FROM ServicePayment WHERE ServiceId = ?';
     const [paymentResults] = await connection.query(checkPaymentQuery, [serviceId]);
     if (paymentResults.length === 0) {
       await connection.rollback();
       return res.status(404).json({ message: 'No payment record found for this service' });
     }
     const updateQuery = `
-      UPDATE Payment
+      UPDATE ServicePayment
       SET PaidDate = NOW(), PayDate = ?
-      WHERE ServiceId = ? AND PaymentType = "service"
+      WHERE ServiceId = ?
     `;
     await connection.query(updateQuery, [payDay || null, serviceId]);
     if (serviceResults[0].Status !== 'Дууссан') {
@@ -360,7 +360,7 @@ exports.processServicePayment = async (req, res) => {
     }
     // Set PayDate to 20th of next month if not already set
     const [paymentRows] = await connection.query(
-      'SELECT * FROM Payment WHERE ServiceId = ? AND PaymentType = "service"',
+      'SELECT * FROM ServicePayment WHERE ServiceId = ?',
       [serviceId]
     );
     if (paymentRows.length > 0 && !paymentRows[0].PayDate) {
@@ -372,10 +372,9 @@ exports.processServicePayment = async (req, res) => {
         year += 1;
       }
       // Set payDay to the last day of next month
-      // month is 0-based in JS Date, so for next month: month+1, day 0 gives last day of next month
       const payDayDate = new Date(year, month + 1, 0, 0, 0, 0, 0);
       await connection.query(
-        'UPDATE Payment SET PayDate = ? WHERE ServiceId = ? AND PaymentType = "service"',
+        'UPDATE ServicePayment SET PayDate = ? WHERE ServiceId = ?',
         [payDayDate, serviceId]
       );
     }
@@ -416,12 +415,12 @@ exports.userCompleteService = async (req, res) => {
       ['Дууссан', serviceId]
     );
     const [paymentRows] = await connection.query(
-      'SELECT * FROM Payment WHERE ServiceId = ? AND PaymentType = "service"',
+      'SELECT * FROM ServicePayment WHERE ServiceId = ?',
       [serviceId]
     );
     if (paymentRows.length > 0) {
       await connection.query(
-        'UPDATE Payment SET PaidDate = NOW() WHERE ServiceId = ? AND PaymentType = "service"',
+        'UPDATE ServicePayment SET PaidDate = NOW() WHERE ServiceId = ?',
         [serviceId]
       );
       const now = new Date();
@@ -433,7 +432,7 @@ exports.userCompleteService = async (req, res) => {
       }
       const payDayDate = new Date(year, month, 20, 0, 0, 0, 0);
       await connection.query(
-        'UPDATE Payment SET PayDate = ? WHERE ServiceId = ? AND PaymentType = "service"',
+        'UPDATE ServicePayment SET PayDate = ? WHERE ServiceId = ?',
         [payDayDate, serviceId]
       );
     }
@@ -470,7 +469,7 @@ exports.cancelServiceRequest = async (req, res) => {
       ['Цуцлагдсан', reason || '', serviceId]
     );
     await connection.query(
-      'UPDATE Payment SET Status = "Цуцлагдсан" WHERE ServiceId = ? AND PaymentType = "service"',
+      'UPDATE ServicePayment SET Status = "Цуцлагдсан" WHERE ServiceId = ?',
       [serviceId]
     );
     await connection.commit();
@@ -505,7 +504,7 @@ exports.restoreServiceRequest = async (req, res) => {
       ['Хүлээгдэж буй', serviceId]
     );
     await connection.query(
-      'UPDATE Payment SET Amount = 0, Status = "Төлөгдөөгүй" WHERE ServiceId = ? AND PaymentType = "service"',
+      'UPDATE ServicePayment SET Amount = 0, Status = "Төлөгдөөгүй" WHERE ServiceId = ?',
       [serviceId]
     );
     await connection.commit();

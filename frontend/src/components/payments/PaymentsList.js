@@ -18,16 +18,6 @@ const getStatusBadgeColor = (status) => {
   }
 };
 
-function mapStatus(status) {
-  switch (status) {
-    case 'Төлөгдсөн': return 'paid';
-    case 'Төлөгдөөгүй': return 'pending';
-    case 'Хоцорсон': return 'overdue';
-    case 'Цуцлагдсан': return 'cancelled';
-    default: return 'pending';
-  }
-}
-
 const paymentTypeNames = {
   water: 'Усны хэрэглээ',
   service: 'Үйлчилгээ'
@@ -76,7 +66,7 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
       (amountStr && amountStr.includes(searchQuery)) ||
       (payment.status && statusNames[payment.status?.toLowerCase()]?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (payment.id && payment.id.toString().includes(searchQuery));
-    const matchesStatus = statusFilter === 'all' || mapStatus(payment.status) === statusFilter;
+    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -195,7 +185,7 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedPayments.length > 0 ? (
               paginatedPayments.map((payment) => {
-                const canPay = (mapStatus(payment.status) === 'pending' || mapStatus(payment.status) === 'overdue');
+                const canPay = (payment.status === 'pending' || payment.status === 'overdue');
                 return (
                   <tr
                     key={payment.id}
@@ -206,21 +196,25 @@ const PaymentsList = ({ payments = [], onViewPayment, onPayNow, loading }) => {
                       {payment.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                      {formatDate(payment.payDate)}
+                      {
+                        payment.status === 'paid'
+                          ? formatDate(payment.paidDate)
+                          : formatDate(payment.payDate)
+                      }
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                       {paymentTypeNames[
                         payment.paymentType
                           ? payment.paymentType
-                          : (payment.amount && payment.id && payment.status && payment.apartmentId ? 'service' : 'water')
+                          : (payment.serviceId ? 'service' : 'water')
                       ] || payment.paymentType || 'Тодорхойгүй'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2D6B9F] text-center">
                       ₮{(payment.amount || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(mapStatus(payment.status))}`}>
-                        {statusNames[mapStatus(payment.status)] || 'Тодорхойгүй'}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.status)}`}>
+                        {statusNames[payment.status] || 'Тодорхойгүй'}
                       </span>
                     </td>
                     <td
