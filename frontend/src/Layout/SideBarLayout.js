@@ -356,9 +356,8 @@ const SidebarLayout = ({ children }) => {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={toggleDropdown}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border border-[#2D6B9F] text-[#2D6B9F] ${
-                    isDropdownOpen ? 'bg-blue-50' : 'bg-transparent'
-                  } hover:bg-blue-50/50 hover:text-[#2D6B9F] transition-colors duration-200`}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full border border-[#2D6B9F] text-[#2D6B9F] 
+                    hover:text-[#2D6B9F] transition-colors duration-200 bg-transparent`}
                   aria-expanded={isDropdownOpen}
                   aria-haspopup="true"
                 >

@@ -15,5 +15,12 @@ router.get('/service-statistics', authMiddleware.verifiedOnly, authMiddleware.ad
 router.get('/feedback', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.getFeedbackReport);
 router.get('/users', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.getUserReport);
 router.get('/apartments', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.getApartmentReport);
+router.get('/apartment/:apartmentId/users', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.getApartmentUsers);
+router.post('/apartment/:apartmentId/users', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.addApartmentUser);
+router.delete('/apartment/:apartmentId/users/:userId', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.removeApartmentUser);
+router.put('/payment-amount', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.updatePaymentAmount);
+router.put('/water-meter-indication', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.updateWaterMeterIndication);
+router.delete('/payment-amount', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.deletePayment);
+router.delete('/water-meter-indication', authMiddleware.verifiedOnly, authMiddleware.adminOnly, AdminReportController.deleteWaterMeter);
 
 module.exports = router;

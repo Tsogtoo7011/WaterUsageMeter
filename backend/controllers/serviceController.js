@@ -23,7 +23,7 @@ exports.getAllServices = async (req, res) => {
 exports.getServiceById = async (req, res) => {
   try {
     const serviceId = req.params.id;
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ error: 'Invalid service ID' });
     }
     const query = `
@@ -47,46 +47,66 @@ exports.getServiceById = async (req, res) => {
 };
 
 exports.createServiceRequest = async (req, res) => {
+  const connection = await db.getConnection();
   try {
     const { description, apartmentId } = req.body;
     const userId = req.userData.userId;
     if (!description) {
+      connection.release();
       return res.status(400).json({ message: 'Service description is required' });
     }
     if (apartmentId) {
-      if (isNaN(parseInt(apartmentId))) {
+      if (!apartmentId) {
+        connection.release();
         return res.status(400).json({ message: 'Invalid apartment ID' });
       }
       const accessQuery = `
         SELECT * FROM ApartmentUserAdmin 
         WHERE UserId = ? AND ApartmentId = ? AND (EndDate IS NULL OR EndDate > NOW())
       `;
-      const [accessResults] = await db.query(accessQuery, [userId, apartmentId]);
+      const [accessResults] = await connection.query(accessQuery, [userId, apartmentId]);
       if (accessResults.length === 0) {
+        connection.release();
         return res.status(403).json({ message: 'You do not have access to this apartment' });
       }
     }
-    const query = `
+    await connection.beginTransaction();
+    const insertServiceQuery = `
       INSERT INTO Service (UserAdminId, Description, Respond, ApartmentId, Status)
       VALUES (?, ?, '', ?, 'Хүлээгдэж буй')
     `;
-    const [results] = await db.query(query, [userId, description, apartmentId || null]);
-    await db.query(
+    await connection.query(insertServiceQuery, [userId, description, apartmentId || null]);
+    // Fetch the generated ServiceId (latest for this user/desc)
+    const [serviceRows] = await connection.query(
+      `SELECT ServiceId FROM Service WHERE UserAdminId = ? AND Description = ? ORDER BY RequestDate DESC LIMIT 1`,
+      [userId, description]
+    );
+    if (!serviceRows.length) {
+      await connection.rollback();
+      connection.release();
+      return res.status(500).json({ message: 'Failed to retrieve created service ID' });
+    }
+    const serviceId = serviceRows[0].ServiceId;
+    await connection.query(
       `INSERT INTO ServicePayment (ApartmentId, UserAdminId, ServiceId, Amount, PayDate, Status, PaidDate)
        VALUES (?, ?, ?, 0, CURDATE(), 'Төлөгдөөгүй', NULL)`,
       [
         apartmentId || null,
         userId,
-        results.insertId
+        serviceId
       ]
     );
+    await connection.commit();
     res.status(201).json({
       message: 'Service request created successfully',
-      serviceId: results.insertId
+      serviceId
     });
   } catch (err) {
+    if (connection) await connection.rollback();
     console.error('Error creating service request:', err);
     res.status(500).json({ message: 'Failed to create service request: ' + err.message });
+  } finally {
+    if (connection) connection.release();
   }
 };
 
@@ -98,7 +118,7 @@ exports.updateServiceResponse = async (req, res) => {
     if (cancelReason && typeof cancelReason === 'string' && cancelReason.trim().length > 0) {
       respond = cancelReason.trim();
     }
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
     const allowedStatuses = ['Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Дууссан', 'Цуцлагдсан'];
@@ -288,7 +308,7 @@ exports.deleteServiceRequest = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const serviceId = req.params.id;
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
     await connection.beginTransaction();
@@ -330,7 +350,7 @@ exports.processServicePayment = async (req, res) => {
   try {
     const serviceId = req.params.id;
     const { payDay } = req.body;
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
     await connection.beginTransaction();
@@ -394,7 +414,7 @@ exports.userCompleteService = async (req, res) => {
   try {
     const serviceId = req.params.id;
     const userId = req.userData.userId;
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
     await connection.beginTransaction();
@@ -452,7 +472,7 @@ exports.cancelServiceRequest = async (req, res) => {
   try {
     const serviceId = req.params.id;
     const { reason } = req.body;
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
     await connection.beginTransaction();
@@ -487,7 +507,7 @@ exports.restoreServiceRequest = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const serviceId = req.params.id;
-    if (!serviceId || isNaN(parseInt(serviceId))) {
+    if (!serviceId) {
       return res.status(400).json({ message: 'Invalid service ID' });
     }
     await connection.beginTransaction();

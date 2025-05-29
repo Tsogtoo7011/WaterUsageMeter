@@ -379,14 +379,14 @@ export default function AdminReportStatistics({
 
   if (!loading && !error && (!reportData || reportData.length === 0)) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-4 text-center text-gray-500">
+      <div className="bg-white rounded-lg p-4 text-center text-gray-500">
         Статистикийн мэдээлэл олдсонгүй.
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
+    <div className="bg-white rounded-lg p-4">
       {loading && <p className="text-center py-4">Ачааллаж байна...</p>}
       {error && (
         <div className="text-red-500 text-center py-4">
@@ -433,7 +433,7 @@ export default function AdminReportStatistics({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {summaryCards.map((card, idx) => (
-                  <div key={idx} className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+                  <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="flex items-center p-4">
                       <div className="flex-grow">
                         <p className="text-sm font-medium text-gray-500">{card.label}</p>
@@ -505,7 +505,7 @@ export default function AdminReportStatistics({
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <div className="align-middle inline-block min-w-full shadow overflow-hidden rounded-lg">
+                <div className="align-middle inline-block min-w-full overflow-hidden rounded-lg">
                   <table className="min-w-full bg-white rounded-lg overflow-hidden divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>

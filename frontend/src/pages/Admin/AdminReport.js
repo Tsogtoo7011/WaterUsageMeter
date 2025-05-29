@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { 
-  Calendar, 
-  Download, 
   BarChart, 
   FileText, 
   Home, 
@@ -10,11 +8,9 @@ import {
   Droplet, 
   Activity, 
   MessageSquare, 
-  Filter,
   ChevronDown,
   X
 } from 'lucide-react';
-import { Pie } from 'react-chartjs-2'; 
 import 'chart.js/auto'; 
 import api from "../../utils/api";
 import Breadcrumb from '../../components/common/Breadcrumb'; 
@@ -264,15 +260,6 @@ export default function AdminReport() {
   const renderStatisticsWithGraphics = () => {
     return (
       <div>
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={downloadExcel}
-            className="flex items-center px-4 py-2 bg-[#2D6B9F] text-white rounded hover:bg-blue-700 transition"
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Excel татах
-          </button>
-        </div>
         <AdminReportStatistics
           activeTab={activeTab}
           reportData={reportData}
@@ -281,7 +268,7 @@ export default function AdminReport() {
         />
       </div>
     );
-  };
+  }; 
 
   const renderReport = () => {
     if (loading) {
@@ -322,6 +309,7 @@ export default function AdminReport() {
         setCurrentPage={setCurrentPage}
         rowsPerPage={rowsPerPage}
         setSelectedItem={setSelectedItem}
+        selectedItem={selectedItem}
         downloadExcel={downloadExcel}
       />
     );
@@ -342,11 +330,11 @@ export default function AdminReport() {
           <div className="mb-6 bg-white rounded-lg w-full sm:w-auto sm:mb-0 sm:ml-0 sm:mr-24">
             <div className="flex items-center p-2">
               <button
-                className={`px-4 py-2 text-center text-sm font-medium flex items-center justify-center rounded-t ${
-                  activeTab === 'dashboard'
-                    ? 'text-[#2D6B9F] border-b-2 border-[#2D6B9F] bg-blue-50'
-                    : 'text-gray-500 hover:text-[#2D6B9F] hover:bg-blue-50'
-                }`}
+                className={`px-4 py-2 text-center text-sm font-medium flex items-center justify-center rounded-t
+                  ${activeTab === 'dashboard'
+                    ? 'text-[#2D6B9F] border-b-4 border-[#2D6B9F] bg-white'
+                    : 'text-gray-500 hover:text-[#2D6B9F] bg-white'
+                  }`}
                 onClick={() => setActiveTab('dashboard')}
               >
                 <Home className="h-5 w-5 mr-2" />
@@ -354,11 +342,11 @@ export default function AdminReport() {
               </button>
               <div className="relative ml-2">
                 <button
-                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t ${
-                    statisticsTabs.some(tab => tab.id === activeTab)
-                      ? 'text-[#2D6B9F] bg-blue-50'
-                      : 'text-gray-500 hover:text-[#2D6B9F] hover:bg-blue-50'
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t
+                    ${statisticsTabs.some(tab => tab.id === activeTab)
+                      ? 'text-[#2D6B9F] border-b-4 border-[#2D6B9F] bg-white'
+                      : 'text-gray-500 hover:text-[#2D6B9F] bg-white'
+                    }`}
                   onClick={() => toggleDropdown('statistics')}
                 >
                   Статистик
@@ -401,11 +389,11 @@ export default function AdminReport() {
               </div>
               <div className="relative ml-2">
                 <button
-                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t ${
-                    reportTabs.some(tab => tab.id === activeTab)
-                      ? 'text-[#2D6B9F] bg-blue-50'
-                      : 'text-gray-500 hover:text-[#2D6B9F] hover:bg-blue-50'
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium flex items-center justify-center rounded-t
+                    ${reportTabs.some(tab => tab.id === activeTab)
+                      ? 'text-[#2D6B9F] border-b-4 border-[#2D6B9F] bg-white'
+                      : 'text-gray-500 hover:text-[#2D6B9F] bg-white'
+                    }`}
                   onClick={() => toggleDropdown('reports')}
                 >
                   Тайлан

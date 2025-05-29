@@ -7,46 +7,37 @@ async function getUserApartments(userId) {
     'SELECT aua.ApartmentId FROM ApartmentUserAdmin aua WHERE aua.UserId = ?',
     [userId]
   );
-  
   if (apartments.length === 0) {
     return [];
   }
-  
   return apartments.map(apt => apt.ApartmentId);
 }
 
 function getExpectedMeters(meterCount) {
   const expectedMeters = [];
-  
   expectedMeters.push(
     { location: 'Гал тогоо', type: 0 }, 
     { location: 'Гал тогоо', type: 1 }  
   );
-
   if (meterCount >= 3) {
     expectedMeters.push({ location: 'Ванн', type: 0 });
   }
-
   if (meterCount >= 4) {
     expectedMeters.push({ location: 'Ванн', type: 1 });
   }
-
   if (meterCount >= 5) {
     expectedMeters.push({ location: 'Нойл', type: 0 });
   }
-  
   return expectedMeters;
 }
 
 function isDateInAllowedPeriod() {
   const currentDate = new Date();
   const currentDay = currentDate.getDate();
-
   return currentDay >= 1 && currentDay <= 31;
 }
 
 async function getPreviousReadings(apartmentId) {
-
   const [currentReadings] = await pool.execute(
     `SELECT 
       WaterMeterId,
@@ -61,7 +52,6 @@ async function getPreviousReadings(apartmentId) {
     ORDER BY Location, Type`,
     [apartmentId]
   );
-  
   if (currentReadings.length > 0) {
     return currentReadings.map(meter => ({
       location: meter.Location,
@@ -69,7 +59,6 @@ async function getPreviousReadings(apartmentId) {
       indication: Number(meter.Indication)
     }));
   }
-
   const [lastMonthReadings] = await pool.execute(
     `SELECT 
       WaterMeterId,
@@ -89,7 +78,6 @@ async function getPreviousReadings(apartmentId) {
     ORDER BY WaterMeterDate DESC, Location, Type`,
     [apartmentId]
   );
-  
   if (lastMonthReadings.length > 0) {
     return lastMonthReadings.map(meter => ({
       location: meter.Location,
@@ -97,7 +85,6 @@ async function getPreviousReadings(apartmentId) {
       indication: Number(meter.Indication)
     }));
   }
-  
   return [];
 }
 
@@ -110,7 +97,6 @@ async function hasSubmittedCurrentMonthReadings(apartmentId) {
      AND YEAR(WaterMeterDate) = YEAR(CURRENT_DATE())`,
     [apartmentId]
   );
-  
   return result[0].count > 0;
 }
 
@@ -124,15 +110,20 @@ async function getCurrentTariff() {
   return tariffs[0];
 }
 
+async function generateNextWaterMeterId() {
+  const [rows] = await pool.execute(
+    "SELECT MAX(CAST(SUBSTRING(WaterMeterId, 3) AS UNSIGNED)) AS maxId FROM WaterMeter"
+  );
+  const nextId = (rows[0].maxId || 0) + 1;
+  return `WM${String(nextId).padStart(5, '0')}`;
+}
+
 exports.getUserWaterMeters = async (req, res) => {
   try {
     const userId = req.userData.userId;
-    const requestedApartmentId = req.query.apartmentId ? Number(req.query.apartmentId) : null;
-
+    const requestedApartmentId = req.query.apartmentId ? req.query.apartmentId : null;
     const apartmentIds = await getUserApartments(userId);
-    
     if (apartmentIds.length === 0) {
-
       return res.status(200).json({
         success: true,
         message: 'No apartments found for this user',
@@ -157,32 +148,26 @@ exports.getUserWaterMeters = async (req, res) => {
         canSubmitReading: isDateInAllowedPeriod() 
       });
     }
-
     let selectedApartmentId;
-    
     if (requestedApartmentId && apartmentIds.includes(requestedApartmentId)) {
       selectedApartmentId = requestedApartmentId;
     } else {
       selectedApartmentId = apartmentIds[0];
     }
-
     const [apartmentDetails] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
        FROM Apartment a
        WHERE a.ApartmentId = ?`,
       [selectedApartmentId]
     );
-    
     if (apartmentDetails.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Apartment not found'
       });
     }
-    
     const meterCount = apartmentDetails[0].MeterCount;
     const expectedMeters = getExpectedMeters(meterCount);
-
     const [waterMeters] = await pool.execute(
       `SELECT 
         WaterMeterId,
@@ -197,7 +182,6 @@ exports.getUserWaterMeters = async (req, res) => {
       ORDER BY Location, Type`,
       [selectedApartmentId]
     );
-    
     const formattedMeters = waterMeters.map(meter => ({
       id: Number(meter.WaterMeterId),
       type: Number(meter.Type),
@@ -206,10 +190,8 @@ exports.getUserWaterMeters = async (req, res) => {
       indication: Number(meter.Indication),
       date: meter.WaterMeterDate
     }));
-    
     let totalHot = 0;
     let totalCold = 0;
-    
     formattedMeters.forEach(meter => {
       if (meter.type === 1) {
         totalHot += meter.indication;
@@ -217,19 +199,16 @@ exports.getUserWaterMeters = async (req, res) => {
         totalCold += meter.indication;
       }
     });
-    
     const locationBreakdown = {
       'Гал тогоо': { hot: 0, cold: 0 }
     };
-    
     if (meterCount >= 3) {
       locationBreakdown['Ванн'] = { hot: 0, cold: 0 };
     }
-    
     if (meterCount >= 5) {
       locationBreakdown['Нойл'] = { cold: 0 };  
     }
-        const [locationData] = await pool.execute(
+    const [locationData] = await pool.execute(
       `SELECT 
         Location,
         Type,
@@ -242,18 +221,15 @@ exports.getUserWaterMeters = async (req, res) => {
       ORDER BY Location, Type`,
       [selectedApartmentId]
     );
-
     locationData.forEach(item => {
       const locKey = item.Location;
       const typeKey = item.Type === 1 ? 'hot' : 'cold';
-      
       if (locationBreakdown[locKey]) {
         if (typeKey === 'cold' || (typeKey === 'hot' && locKey !== 'Нойл')) {
           locationBreakdown[locKey][typeKey] = Number(item.total);
         }
       }
     });
-
     const year = new Date().getFullYear();
     const [historicalData] = await pool.execute(
       `SELECT 
@@ -267,7 +243,6 @@ exports.getUserWaterMeters = async (req, res) => {
       ORDER BY MONTH(WaterMeterDate), Type`,
       [selectedApartmentId, year]
     );
-    
     const months = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
     const chartData = {
       labels: months,
@@ -275,23 +250,19 @@ exports.getUserWaterMeters = async (req, res) => {
       cold: Array(12).fill(0),
       total: Array(12).fill(0)
     };
-    
     historicalData.forEach(record => {
       const monthIndex = record.month - 1; 
       const typeKey = record.Type === 1 ? 'hot' : 'cold';
       const value = Number(record.total);
-      
       chartData[typeKey][monthIndex] = value;
       chartData.total[monthIndex] += value;
     });
-    
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber, a.MeterCount
        FROM Apartment a
        WHERE a.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`,
       apartmentIds
     );
-    
     const apartments = apartmentObjects.map(apt => ({
       id: apt.ApartmentId,
       name: apt.ApartmentName,
@@ -300,10 +271,8 @@ exports.getUserWaterMeters = async (req, res) => {
       meterCount: apt.MeterCount,
       displayName: `${apt.ApartmentName}, Блок ${apt.BlockNumber}${apt.UnitNumber ? ', Тоот ' + apt.UnitNumber : ''}`
     }));
-
     const hasCurrentMonthReadings = formattedMeters.length > 0;
     const canSubmit = isDateInAllowedPeriod() && !hasCurrentMonthReadings;
-    
     return res.status(200).json({
       success: true,
       waterMeters: formattedMeters,
@@ -323,7 +292,6 @@ exports.getUserWaterMeters = async (req, res) => {
       canSubmitReading: canSubmit,
       submissionPeriod: isDateInAllowedPeriod()
     });
-    
   } catch (error) {
     handleError(res, error, 'Get user water meters');
   }
@@ -351,8 +319,8 @@ exports.getWaterMeterDetails = async (req, res) => {
       });
     }
 
-    const validApartmentId = apartmentId && apartmentIds.includes(Number(apartmentId)) 
-      ? Number(apartmentId) 
+    const validApartmentId = apartmentId && apartmentIds.includes(apartmentId) // <-- string compare
+      ? apartmentId
       : apartmentIds[0];
 
     const [apartmentDetails] = await pool.execute(
@@ -524,7 +492,7 @@ exports.addMeterReading = async (req, res) => {
     
     const apartmentIds = await getUserApartments(userId);
     
-    if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
+    if (apartmentIds.length === 0 || !apartmentIds.includes(apartmentId)) { // <-- string compare
       return res.status(403).json({
         success: false,
         message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.',
@@ -632,14 +600,23 @@ exports.addMeterReading = async (req, res) => {
       }
     });
     
-    const insertPromises = readings.map(reading => 
-      pool.execute(
-        'INSERT INTO WaterMeter (ApartmentId, Type, Location, Indication, CreatedBy) VALUES (?, ?, ?, ?, ?)',
-        [apartmentId, reading.type, reading.location, reading.indication, userId]
-      )
-    );
-    
-    await Promise.all(insertPromises);
+    // Replace this:
+    // const insertPromises = readings.map(reading => 
+    //   pool.execute(
+    //     'INSERT INTO WaterMeter (ApartmentId, Type, Location, Indication, CreatedBy) VALUES (?, ?, ?, ?, ?)',
+    //     [apartmentId, reading.type, reading.location, reading.indication, userId]
+    //   )
+    // );
+    // await Promise.all(insertPromises);
+
+    // With this (sequential insert to avoid trigger race condition):
+    for (const reading of readings) {
+      const newId = await generateNextWaterMeterId();
+      await pool.execute(
+        'INSERT INTO WaterMeter (WaterMeterId, ApartmentId, Type, Location, Indication, CreatedBy) VALUES (?, ?, ?, ?, ?, ?)',
+        [newId, apartmentId, reading.type, reading.location, reading.indication, userId]
+      );
+    }
 
     let paymentInfo = null;
     try {
@@ -674,7 +651,7 @@ exports.getWaterMeterById = async (req, res) => {
     const userId = req.userData.userId;
     const waterMeterId = req.params.id;
     
-    if (!waterMeterId || isNaN(Number(waterMeterId))) {
+    if (!waterMeterId) {
       return res.status(400).json({
         success: false,
         message: 'Буруу тоолуурын ID.'
@@ -753,7 +730,7 @@ exports.getExpectedWaterMeters = async (req, res) => {
 
     const apartmentIds = await getUserApartments(userId);
     
-    if (apartmentIds.length === 0 || !apartmentIds.includes(Number(apartmentId))) {
+    if (apartmentIds.length === 0 || !apartmentIds.includes(apartmentId)) { // <-- string compare
       return res.status(403).json({
         success: false,
         message: 'Хэрэглэгчтэй холбоотой орон сууц олдсонгүй.',

@@ -9,25 +9,20 @@ const formatDate = (date) => {
 
 exports.getDashboardStats = async (req, res) => {
   try {
-
     const [userCount] = await db.query('SELECT COUNT(*) as total FROM UserAdmin');
     const [apartmentCount] = await db.query('SELECT COUNT(*) as total FROM Apartment');
     const [pendingServiceCount] = await db.query(
-      "SELECT COUNT(*) as total FROM Service WHERE Status = 'pending'"
+      "SELECT COUNT(*) as total FROM Service WHERE Status = 'Хүлээгдэж буй'"
     );
-
     const [pendingFeedbackCount] = await db.query(
       "SELECT COUNT(*) as total FROM Feedback WHERE Status = 'Хүлээгдэж байна'"
     );
-
     const [pendingPaymentsCount] = await db.query(
-      "SELECT COUNT(*) as total FROM Payment WHERE Status = 'pending'"
+      "SELECT COUNT(*) as total FROM WaterPayment WHERE Status = 'Төлөгдөөгүй'"
     );
-
     const [pendingPaymentsAmount] = await db.query(
-      "SELECT COALESCE(SUM(Amount), 0) as total FROM Payment WHERE Status = 'pending'"
+      "SELECT COALESCE(SUM(TotalAmount), 0) as total FROM WaterPayment WHERE Status = 'Төлөгдөөгүй'"
     );
-
     res.status(200).json({
       userCount: userCount[0].total,
       apartmentCount: apartmentCount[0].total,
@@ -44,16 +39,17 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getPaymentReport = async (req, res) => {
   try {
-    const { startDate, endDate, status, apartmentId } = req.query;
+    const { startDate, endDate, status, apartmentId, paymentType } = req.query;
 
-    let query = `
+    // WaterPayment query
+    let waterQuery = `
       SELECT 
-        p.PaymentId,
-        p.PaymentType,
-        p.Amount,
-        p.PayDate,
-        p.PaidDate,
-        p.Status,
+        wp.WaterPaymentId AS PaymentId,
+        'Усны төлбөр' AS PaymentType,
+        wp.TotalAmount AS Amount,
+        wp.PayDate,
+        wp.PaidDate,
+        wp.Status,
         a.ApartmentCode,
         a.CityName,
         a.DistrictName,
@@ -62,45 +58,88 @@ exports.getPaymentReport = async (req, res) => {
         a.BlockNumber,
         a.UnitNumber,
         CONCAT(u.Firstname, ' ', u.Lastname) AS UserName
-      FROM Payment p
-      JOIN Apartment a ON p.ApartmentId = a.ApartmentId
-      JOIN UserAdmin u ON p.UserAdminId = u.UserId
+      FROM WaterPayment wp
+      JOIN Apartment a ON wp.ApartmentId = a.ApartmentId
+      JOIN UserAdmin u ON wp.UserAdminId = u.UserId
       WHERE 1=1
     `;
-    
-    const queryParams = [];
-
+    const waterParams = [];
     if (startDate && endDate) {
-      query += ' AND p.PayDate BETWEEN ? AND ?';
-      queryParams.push(startDate, endDate);
+      waterQuery += ' AND wp.PayDate BETWEEN ? AND ?';
+      waterParams.push(startDate, endDate);
     }
-    
     if (status) {
-      query += ' AND p.Status = ?';
-      queryParams.push(status);
+      waterQuery += ' AND wp.Status = ?';
+      waterParams.push(status);
     }
-    
     if (apartmentId) {
-      query += ' AND p.ApartmentId = ?';
-      queryParams.push(apartmentId);
+      waterQuery += ' AND wp.ApartmentId = ?';
+      waterParams.push(apartmentId);
     }
-    
-    query += ' ORDER BY p.PayDate DESC';
-    
-    const [results] = await db.query(query, queryParams);
-    
-    if (req.query.format === 'excel') {
+    waterQuery += ' ORDER BY wp.PayDate DESC';
 
+    // ServicePayment query
+    let serviceQuery = `
+      SELECT 
+        sp.ServicePaymentId AS PaymentId,
+        'Үйлчилгээний төлбөр' AS PaymentType,
+        sp.Amount AS Amount,
+        sp.PayDate,
+        sp.PaidDate,
+        sp.Status,
+        a.ApartmentCode,
+        a.CityName,
+        a.DistrictName,
+        a.SubDistrictName,
+        a.ApartmentName,
+        a.BlockNumber,
+        a.UnitNumber,
+        CONCAT(u.Firstname, ' ', u.Lastname) AS UserName
+      FROM ServicePayment sp
+      JOIN Apartment a ON sp.ApartmentId = a.ApartmentId
+      JOIN UserAdmin u ON sp.UserAdminId = u.UserId
+      WHERE 1=1
+    `;
+    const serviceParams = [];
+    if (startDate && endDate) {
+      serviceQuery += ' AND sp.PayDate BETWEEN ? AND ?';
+      serviceParams.push(startDate, endDate);
+    }
+    if (status) {
+      serviceQuery += ' AND sp.Status = ?';
+      serviceParams.push(status);
+    }
+    if (apartmentId) {
+      serviceQuery += ' AND sp.ApartmentId = ?';
+      serviceParams.push(apartmentId);
+    }
+    serviceQuery += ' ORDER BY sp.PayDate DESC';
+
+    let results = [];
+    if (!paymentType || paymentType === 'all') {
+      const [waterResults] = await db.query(waterQuery, waterParams);
+      const [serviceResults] = await db.query(serviceQuery, serviceParams);
+      results = [...waterResults, ...serviceResults];
+      // Sort by PayDate descending
+      results.sort((a, b) => new Date(b.PayDate) - new Date(a.PayDate));
+    } else if (paymentType === 'water') {
+      const [waterResults] = await db.query(waterQuery, waterParams);
+      results = waterResults;
+    } else if (paymentType === 'service') {
+      const [serviceResults] = await db.query(serviceQuery, serviceParams);
+      results = serviceResults;
+    }
+
+    if (req.query.format === 'excel') {
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Payment Report');
-
       worksheet.columns = [
-        { header: 'Payment ID', key: 'PaymentId', width: 10 },
-        { header: 'Payment Type', key: 'PaymentType', width: 15 },
+        { header: 'Payment ID', key: 'PaymentId', width: 15 },
+        { header: 'Payment Type', key: 'PaymentType', width: 18 },
         { header: 'Amount', key: 'Amount', width: 12 },
         { header: 'Pay Date', key: 'PayDate', width: 15 },
         { header: 'Paid Date', key: 'PaidDate', width: 15 },
-        { header: 'Status', key: 'Status', width: 12 },
+        { header: 'Status', key: 'Status', width: 15 },
         { header: 'Apartment Code', key: 'ApartmentCode', width: 15 },
         { header: 'Apartment Name', key: 'ApartmentName', width: 20 },
         { header: 'City', key: 'CityName', width: 15 },
@@ -109,23 +148,17 @@ exports.getPaymentReport = async (req, res) => {
         { header: 'Unit Number', key: 'UnitNumber', width: 12 },
         { header: 'User Name', key: 'UserName', width: 20 }
       ];
-
       results.forEach(payment => {
         payment.PayDate = payment.PayDate ? formatDate(payment.PayDate) : null;
         payment.PaidDate = payment.PaidDate ? formatDate(payment.PaidDate) : null;
         worksheet.addRow(payment);
       });
-
       worksheet.getRow(1).font = { bold: true };
-
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=payment_report.xlsx');
-      
-
       await workbook.xlsx.write(res);
       res.end();
     } else {
-
       res.status(200).json(results);
     }
   } catch (err) {
@@ -231,7 +264,6 @@ exports.getWaterMeterReport = async (req, res) => {
 exports.getServiceReport = async (req, res) => {
   try {
     const { startDate, endDate, status, apartmentId } = req.query;
-
     let query = `
       SELECT 
         s.ServiceId,
@@ -245,42 +277,33 @@ exports.getServiceReport = async (req, res) => {
         a.BlockNumber,
         a.UnitNumber,
         CONCAT(u.Firstname, ' ', u.Lastname) AS UserName,
-        ps.Amount AS ServiceAmount,
-        ps.PaidDay,
-        ps.PayDay
+        sp.Amount AS ServiceAmount,
+        sp.PaidDate,
+        sp.PayDate
       FROM Service s
       JOIN UserAdmin u ON s.UserAdminId = u.UserId
       LEFT JOIN Apartment a ON s.ApartmentId = a.ApartmentId
-      LEFT JOIN PaymentService ps ON s.ServiceId = ps.ServiceId
+      LEFT JOIN ServicePayment sp ON s.ServiceId = sp.ServiceId
       WHERE 1=1
     `;
-    
     const queryParams = [];
- 
     if (startDate && endDate) {
       query += ' AND s.RequestDate BETWEEN ? AND ?';
       queryParams.push(startDate, endDate);
     }
-    
     if (status) {
       query += ' AND s.Status = ?';
       queryParams.push(status);
     }
-    
     if (apartmentId) {
       query += ' AND s.ApartmentId = ?';
       queryParams.push(apartmentId);
     }
-    
     query += ' ORDER BY s.RequestDate DESC';
-    
     const [results] = await db.query(query, queryParams);
-    
     if (req.query.format === 'excel') {
-
       const workbook = new excel.Workbook();
       const worksheet = workbook.addWorksheet('Service Report');
-      
       worksheet.columns = [
         { header: 'Service ID', key: 'ServiceId', width: 10 },
         { header: 'Description', key: 'Description', width: 30 },
@@ -294,15 +317,15 @@ exports.getServiceReport = async (req, res) => {
         { header: 'Unit Number', key: 'UnitNumber', width: 12 },
         { header: 'User Name', key: 'UserName', width: 20 },
         { header: 'Service Amount', key: 'ServiceAmount', width: 15 },
-        { header: 'Paid Date', key: 'PaidDay', width: 15 },
-        { header: 'Pay Date', key: 'PayDay', width: 15 }
+        { header: 'Paid Date', key: 'PaidDate', width: 15 },
+        { header: 'Pay Date', key: 'PayDate', width: 15 }
       ];
 
       results.forEach(service => {
         service.RequestDate = service.RequestDate ? formatDate(service.RequestDate) : null;
         service.SubmitDate = service.SubmitDate ? formatDate(service.SubmitDate) : null;
-        service.PaidDay = service.PaidDay ? formatDate(service.PaidDay) : null;
-        service.PayDay = service.PayDay ? formatDate(service.PayDay) : null;
+        service.PaidDate = service.PaidDate ? formatDate(service.PaidDate) : null;
+        service.PayDate = service.PayDate ? formatDate(service.PayDate) : null;
         worksheet.addRow(service);
       });
 
@@ -310,11 +333,9 @@ exports.getServiceReport = async (req, res) => {
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=service_report.xlsx');
-
       await workbook.xlsx.write(res);
       res.end();
     } else {
-
       res.status(200).json(results);
     }
   } catch (err) {
@@ -503,7 +524,7 @@ exports.getApartmentReport = async (req, res) => {
         a.UpdatedAt,
         COUNT(DISTINCT aua.UserId) AS UserCount,
         (SELECT COUNT(*) FROM WaterMeter wm WHERE wm.ApartmentId = a.ApartmentId) AS MeterReadingsCount,
-        (SELECT COUNT(*) FROM Payment p WHERE p.ApartmentId = a.ApartmentId) AS PaymentsCount
+        (SELECT COUNT(*) FROM WaterPayment wp WHERE wp.ApartmentId = a.ApartmentId) AS PaymentsCount
       FROM Apartment a
       LEFT JOIN ApartmentUserAdmin aua ON a.ApartmentId = aua.ApartmentId
       WHERE 1=1
@@ -653,32 +674,28 @@ exports.getWaterConsumptionAnalysis = async (req, res) => {
 exports.getPaymentStatistics = async (req, res) => {
   try {
     const { year } = req.query;
-
     const reportYear = year || new Date().getFullYear();
-
     const query = `
       SELECT 
         MONTH(PayDate) AS Month,
-        PaymentType,
+        'Усны төлбөр' AS PaymentType,
         COUNT(*) AS TotalPayments,
-        SUM(CASE WHEN Status = 'paid' THEN 1 ELSE 0 END) AS PaidPayments,
-        SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingPayments,
-        SUM(Amount) AS TotalAmount,
-        SUM(CASE WHEN Status = 'paid' THEN Amount ELSE 0 END) AS PaidAmount,
-        SUM(CASE WHEN Status = 'pending' THEN Amount ELSE 0 END) AS PendingAmount
-      FROM Payment
+        SUM(CASE WHEN Status = 'Төлөгдсөн' THEN 1 ELSE 0 END) AS PaidPayments,
+        SUM(CASE WHEN Status = 'Төлөгдөөгүй' THEN 1 ELSE 0 END) AS PendingPayments,
+        SUM(TotalAmount) AS TotalAmount,
+        SUM(CASE WHEN Status = 'Төлөгдсөн' THEN TotalAmount ELSE 0 END) AS PaidAmount,
+        SUM(CASE WHEN Status = 'Төлөгдөөгүй' THEN TotalAmount ELSE 0 END) AS PendingAmount,
+        SUM(CASE WHEN Status = 'Хоцорсон' THEN TotalAmount ELSE 0 END) AS OverdueAmount
+      FROM WaterPayment
       WHERE YEAR(PayDate) = ?
-      GROUP BY MONTH(PayDate), PaymentType
+      GROUP BY MONTH(PayDate)
       ORDER BY MONTH(PayDate)
     `;
-
     const [results] = await db.query(query, [reportYear]);
-
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-
     const formattedResults = results.map(row => ({
       ...row,
       MonthName: monthNames[row.Month - 1],
@@ -687,7 +704,6 @@ exports.getPaymentStatistics = async (req, res) => {
         ? ((row.PaidAmount / row.TotalAmount) * 100).toFixed(2) + '%'
         : '0%'
     }));
-
     res.status(200).json(formattedResults);
   } catch (err) {
     console.error('Error generating payment statistics:', err);
@@ -698,35 +714,190 @@ exports.getPaymentStatistics = async (req, res) => {
 exports.getServiceStatistics = async (req, res) => {
   try {
     const { year } = req.query;
-
     const reportYear = year || new Date().getFullYear();
-
     const query = `
       SELECT 
-        MONTHNAME(RequestDate) AS Month,
+        MONTHNAME(RequestDate) AS MonthName,
+        MONTH(RequestDate) AS Month,
         COUNT(*) AS TotalRequests,
-        SUM(CASE WHEN Status = 'completed' THEN 1 ELSE 0 END) AS CompletedRequests,
-        SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingRequests,
-        SUM(CASE WHEN Status = 'in progress' THEN 1 ELSE 0 END) AS InProgressRequests
+        SUM(CASE WHEN Status = 'Дууссан' THEN 1 ELSE 0 END) AS CompletedRequests,
+        SUM(CASE WHEN Status = 'Хүлээгдэж буй' THEN 1 ELSE 0 END) AS PendingRequests,
+        SUM(CASE WHEN Status = 'Төлөвлөгдсөн' THEN 1 ELSE 0 END) AS InProgressRequests
       FROM Service
       WHERE YEAR(RequestDate) = ?
       GROUP BY MONTH(RequestDate), MONTHNAME(RequestDate)
       ORDER BY MONTH(RequestDate)
     `;
-
     const [results] = await db.query(query, [reportYear]);
-
     const formattedResults = results.map(row => ({
       ...row,
       CompletionRate: row.TotalRequests > 0
         ? ((row.CompletedRequests / row.TotalRequests) * 100).toFixed(2) + '%'
         : '0%'
     }));
-
     res.status(200).json(formattedResults);
   } catch (err) {
     console.error('Error generating service statistics:', err);
     res.status(500).json({ error: 'Failed to generate service statistics' });
+  }
+};
+
+exports.updatePaymentAmount = async (req, res) => {
+  try {
+    const { paymentType, paymentId, amount } = req.body;
+    if (!paymentType || !paymentId || amount === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    let query = '';
+    if (paymentType === 'water') {
+      query = 'UPDATE WaterPayment SET TotalAmount = ? WHERE WaterPaymentId = ?';
+    } else if (paymentType === 'service') {
+      query = 'UPDATE ServicePayment SET Amount = ? WHERE ServicePaymentId = ?';
+    } else {
+      return res.status(400).json({ error: 'Invalid payment type' });
+    }
+    const [result] = await db.query(query, [amount, paymentId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error updating payment amount:', err);
+    res.status(500).json({ error: 'Failed to update payment amount' });
+  }
+};
+
+// Update water meter indication
+exports.updateWaterMeterIndication = async (req, res) => {
+  try {
+    const { waterMeterId, indication } = req.body;
+    if (!waterMeterId || indication === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const [result] = await db.query(
+      'UPDATE WaterMeter SET Indication = ? WHERE WaterMeterId = ?',
+      [indication, waterMeterId]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Water meter not found' });
+    }
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error updating water meter indication:', err);
+    res.status(500).json({ error: 'Failed to update water meter indication' });
+  }
+};
+
+exports.deletePayment = async (req, res) => {
+  try {
+    const { paymentType, paymentId } = req.body;
+    if (!paymentType || !paymentId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    let query = '';
+    if (paymentType === 'water') {
+      query = 'DELETE FROM WaterPayment WHERE WaterPaymentId = ?';
+    } else if (paymentType === 'service') {
+      query = 'DELETE FROM ServicePayment WHERE ServicePaymentId = ?';
+    } else {
+      return res.status(400).json({ error: 'Invalid payment type' });
+    }
+    const [result] = await db.query(query, [paymentId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error deleting payment:', err);
+    res.status(500).json({ error: 'Failed to delete payment' });
+  }
+};
+
+exports.deleteWaterMeter = async (req, res) => {
+  try {
+    const { waterMeterId } = req.body;
+    if (!waterMeterId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const [result] = await db.query(
+      'DELETE FROM WaterMeter WHERE WaterMeterId = ?',
+      [waterMeterId]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Water meter not found' });
+    }
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error deleting water meter:', err);
+    res.status(500).json({ error: 'Failed to delete water meter' });
+  }
+};
+exports.getApartmentUsers = async (req, res) => {
+  try {
+    const { apartmentId } = req.params;
+    const [users] = await db.query(
+      `SELECT u.UserId, u.Username, u.Email
+       FROM ApartmentUserAdmin aua
+       JOIN UserAdmin u ON aua.UserId = u.UserId
+       WHERE aua.ApartmentId = ?`,
+      [apartmentId]
+    );
+    const usersWithType = users.map(u => ({
+      ...u,
+      UserType: '' 
+    }));
+    res.status(200).json(usersWithType);
+  } catch (err) {
+    console.error('Error fetching apartment users:', err);
+    res.status(500).json({ error: 'Failed to fetch apartment users' });
+  }
+};
+
+// Add user to apartment
+exports.addApartmentUser = async (req, res) => {
+  try {
+    const { apartmentId } = req.params;
+    const { email, userType } = req.body;
+    if (!email || !userType) {
+      return res.status(400).json({ error: 'Email and userType are required' });
+    }
+    // Find user by email
+    const [users] = await db.query('SELECT UserId FROM UserAdmin WHERE Email = ?', [email]);
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userId = users[0].UserId;
+    // Check if already exists
+    const [exists] = await db.query(
+      'SELECT * FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
+      [apartmentId, userId]
+    );
+    if (exists.length > 0) {
+      return res.status(409).json({ error: 'User already added to this apartment' });
+    }
+    await db.query(
+      'INSERT INTO ApartmentUserAdmin (ApartmentId, UserId, UserType) VALUES (?, ?, ?)',
+      [apartmentId, userId, userType]
+    );
+    res.status(201).json({ success: true });
+  } catch (err) {
+    console.error('Error adding user to apartment:', err);
+    res.status(500).json({ error: 'Failed to add user to apartment' });
+  }
+};
+
+// Remove user from apartment
+exports.removeApartmentUser = async (req, res) => {
+  try {
+    const { apartmentId, userId } = req.params;
+    await db.query(
+      'DELETE FROM ApartmentUserAdmin WHERE ApartmentId = ? AND UserId = ?',
+      [apartmentId, userId]
+    );
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error removing user from apartment:', err);
+    res.status(500).json({ error: 'Failed to remove user from apartment' });
   }
 };
 

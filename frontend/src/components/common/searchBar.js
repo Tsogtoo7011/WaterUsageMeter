@@ -165,7 +165,7 @@ const SearchBar = ({ routes, isAdmin }) => {
     }
 
     return (
-      <div className="fixed inset-0 bg-white z-50 p-4">
+      <div className="fixed inset-0 z-50 p-4">
         <div className="flex items-center mb-4">
           <button 
             onClick={() => {

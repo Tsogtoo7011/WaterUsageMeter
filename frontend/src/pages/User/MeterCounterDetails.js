@@ -334,7 +334,7 @@ export default function MeterCounterDetails() {
     });
   };
 
-  const handleConfirmImageModal = async () => {
+  const handleExtractReadingFromImage = async () => {
     setProcessingImage(true);
     setShowImageModal(false);
     setError(null);
@@ -875,7 +875,7 @@ const renderMonthlyData = () => {
                 <div className="flex gap-2">
                   <button
                     className="bg-[#2D6B9F]/90 text-white hover:bg-[#2D6B9F] flex items-center justify-center px-4 py-2 rounded text-sm font-medium transition duration-200"
-                    onClick={handleConfirmImageModal}
+                    onClick={handleExtractReadingFromImage} // <-- Only run OCR when this button is clicked
                     type="button"
                   >
                     Заалт авах

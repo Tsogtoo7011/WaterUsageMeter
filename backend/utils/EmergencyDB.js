@@ -19,7 +19,7 @@ async function createWaterUsageDB() {
     // UserAdmin
     const [userAdminResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS UserAdmin (
-        UserId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        UserId VARCHAR(20) PRIMARY KEY,
         AdminRight TINYINT(1) NOT NULL COMMENT '0 = Regular user, 1 = Admin',
         Username VARCHAR(100) NOT NULL UNIQUE,
         Password VARCHAR(255) NOT NULL,
@@ -46,7 +46,7 @@ async function createWaterUsageDB() {
     // Apartment
     const [apartmentResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS Apartment (
-        ApartmentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        ApartmentId VARCHAR(20) PRIMARY KEY,
         ApartmentCode INT UNSIGNED NOT NULL UNIQUE,
         CityName VARCHAR(100) NOT NULL,
         DistrictName VARCHAR(100) NOT NULL,
@@ -65,12 +65,13 @@ async function createWaterUsageDB() {
     // ApartmentUserAdmin
     const [apartmentUserAdminResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS ApartmentUserAdmin (
-        ApartmentId INT UNSIGNED NOT NULL,
-        UserId INT UNSIGNED NOT NULL,
+        RelationId VARCHAR(20) PRIMARY KEY,
+        ApartmentId VARCHAR(20) NOT NULL,
+        UserId VARCHAR(20) NOT NULL,
         UserRole TINYINT(1) NOT NULL COMMENT '0 = landlord, 1 = renter',
         StartDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         EndDate TIMESTAMP NULL,
-        PRIMARY KEY (ApartmentId, UserId),
+        UNIQUE KEY unique_apt_user (ApartmentId, UserId),
         FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
         FOREIGN KEY (UserId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
         CONSTRAINT chk_user_role CHECK (UserRole IN (0, 1))
@@ -81,13 +82,13 @@ async function createWaterUsageDB() {
     // WaterMeter
     const [waterMeterResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS WaterMeter (
-        WaterMeterId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        ApartmentId INT UNSIGNED NOT NULL,
+        WaterMeterId VARCHAR(20) PRIMARY KEY,
+        ApartmentId VARCHAR(20) NOT NULL,
         Type TINYINT UNSIGNED NOT NULL COMMENT '0 = Хүйтэн ус (Cold water), 1 = Халуун ус (Hot water)',
         Location ENUM('Гал тогоо', 'Нойл', 'Ванн') NOT NULL COMMENT 'Гал тогоо = Kitchen, Нойл = Toilet, Ванн = Bathroom',
         Indication INT UNSIGNED NOT NULL,
         WaterMeterDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CreatedBy INT UNSIGNED NULL,
+        CreatedBy VARCHAR(20) NULL,
         UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
         FOREIGN KEY (CreatedBy) REFERENCES UserAdmin(UserId) ON DELETE SET NULL,
@@ -99,7 +100,7 @@ async function createWaterUsageDB() {
     // Tarif
     const [tarifResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS Tarif (
-        TariffId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+        TariffId VARCHAR(20) PRIMARY KEY,
         ColdWaterTariff INT UNSIGNED NOT NULL,
         HeatWaterTariff INT UNSIGNED NOT NULL,
         DirtyWaterTariff INT UNSIGNED NOT NULL,
@@ -116,14 +117,15 @@ async function createWaterUsageDB() {
     // Service
     const [serviceResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS Service (
-        ServiceId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        UserAdminId INT UNSIGNED NOT NULL,
-        ApartmentId INT UNSIGNED NULL,
-        ServiceName VARCHAR(255) NOT NULL, -- Added column for service name
+        ServiceId VARCHAR(20) PRIMARY KEY,
+        UserAdminId VARCHAR(20) NOT NULL,
+        ApartmentId VARCHAR(20) NULL,
+        ServiceName VARCHAR(255) NOT NULL,
         Description TEXT NOT NULL,
         Respond TEXT NOT NULL,
         RequestDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         SubmitDate TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+        Status ENUM('Хүлээгдэж буй', 'Төлөвлөгдсөн', 'Дууссан', 'Цуцлагдсан') NOT NULL DEFAULT 'Хүлээгдэж буй',
         FOREIGN KEY (UserAdminId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
         FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE SET NULL
       );
@@ -133,10 +135,10 @@ async function createWaterUsageDB() {
     // WaterPayment
     const [waterPaymentResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS WaterPayment (
-        WaterPaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        ApartmentId INT UNSIGNED NOT NULL,
-        UserAdminId INT UNSIGNED NOT NULL,
-        TariffId INT UNSIGNED NOT NULL,
+        WaterPaymentId VARCHAR(20) PRIMARY KEY,
+        ApartmentId VARCHAR(20) NOT NULL,
+        UserAdminId VARCHAR(20) NOT NULL,
+        TariffId VARCHAR(20) NOT NULL,
         ColdWaterUsage DECIMAL(8,2) NOT NULL DEFAULT 0.00,
         HotWaterUsage DECIMAL(8,2) NOT NULL DEFAULT 0.00,
         ColdWaterCost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -158,10 +160,10 @@ async function createWaterUsageDB() {
     // ServicePayment
     const [servicePaymentResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS ServicePayment (
-        ServicePaymentId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        ApartmentId INT UNSIGNED NOT NULL,
-        UserAdminId INT UNSIGNED NOT NULL,
-        ServiceId INT UNSIGNED NOT NULL,
+        ServicePaymentId VARCHAR(20) PRIMARY KEY,
+        ApartmentId VARCHAR(20) NOT NULL,
+        UserAdminId VARCHAR(20) NOT NULL,
+        ServiceId VARCHAR(20) NOT NULL,
         Amount DECIMAL(10,2) NOT NULL,
         PayDate DATE NOT NULL,
         PaidDate TIMESTAMP NULL,
@@ -179,12 +181,12 @@ async function createWaterUsageDB() {
     // Feedback
     const [feedbackResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS Feedback (
-        ApplicationId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        UserAdminId INT UNSIGNED NOT NULL,
+        ApplicationId VARCHAR(20) PRIMARY KEY,
+        UserAdminId VARCHAR(20) NOT NULL,
         Type ENUM('1', '2', '3') NOT NULL COMMENT '1: Санал (Suggestion), 2: Хүсэлт (Request), 3: Гомдол (Complaint)',
         Description TEXT NOT NULL,
         AdminResponse TEXT NULL,
-        AdminResponderId INT UNSIGNED NULL,
+        AdminResponderId VARCHAR(20) NULL,
         Status ENUM('Хүлээгдэж байна', 'Хүлээн авсан', 'Хүлээн авахаас татгалзсан') NOT NULL DEFAULT 'Хүлээгдэж байна' COMMENT 'Хүлээгдэж байна (Pending), Хүлээн авсан (Accepted), Хүлээн авахаас татгалзсан (Rejected)',
         CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -197,8 +199,8 @@ async function createWaterUsageDB() {
     // News
     const [newsResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS News (
-        NewsId INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-        UserAdminId INT UNSIGNED NOT NULL,
+        NewsId VARCHAR(20) PRIMARY KEY,
+        UserAdminId VARCHAR(20) NOT NULL,
         Title VARCHAR(200) NOT NULL,
         NewsDescription TEXT NOT NULL,
         CoverImageType VARCHAR(10) NOT NULL,
@@ -214,11 +216,140 @@ async function createWaterUsageDB() {
     `);
     if (newsResult.warningStatus === 0) console.log('News table created.');
 
-    // Insert sample tariff data if not exists
     await connection.query(`
-      INSERT INTO Tarif (ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom, EffectiveTo, IsActive)
-      SELECT 50, 75, 100, '2025-01-01', NULL, 1
+      INSERT INTO Tarif (TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom, EffectiveTo, IsActive)
+      SELECT 'T000001', 50, 75, 100, '2025-01-01', NULL, 1
       WHERE NOT EXISTS (SELECT 1 FROM Tarif WHERE IsActive = 1)
+    `);
+
+    // UserAdmin trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_useradmin_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_useradmin_id BEFORE INSERT ON UserAdmin
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(UserId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM UserAdmin;
+        SET NEW.UserId = CONCAT('U', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // Apartment trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_apartment_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_apartment_id BEFORE INSERT ON Apartment
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(ApartmentId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM Apartment;
+        SET NEW.ApartmentId = CONCAT('A', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // ApartmentUserAdmin trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_apartmentuser_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_apartmentuser_id BEFORE INSERT ON ApartmentUserAdmin
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(RelationId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM ApartmentUserAdmin;
+        SET NEW.RelationId = CONCAT('R', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // WaterMeter trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_watermeter_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_watermeter_id BEFORE INSERT ON WaterMeter
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(WaterMeterId, 3) AS UNSIGNED)), 0) + 1 INTO next_id FROM WaterMeter;
+        SET NEW.WaterMeterId = CONCAT('WM', LPAD(next_id, 5, '0'));
+      END
+    `);
+
+    // Tarif trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_tarif_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_tarif_id BEFORE INSERT ON Tarif
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(TariffId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM Tarif;
+        SET NEW.TariffId = CONCAT('T', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // Service trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_service_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_service_id BEFORE INSERT ON Service
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(ServiceId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM Service;
+        SET NEW.ServiceId = CONCAT('S', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // WaterPayment trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_waterpayment_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_waterpayment_id BEFORE INSERT ON WaterPayment
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(WaterPaymentId, 3) AS UNSIGNED)), 0) + 1 INTO next_id FROM WaterPayment;
+        SET NEW.WaterPaymentId = CONCAT('WP', LPAD(next_id, 5, '0'));
+      END
+    `);
+
+    // ServicePayment trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_servicepayment_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_servicepayment_id BEFORE INSERT ON ServicePayment
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(ServicePaymentId, 3) AS UNSIGNED)), 0) + 1 INTO next_id FROM ServicePayment;
+        SET NEW.ServicePaymentId = CONCAT('SP', LPAD(next_id, 5, '0'));
+      END
+    `);
+
+    // Feedback trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_feedback_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_feedback_id BEFORE INSERT ON Feedback
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(ApplicationId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM Feedback;
+        SET NEW.ApplicationId = CONCAT('F', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // News trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_news_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_news_id BEFORE INSERT ON News
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(NewsId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM News;
+        SET NEW.NewsId = CONCAT('N', LPAD(next_id, 6, '0'));
+      END
     `);
 
     console.log('All waterusage tables checked.');

@@ -104,7 +104,7 @@ exports.getFeedbackById = async (req, res) => {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
     
-    if (!feedbackId || isNaN(Number(feedbackId))) {
+    if (!feedbackId ) {
       return res.status(400).json({
         success: false,
         message: 'Буруу ID форматтай байна.'
@@ -176,7 +176,7 @@ exports.getAdminFeedbackById = async (req, res) => {
   try {
     const feedbackId = req.params.id;
     
-    if (!feedbackId || isNaN(Number(feedbackId))) {
+    if (!feedbackId || !/^F\d+$/.test(feedbackId)) {
       return res.status(400).json({
         success: false,
         message: 'Буруу ID форматтай байна.'
@@ -225,7 +225,7 @@ exports.updateFeedback = async (req, res) => {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
     
-    if (!feedbackId || isNaN(Number(feedbackId))) {
+    if (!feedbackId || !/^F\d+$/.test(feedbackId)) {
       return res.status(400).json({
         success: false,
         message: 'Буруу ID форматтай байна.'
@@ -358,7 +358,7 @@ exports.deleteFeedback = async (req, res) => {
     const feedbackId = req.params.id;
     const userId = req.userData.userId;
     
-    if (!feedbackId || isNaN(Number(feedbackId))) {
+    if (!feedbackId || !/^F\d+$/.test(feedbackId)) {
       return res.status(400).json({
         success: false,
         message: 'Буруу ID форматтай байна.'
@@ -412,7 +412,7 @@ exports.adminCancelFeedback = async (req, res) => {
     const { reason } = req.body;
     const adminId = req.userData.userId;
 
-    if (!feedbackId || isNaN(Number(feedbackId))) {
+    if (!feedbackId || !/^F\d+$/.test(feedbackId)) {
       return res.status(400).json({
         success: false,
         message: 'Буруу ID форматтай байна.'
@@ -431,7 +431,6 @@ exports.adminCancelFeedback = async (req, res) => {
       });
     }
 
-    // Only allow cancel if status is "Хүлээгдэж байна"
     if (checkFeedback[0].Status !== 'Хүлээгдэж байна') {
       return res.status(400).json({
         success: false,
@@ -460,7 +459,7 @@ exports.adminRestoreFeedback = async (req, res) => {
     const feedbackId = req.params.id;
     const adminId = req.userData.userId;
 
-    if (!feedbackId || isNaN(Number(feedbackId))) {
+    if (!feedbackId || !/^F\d+$/.test(feedbackId)) {
       return res.status(400).json({
         success: false,
         message: 'Буруу ID форматтай байна.'

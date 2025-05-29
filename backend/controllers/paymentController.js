@@ -277,11 +277,10 @@ exports.getPaymentById = async (req, res) => {
     const userId = req.userData.userId;
     const paymentId = req.params.id;
 
-    if (!paymentId || isNaN(Number(paymentId))) {
+    if (!paymentId) {
       return res.status(400).json({ success: false, message: 'Invalid payment ID' });
     }
 
-    // Try water payment first
     const [waterPayments] = await pool.execute(
       `SELECT 
         wp.WaterPaymentId as id,

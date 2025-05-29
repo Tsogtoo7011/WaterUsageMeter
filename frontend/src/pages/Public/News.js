@@ -29,7 +29,7 @@ const News = () => {
   const mode = queryParams.get('mode');
   const editId = params.id || null;
 
-  const newsPerPage = 6;
+  const newsPerPage = 8;
 
   useEffect(() => {
     fetchCsrfToken();
@@ -514,29 +514,30 @@ const News = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {currentNews.length > 0 ? currentNews.map((item) => (
               <div
                 key={item.NewsId}
-                className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group flex flex-col"
+                className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group flex flex-col p-3"
+                style={{ minWidth: 0, maxWidth: 400, margin: "0 auto" }}
               >
-                <div className="relative h-48 overflow-hidden rounded-t-lg">
+                <div className="relative h-40 overflow-hidden rounded-t-lg">
                   <img
                     src={`${API_URL}/news/${item.NewsId}/image`}
                     alt={item.Title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/400x200?text=No+Image';
+                      e.target.src = 'https://via.placeholder.com/400x160?text=No+Image';
                     }}
                   />
                   {isUserAdmin() && (
-                    <div className="absolute top-2 right-2 flex gap-2">
+                    <div className="absolute top-1 right-1 flex gap-1">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEditClick(item);
                         }}
-                        className="bg-white p-2 rounded-full shadow hover:bg-blue-50 border border-gray-200"
+                        className="bg-white p-1 rounded-full shadow hover:bg-blue-50 border border-gray-200"
                         title="Засах"
                       >
                         <Edit size={16} className="text-[#2D6B9F]" />
@@ -546,7 +547,7 @@ const News = () => {
                           e.stopPropagation();
                           handleDelete(item.NewsId);
                         }}
-                        className="bg-white p-2 rounded-full shadow hover:bg-red-50 border border-gray-200"
+                        className="bg-white p-1 rounded-full shadow hover:bg-red-50 border border-gray-200"
                         title="Устгах"
                       >
                         <Trash2 size={16} className="text-red-500" />
@@ -554,21 +555,23 @@ const News = () => {
                     </div>
                   )}
                 </div>
-                <div className="p-4 flex flex-col flex-1">
+                <div className="p-3 flex flex-col flex-1">
                   <h2
                     className="text-lg font-semibold text-[#2D6B9F] mb-2"
                     title={item.Title}
+                    style={{ wordBreak: "break-word" }}
                   >
                     {truncateText(item.Title)}
                   </h2>
                   <p
-                    className="text-gray-600 mb-3"
+                    className="text-sm text-gray-600 mb-2"
                     title={item.NewsDescription}
+                    style={{ wordBreak: "break-word" }}
                   >
                     {truncateText(item.NewsDescription)}
                   </p>
                   <div className="flex justify-between items-center mt-auto">
-                    <span className="text-xs text-gray-500">By {item.Username}</span>
+                    <span className="text-xs text-gray-400">By {item.Username}</span>
                     <button
                       onClick={() => navigate(`/news/${item.NewsId}`)}
                       className="text-[#2D6B9F]/90 hover:text-[#2D6B9F] font-medium text-xs rounded px-2 py-1 transition"
