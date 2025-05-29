@@ -1,16 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, X, MessageSquare, Heart, Mail, CheckCircle, AlertCircle, Info, CreditCard } from 'lucide-react';
+import { Bell, X, MessageSquare, Heart, Mail, CheckCircle, AlertCircle, Info, CreditCard, Newspaper, DollarSign, Gift } from 'lucide-react';
 import api from '../../utils/api';
 
 const getNotificationColor = (type) => {
-  switch (type) {
-    case 'message': return 'text-blue-600 bg-blue-50';
-    case 'like': return 'text-red-600 bg-red-50';
-    case 'email': return 'text-green-600 bg-green-50';
-    case 'system': return 'text-emerald-600 bg-emerald-50';
-    case 'warning': return 'text-orange-600 bg-orange-50';
-    case 'info': return 'text-indigo-600 bg-indigo-50';
+  switch (type?.toLowerCase()) {
+    case 'news': return 'text-indigo-600 bg-indigo-50';
+    case 'waterpayment': return 'text-blue-600 bg-blue-50';
+    case 'servicepayment': return 'text-green-600 bg-green-50';
+    case 'service': return 'text-orange-600 bg-orange-50';
+    case 'general': return 'text-gray-600 bg-gray-50';
     default: return 'text-gray-600 bg-gray-50';
+  }
+};
+
+const getNotificationIcon = (type) => {
+  switch (type?.toLowerCase()) {
+    case 'news': return Newspaper;
+    case 'waterpayment': return CreditCard;
+    case 'servicepayment': return DollarSign;
+    case 'service': return Gift;
+    case 'general': return Info;
+    default: return Info;
   }
 };
 
@@ -40,18 +50,17 @@ const Notification = () => {
   const userId = JSON.parse(localStorage.getItem('user'))?.id; 
 
   useEffect(() => {
-    if (!userId) return; 
-    api.get(`/notifications/payments?userId=${userId}`)
+    if (!userId) return;
+
+    api.get(`/notifications/all?userId=${userId}`)
       .then(res => {
-        if (res.data.notifications) {
-          setNotifications(prev => [
-            ...res.data.notifications.map(n => ({
+        const notifications = res.data.notifications
+          ? res.data.notifications.map(n => ({
               ...n,
-              icon: n.type === 'warning' ? AlertCircle : CreditCard, 
-            })),
-            ...prev
-          ]);
-        }
+              icon: getNotificationIcon(n.type),
+            }))
+          : [];
+        setNotifications(notifications.sort((a, b) => new Date(b.time) - new Date(a.time)));
       })
       .catch(() => {});
   }, [userId]);

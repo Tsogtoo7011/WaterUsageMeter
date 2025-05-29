@@ -13,7 +13,6 @@ exports.getAllNews = async (req, res) => {
     
     const [results] = await db.query(query);
     
-
     res.status(200).json(results);
   } catch (err) {
     console.error('Error fetching news:', err);
@@ -51,32 +50,61 @@ exports.getNewsById = async (req, res) => {
 };
 
 exports.createNews = async (req, res) => {
+  const connection = await db.getConnection();
   try {
+    await connection.beginTransaction();
+
     const { title, description } = req.body;
     const userId = req.userData.userId;
-    
+
     if (!req.file) {
+      await connection.rollback();
+      await connection.release();
       return res.status(400).json({ message: 'Cover image is required' });
     }
-    
+
     const coverImageType = path.extname(req.file.originalname).substring(1);
     const coverImageData = req.file.buffer;
-    
-    const query = `
+
+    // Insert news first
+    const newsQuery = `
       INSERT INTO News (UserAdminId, Title, NewsDescription, CoverImageType, CoverImageData)
       VALUES (?, ?, ?, ?, ?)
     `;
-    
-    const [results] = await db.query(
-      query,
+
+    const [newsResults] = await connection.query(
+      newsQuery,
       [userId, title, description, coverImageType, coverImageData]
     );
+
+
+    const [newsIdResults] = await connection.query(
+      'SELECT NewsId FROM News WHERE NewsId = ?',
+      [newsResults.insertId]
+    );
+
+    const actualNewsId = newsIdResults[0].NewsId;
+
+    const [userResults] = await connection.query('SELECT UserId FROM UserAdmin');
     
+    for (const user of userResults) {
+      await connection.query(
+        `INSERT INTO Notification (UserId, Type, NewsId, Title, Message, CreatedAt)
+         VALUES (?, 'news', ?, ?, ?, NOW())`,
+        [user.UserId, actualNewsId, 'Шинэ мэдээ', title]
+      );
+    }
+
+    await connection.commit();
+    await connection.release();
+
     res.status(201).json({
       message: 'News created successfully',
-      newsId: results.insertId
+      newsId: actualNewsId
     });
   } catch (err) {
+    await connection.rollback();
+    await connection.release();
     console.error('Error creating news:', err);
     res.status(500).json({ message: 'Failed to create news: ' + err.message });
   }
@@ -97,7 +125,6 @@ exports.updateNews = async (req, res) => {
     let query, queryParams;
     
     if (req.file) {
-
       const coverImageType = path.extname(req.file.originalname).substring(1);
       const coverImageData = req.file.buffer;
       
@@ -109,7 +136,6 @@ exports.updateNews = async (req, res) => {
       
       queryParams = [title, description, coverImageType, coverImageData, newsId];
     } else {
-
       query = `
         UPDATE News
         SET Title = ?, NewsDescription = ?

@@ -102,7 +102,7 @@ function Home() {
           {!isAdmin && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/profile/apartment')}
               >
                 <Building2 size={32} className="mb-2 text-[#2D6B9F]" />
@@ -110,7 +110,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Орон сууцны мэдээлэл</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/news')}
               >
                 <Newspaper size={32} className="mb-2 text-[#2D6B9F]" />
@@ -118,7 +118,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Системийн мэдээ, мэдээлэл</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/user/metercounter')}
               >
                 <BarChart2 size={32} className="mb-2 text-[#2D6B9F]" />
@@ -126,7 +126,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Тоолуурын үзүүлэлт</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/user/payment-info')}
               >
                 <CreditCard size={32} className="mb-2 text-[#2D6B9F]" />
@@ -134,7 +134,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Төлбөрийн мэдээлэл</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/feedback')}
               >
                 <MessageCircle size={32} className="mb-2 text-[#2D6B9F]" />
@@ -142,7 +142,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Санал, хүсэлт илгээх</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/service')}
               >
                 <HelpCircle size={32} className="mb-2 text-[#2D6B9F]" />
@@ -155,7 +155,7 @@ function Home() {
           {isAdmin && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/admin/user')}
               >
                 <Users size={32} className="mb-2 text-[#2D6B9F]" />
@@ -163,7 +163,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Системийн хэрэглэгчдийг удирдах</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/admin/tarif')}
               >
                 <Settings size={32} className="mb-2 text-[#2D6B9F]" />
@@ -171,7 +171,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Тариф болон тохиргоо</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/admin/report')}
               >
                 <BarChart2 size={32} className="mb-2 text-[#2D6B9F]" />
@@ -179,7 +179,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Системийн тайлан, шинжилгээ</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/profile')}
               >
                 <User size={32} className="mb-2 text-[#2D6B9F]" />
@@ -187,7 +187,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Өөрийн админ мэдээлэл</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/feedback')}
               >
                 <MessageCircle size={32} className="mb-2 text-[#2D6B9F]" />
@@ -195,7 +195,7 @@ function Home() {
                 <p className="text-sm text-gray-500 text-center">Санал, хүсэлтэнд хариу өгөх</p>
               </div>
               <div
-                className="bg-blue-50 p-6 rounded-md cursor-pointer hover:bg-blue-100 flex flex-col items-center"
+                className="p-6 rounded-md cursor-pointer hover:bg-blue-50 flex flex-col items-center"
                 onClick={() => navigate('/service')}
               >
                 <HelpCircle size={32} className="mb-2 text-[#2D6B9F]" />

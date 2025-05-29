@@ -82,7 +82,8 @@ async function createWaterUsageDB() {
     // WaterMeter
     const [waterMeterResult] = await connection.query(`
       CREATE TABLE IF NOT EXISTS WaterMeter (
-        WaterMeterId VARCHAR(20) PRIMARY KEY,
+        Id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        WaterMeterId VARCHAR(20) UNIQUE NOT NULL,
         ApartmentId VARCHAR(20) NOT NULL,
         Type TINYINT UNSIGNED NOT NULL COMMENT '0 = Хүйтэн ус (Cold water), 1 = Халуун ус (Hot water)',
         Location ENUM('Гал тогоо', 'Нойл', 'Ванн') NOT NULL COMMENT 'Гал тогоо = Kitchen, Нойл = Toilet, Ванн = Bathroom',
@@ -92,6 +93,7 @@ async function createWaterUsageDB() {
         UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentId) ON DELETE CASCADE,
         FOREIGN KEY (CreatedBy) REFERENCES UserAdmin(UserId) ON DELETE SET NULL,
+        INDEX idx_watermeter_id (WaterMeterId),
         CONSTRAINT chk_water_type CHECK (Type IN (0, 1))
       );
     `);
@@ -120,7 +122,6 @@ async function createWaterUsageDB() {
         ServiceId VARCHAR(20) PRIMARY KEY,
         UserAdminId VARCHAR(20) NOT NULL,
         ApartmentId VARCHAR(20) NULL,
-        ServiceName VARCHAR(255) NOT NULL,
         Description TEXT NOT NULL,
         Respond TEXT NOT NULL,
         RequestDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -215,6 +216,33 @@ async function createWaterUsageDB() {
       );
     `);
     if (newsResult.warningStatus === 0) console.log('News table created.');
+
+    // Notification
+    const [notificationResult] = await connection.query(`
+      CREATE TABLE IF NOT EXISTS Notification (
+        NotificationId VARCHAR(20) PRIMARY KEY,
+        UserId VARCHAR(20) NOT NULL,
+        Type ENUM('News', 'WaterPayment', 'ServicePayment', 'Service', 'General') NOT NULL COMMENT 'Type of notification',
+        NewsId VARCHAR(20) DEFAULT NULL,
+        WaterPaymentId VARCHAR(20) DEFAULT NULL,
+        ServicePaymentId VARCHAR(20) DEFAULT NULL,
+        ServiceId VARCHAR(20) DEFAULT NULL,
+        Title VARCHAR(255) NOT NULL,
+        Message TEXT,
+        IsRead TINYINT(1) DEFAULT 0 NOT NULL COMMENT '0 = Unread, 1 = Read',
+        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (UserId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
+        FOREIGN KEY (NewsId) REFERENCES News(NewsId) ON DELETE SET NULL,
+        FOREIGN KEY (WaterPaymentId) REFERENCES WaterPayment(WaterPaymentId) ON DELETE SET NULL,
+        FOREIGN KEY (ServicePaymentId) REFERENCES ServicePayment(ServicePaymentId) ON DELETE SET NULL,
+        FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE SET NULL,
+        CONSTRAINT chk_is_read CHECK (IsRead IN (0, 1)),
+        INDEX idx_user_unread (UserId, IsRead),
+        INDEX idx_created_at (CreatedAt)
+      );
+    `);
+    if (notificationResult.warningStatus === 0) console.log('Notification table created.');
 
     await connection.query(`
       INSERT INTO Tarif (TariffId, ColdWaterTariff, HeatWaterTariff, DirtyWaterTariff, EffectiveFrom, EffectiveTo, IsActive)
@@ -349,6 +377,19 @@ async function createWaterUsageDB() {
         DECLARE next_id INT;
         SELECT COALESCE(MAX(CAST(SUBSTRING(NewsId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM News;
         SET NEW.NewsId = CONCAT('N', LPAD(next_id, 6, '0'));
+      END
+    `);
+
+    // Notification trigger
+    await connection.query(`
+      DROP TRIGGER IF EXISTS tr_notification_id;
+    `);
+    await connection.query(`
+      CREATE TRIGGER tr_notification_id BEFORE INSERT ON Notification
+      FOR EACH ROW BEGIN
+        DECLARE next_id INT;
+        SELECT COALESCE(MAX(CAST(SUBSTRING(NotificationId, 2) AS UNSIGNED)), 0) + 1 INTO next_id FROM Notification;
+        SET NEW.NotificationId = CONCAT('N', LPAD(next_id, 6, '0'));
       END
     `);
 

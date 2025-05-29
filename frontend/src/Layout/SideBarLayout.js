@@ -193,11 +193,6 @@ const SidebarLayout = ({ children }) => {
     return 'Ц';
   };
 
-  const handleNotificationClick = () => {
-    setShowNotifications(!showNotifications);
-    setHasUnreadNotifications(false);
-  };
-
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
@@ -341,17 +336,9 @@ const SidebarLayout = ({ children }) => {
             <div className="flex items-center space-x-4">
 
               {/* Notification Button */}
-              <Notification onClick={handleNotificationClick} hasUnread={hasUnreadNotifications} />
+              <Notification /> {/* Remove onClick and hasUnread props */}
 
-              {/* Notification Dropdown */}
-              {showNotifications && (
-                <div className="absolute right-20 mt-2 w-80 bg-white rounded-md shadow-lg py-2 z-50 border border-gray-200">
-                  <div className="px-4 py-2 text-gray-700 text-sm">
-                    Мэдэгдэл байхгүй байна.
-                  </div>
-                </div>
-              )}
-
+              
               {/* Profile Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button
