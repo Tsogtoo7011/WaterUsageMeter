@@ -386,254 +386,258 @@ export default function AdminReportStatistics({
   }
 
   return (
-    <div className="bg-white rounded-lg p-4">
-      {loading && <p className="text-center py-4">Ачааллаж байна...</p>}
-      {error && (
-        <div className="text-red-500 text-center py-4">
-          {error}
-        </div>
-      )}
-      {!loading && !error && (
-        <>
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-lg font-bold text-[#2D6B9F]">
-              {activeTab === 'paymentStats' ? 'Төлбөрийн статистик' : 'Үйлчилгээний статистик'}
-            </span>
-            <div>
-              <button
-                className={`px-4 py-2 rounded-l border border-gray-300 text-sm font-medium ${view === 'chart' ? 'bg-[#2D6B9F] text-white' : 'bg-white text-[#2D6B9F]'}`}
-                onClick={() => setView('chart')}
-              >
-                График
-              </button>
-              <button
-                className={`px-4 py-2 rounded-r border-t border-b border-r border-gray-300 text-sm font-medium ${view === 'table' ? 'bg-[#2D6B9F] text-white' : 'bg-white text-[#2D6B9F]'}`}
-                onClick={() => setView('table')}
-              >
-                Хүснэгт
-              </button>
-            </div>
+    <div className="overflow-x-auto w-full">
+      <div className="bg-white rounded-lg p-4 w-full min-w-[320px]">
+        {loading && <p className="text-center py-4">Ачааллаж байна...</p>}
+        {error && (
+          <div className="text-red-500 text-center py-4">
+            {error}
           </div>
-          {view === 'chart' && (
-            <>
-              <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-2">
-                <div className="flex items-center mb-2 sm:mb-0">
-                  <label htmlFor="year-select" className="text-sm font-medium text-gray-700 mr-2">Он:</label>
-                  <select
-                    id="year-select"
-                    value={selectedYear}
-                    onChange={e => setSelectedYear(e.target.value)}
-                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
-                  >
-                    {allYears.map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
+        )}
+        {!loading && !error && (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-lg font-bold text-[#2D6B9F]">
+                {activeTab === 'paymentStats' ? 'Төлбөрийн статистик' : 'Үйлчилгээний статистик'}
+              </span>
+              <div>
+                <button
+                  className={`px-4 py-2 rounded-l border border-gray-300 text-sm font-medium ${view === 'chart' ? 'bg-[#2D6B9F] text-white' : 'bg-white text-[#2D6B9F]'}`}
+                  onClick={() => setView('chart')}
+                >
+                  График
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-r border-t border-b border-r border-gray-300 text-sm font-medium ${view === 'table' ? 'bg-[#2D6B9F] text-white' : 'bg-white text-[#2D6B9F]'}`}
+                  onClick={() => setView('table')}
+                >
+                  Хүснэгт
+                </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {summaryCards.map((card, idx) => (
-                  <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="flex items-center p-4">
-                      <div className="flex-grow">
-                        <p className="text-sm font-medium text-gray-500">{card.label}</p>
-                        <p className={`text-xl font-semibold ${card.color}`}>
-                          {activeTab === 'paymentStats' ? formatAmount(card.value) : card.value}
-                        </p>
-                      </div>
-                      <div className={`w-10 h-10 ${card.iconBg} rounded-full flex items-center justify-center`}>
-                        {card.svg}
+            </div>
+            {view === 'chart' && (
+              <>
+                <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-2">
+                  <div className="flex items-center mb-2 sm:mb-0">
+                    <label htmlFor="year-select" className="text-sm font-medium text-gray-700 mr-2">Он:</label>
+                    <select
+                      id="year-select"
+                      value={selectedYear}
+                      onChange={e => setSelectedYear(e.target.value)}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6B9F]"
+                    >
+                      {allYears.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {summaryCards.map((card, idx) => (
+                    <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="flex items-center p-4">
+                        <div className="flex-grow">
+                          <p className="text-sm font-medium text-gray-500">{card.label}</p>
+                          <p className={`text-xl font-semibold ${card.color}`}>
+                            {activeTab === 'paymentStats'
+                              ? formatAmount(card.value)
+                              : Number(card.value).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className={`w-10 h-10 ${card.iconBg} rounded-full flex items-center justify-center`}>
+                          {card.svg}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col lg:flex-row justify-center items-stretch mb-6 gap-6">
-                <div className="flex-1 flex justify-center items-center">
-                  <div style={{ width: 700, height: 400 }}>
-                    <Bar
-                      data={barData}
-                      options={{
-                        responsive: true,
-                        plugins: {
-                          legend: { position: 'bottom' },
-                          title: { display: false }
-                        },
-                        scales: {
-                          y: {
-                            beginAtZero: true,
-                            ticks: {
-                              callback: value =>
-                                activeTab === 'paymentStats'
-                                  ? '₮' + value.toLocaleString()
-                                  : value
+                  ))}
+                </div>
+                <div className="flex flex-col lg:flex-row justify-center items-stretch mb-6 gap-6 w-full">
+                  <div className="flex-1 flex justify-center items-center min-w-[320px] max-w-full">
+                    <div className="w-full" style={{ maxWidth: 700, height: 400 }}>
+                      <Bar
+                        data={barData}
+                        options={{
+                          responsive: true,
+                          plugins: {
+                            legend: { position: 'bottom' },
+                            title: { display: false }
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                callback: value =>
+                                  activeTab === 'paymentStats'
+                                    ? '₮' + value.toLocaleString()
+                                    : value
+                              }
                             }
                           }
-                        }
-                      }}
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 flex justify-center items-center min-w-[220px] max-w-full">
+                    <div className="w-full" style={{ maxWidth: 320, height: 220 }}>
+                      <Pie data={pieDataYear} options={{
+                        plugins: { legend: { position: 'bottom' } },
+                        maintainAspectRatio: false
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            {view === 'table' && (
+              <>
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                  <div className="relative flex-grow">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Жил эсвэл сар хайх..."
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] text-sm"
                     />
                   </div>
                 </div>
-                <div className="flex-1 flex justify-center items-center">
-                  <div style={{ width: 320, height: 220 }}>
-                    <Pie data={pieDataYear} options={{
-                      plugins: { legend: { position: 'bottom' } },
-                      maintainAspectRatio: false
-                    }} />
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-          {view === 'table' && (
-            <>
-              <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="relative flex-grow">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Жил эсвэл сар хайх..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] text-sm"
-                  />
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <div className="align-middle inline-block min-w-full overflow-hidden rounded-lg">
-                  <table className="min-w-full bg-white rounded-lg overflow-hidden divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {(activeTab === 'paymentStats' ? tableColumns : serviceTableColumns).map((col, idx) =>
-                          col.divider ? (
-                            <td
-                              key={col.key}
-                              className="p-0"
-                              style={{ width: "1px", minWidth: "1px", background: "transparent" }}
-                            >
-                              <div className="h-6 w-px mx-auto bg-gray-300"></div>
-                            </td>
-                          ) : (
-                            <th
-                              key={col.key}
-                              className={
-                                "px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none" +
-                                (idx > 0 && (activeTab === 'paymentStats' ? tableColumns : serviceTableColumns)[idx - 1].divider
-                                  ? " border-l border-gray-300"
-                                  : "")
-                              }
-                              onClick={() => handleSort(col.key)}
-                            >
-                              {col.label}{renderSortArrow(col.key)}
-                            </th>
-                          )
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {paginatedTableData.length > 0 ? (
-                          paginatedTableData.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50 transition group">
-                              <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">{row.YearMonth}</td>
-                              <td className="p-0" style={{ width: "1px", minWidth: "1px", background: "transparent" }}>
+                <div className="overflow-x-auto w-full">
+                  <div className="align-middle inline-block min-w-full overflow-hidden rounded-lg">
+                    <table className="min-w-full bg-white rounded-lg overflow-hidden divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          {(activeTab === 'paymentStats' ? tableColumns : serviceTableColumns).map((col, idx) =>
+                            col.divider ? (
+                              <td
+                                key={col.key}
+                                className="p-0"
+                                style={{ width: "1px", minWidth: "1px", background: "transparent" }}
+                              >
                                 <div className="h-6 w-px mx-auto bg-gray-300"></div>
                               </td>
-                              {activeTab === 'paymentStats' ? (
-                                <>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">{row.TotalPayments ?? ''}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">{row.PaidPayments ?? ''}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">{row.PendingPayments ?? ''}</td>
-                                  <td className="p-0" style={{ width: "1px", minWidth: "1px", background: "transparent" }}>
-                                    <div className="h-6 w-px mx-auto bg-gray-300"></div>
-                                  </td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">₮{(row.TotalAmount || 0).toLocaleString()}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">₮{(row.PaidAmount || 0).toLocaleString()}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">₮{(row.PendingAmount || 0).toLocaleString()}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-red-600 text-center">₮{(row.OverdueAmount || 0).toLocaleString()}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-blue-700 text-center">{row.CollectionRate || ''}</td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">{row.CompletedRequests ?? ''}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">{row.PendingRequests ?? ''}</td>
-                                  <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-blue-600 text-center">{row.InProgressRequests ?? ''}</td>
-                                </>
-                              )}
+                            ) : (
+                              <th
+                                key={col.key}
+                                className={
+                                  "px-2 md:px-6 py-2 md:py-3 text-center text-xs font-medium text-[#2D6B9F] uppercase tracking-wider cursor-pointer select-none" +
+                                  (idx > 0 && (activeTab === 'paymentStats' ? tableColumns : serviceTableColumns)[idx - 1].divider
+                                    ? " border-l border-gray-300"
+                                    : "")
+                                }
+                                onClick={() => handleSort(col.key)}
+                              >
+                                {col.label}{renderSortArrow(col.key)}
+                              </th>
+                            )
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                          {paginatedTableData.length > 0 ? (
+                            paginatedTableData.map((row, idx) => (
+                              <tr key={idx} className="hover:bg-blue-50 transition group">
+                                <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">{row.YearMonth}</td>
+                                <td className="p-0" style={{ width: "1px", minWidth: "1px", background: "transparent" }}>
+                                  <div className="h-6 w-px mx-auto bg-gray-300"></div>
+                                </td>
+                                {activeTab === 'paymentStats' ? (
+                                  <>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">{row.TotalPayments ?? ''}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">{row.PaidPayments ?? ''}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">{row.PendingPayments ?? ''}</td>
+                                    <td className="p-0" style={{ width: "1px", minWidth: "1px", background: "transparent" }}>
+                                      <div className="h-6 w-px mx-auto bg-gray-300"></div>
+                                    </td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-700 text-center">₮{(row.TotalAmount || 0).toLocaleString()}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">₮{(row.PaidAmount || 0).toLocaleString()}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">₮{(row.PendingAmount || 0).toLocaleString()}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-red-600 text-center">₮{(row.OverdueAmount || 0).toLocaleString()}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-blue-700 text-center">{row.CollectionRate || ''}</td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 text-center">{row.CompletedRequests ?? ''}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-yellow-600 text-center">{row.PendingRequests ?? ''}</td>
+                                    <td className="px-2 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs md:text-sm text-blue-600 text-center">{row.InProgressRequests ?? ''}</td>
+                                  </>
+                                )}
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={(activeTab === 'paymentStats' ? tableColumns.length : serviceTableColumns.length)} className="px-6 py-4 text-center text-gray-500">
+                                Мэдээлэл олдсонгүй
+                              </td>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={(activeTab === 'paymentStats' ? tableColumns.length : serviceTableColumns.length)} className="px-6 py-4 text-center text-gray-500">
-                              Мэдээлэл олдсонгүй
-                            </td>
-                          </tr>
-                        )}
-                    </tbody>
-                  </table>
+                          )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              {totalTablePages > 1 && (
-                <div className="flex justify-center mt-4 items-center space-x-2">
-                  <button
-                    onClick={() => setTablePage((prev) => Math.max(prev - 1, 1))}
-                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
-                      tablePage === 1
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold text-sm`}
-                    title="Өмнөх"
-                    disabled={tablePage === 1}
-                  >
-                    &lt;
-                  </button>
-                  {Array.from({ length: totalTablePages }, (_, index) => index + 1)
-                    .filter((page) => {
-                      return (
-                        page <= 2 ||
-                        page > totalTablePages - 2 ||
-                        (page >= tablePage - 1 && page <= tablePage + 1)
-                      );
-                    })
-                    .map((page, index, pages) => (
-                      <span key={page}>
-                        {index > 0 && page !== pages[index - 1] + 1 && (
-                          <span className="text-gray-500">...</span>
-                        )}
-                        <button
-                          onClick={() => setTablePage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
-                            tablePage === page
-                              ? "bg-[#2D6B9F] text-white"
-                              : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                          } transition`}
-                        >
-                          {page}
-                        </button>
-                      </span>
-                    ))}
-                  <button
-                    onClick={() => setTablePage((prev) => Math.min(totalTablePages, prev + 1))}
-                    className={`w-8 h-8 flex items-center justify-center rounded-full border ${
-                      tablePage === totalTablePages
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
-                    } transition font-bold text-sm`}
-                    title="Дараах"
-                    disabled={tablePage === totalTablePages}
-                  >
-                    &gt;
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
+                {totalTablePages > 1 && (
+                  <div className="flex justify-center mt-4 items-center space-x-2">
+                    <button
+                      onClick={() => setTablePage((prev) => Math.max(prev - 1, 1))}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                        tablePage === 1
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                      } transition font-bold text-sm`}
+                      title="Өмнөх"
+                      disabled={tablePage === 1}
+                    >
+                      &lt;
+                    </button>
+                    {Array.from({ length: totalTablePages }, (_, index) => index + 1)
+                      .filter((page) => {
+                        return (
+                          page <= 2 ||
+                          page > totalTablePages - 2 ||
+                          (page >= tablePage - 1 && page <= tablePage + 1)
+                        );
+                      })
+                      .map((page, index, pages) => (
+                        <span key={page}>
+                          {index > 0 && page !== pages[index - 1] + 1 && (
+                            <span className="text-gray-500">...</span>
+                          )}
+                          <button
+                            onClick={() => setTablePage(page)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${
+                              tablePage === page
+                                ? "bg-[#2D6B9F] text-white"
+                                : "border border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                            } transition`}
+                          >
+                            {page}
+                          </button>
+                        </span>
+                      ))}
+                    <button
+                      onClick={() => setTablePage((prev) => Math.min(totalTablePages, prev + 1))}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full border ${
+                        tablePage === totalTablePages
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "border-[#2D6B9F] text-[#2D6B9F] hover:bg-blue-50"
+                      } transition font-bold text-sm`}
+                      title="Дараах"
+                      disabled={tablePage === totalTablePages}
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

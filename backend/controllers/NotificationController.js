@@ -1,6 +1,10 @@
-console.log('NotificationController loaded'); // Add this at the very top
-
 const db = require('../config/db');
+
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+};
 
 exports.getPaymentNotifications = async (req, res) => {
   try {
@@ -73,37 +77,86 @@ exports.deleteOldNotifications = async (req, res) => {
 };
 
 exports.getAllNotifications = async (req, res) => {
-  console.log('getAllNotifications called'); // Add this at the start of the function
   try {
     const userId = req.user?.UserId || req.query.userId;
-    console.log('getAllNotifications userId:', userId); 
     if (!userId) {
-      console.log('No userId provided');
       return res.status(400).json({ message: 'User required' });
     }
 
     const [rows] = await db.query(
-      `SELECT NotificationId, Type, Title, Message, CreatedAt, IsRead
+      `SELECT NotificationId, Type, Title, Message, CreatedAt, IsRead, NewsId
        FROM Notification
-       WHERE UserId = ?
+       WHERE UserId = ? AND IsRead IN (0,1)
        ORDER BY CreatedAt DESC
        LIMIT 50`,
       [userId]
     );
-    console.log('Notifications rows:', rows); // Debug log
 
     const notifications = rows.map(row => ({
       id: `notif-${row.NotificationId}`,
-      type: row.Type, // e.g., 'News', 'WaterPayment', etc.
+      type: row.Type ? row.Type.toLowerCase() : 'general', 
       title: row.Title,
       message: row.Message,
-      time: row.CreatedAt,
+      time: formatDate(row.CreatedAt), 
       read: !!row.IsRead,
+      ...(row.Type && row.Type.toLowerCase() === 'news' && row.NewsId ? { newsId: row.NewsId } : {}),
     }));
 
     res.json({ notifications });
   } catch (err) {
-    console.log('Error in getAllNotifications:', err); // Log errors
     res.status(500).json({ message: 'Failed to fetch notifications' });
+  }
+};
+
+exports.markAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.body;
+    if (!notificationId) return res.status(400).json({ message: 'NotificationId required' });
+
+    await db.query(
+      `UPDATE Notification SET IsRead = 1 WHERE NotificationId = ?`,
+      [notificationId.replace(/^notif-/, '')] 
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to mark notification as read' });
+  }
+};
+
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.user?.UserId || req.body.userId || req.query.userId;
+    if (!userId) return res.status(400).json({ message: 'UserId required' });
+
+    await db.query(
+      `UPDATE Notification SET IsRead = 1 WHERE UserId = ?`,
+      [userId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to mark all notifications as read' });
+  }
+};
+
+exports.markAsRemoved = async (req, res) => {
+  try {
+    const { notificationId } = req.body;
+    if (!notificationId) return res.status(400).json({ message: 'NotificationId required' });
+
+    const dbId = notificationId.replace(/^notif-/, '');
+    const [rows] = await db.query(
+      `SELECT NotificationId FROM Notification WHERE NotificationId = ?`,
+      [dbId]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+    await db.query(
+      `UPDATE Notification SET IsRead = 2 WHERE NotificationId = ?`,
+      [dbId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to remove notification' });
   }
 };

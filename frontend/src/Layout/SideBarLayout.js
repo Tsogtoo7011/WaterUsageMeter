@@ -35,7 +35,6 @@ const SidebarLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load sidebar state from localStorage on component mount
   useEffect(() => {
     const savedSidebarState = localStorage.getItem('sidebarState');
     if (savedSidebarState !== null) {
@@ -336,7 +335,7 @@ const SidebarLayout = ({ children }) => {
             <div className="flex items-center space-x-4">
 
               {/* Notification Button */}
-              <Notification /> {/* Remove onClick and hasUnread props */}
+              <Notification /> 
 
               
               {/* Profile Dropdown */}

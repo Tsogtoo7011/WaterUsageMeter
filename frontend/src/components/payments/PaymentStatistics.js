@@ -16,16 +16,23 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
   const [viewMode, setViewMode] = useState('chart'); 
   
   useEffect(() => {
+    // Only fetch if a valid apartmentId is selected
+    if (!apartmentId || apartmentId === '' || apartmentId === undefined) {
+      setStatistics({
+        monthlyStats: [],
+        yearlyTotal: 0,
+        yearlyStatusData: []
+      });
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+
     const fetchStatistics = async () => {
-      if (!apartmentId) return;
-      
-      setLoading(true);
-      setError(null);
-      
       try {
         const response = await api.get(`/payments/statistics?apartmentId=${apartmentId}`);
         if (response && response.data) {
-
           const processedStats = (response.data.monthlyStats || []).map(month => ({
             ...month,
             paidCount: month.paidCount || 0,
@@ -37,7 +44,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
           setStatistics({
             monthlyStats: processedStats,
             yearlyTotal: response.data.yearlyTotal || 0,
-            yearlyStatusData: response.data.yearlyStatusData || [] 
+            yearlyStatusData: response.data.yearlyStatusData || []
           });
         } else {
           throw new Error('Invalid response format');
@@ -50,9 +57,8 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
       }
     };
 
-    if (apartmentId) {
-      fetchStatistics();
-    }
+    fetchStatistics();
+  // Only refetch when apartmentId or refreshKey changes
   }, [apartmentId, refreshKey]);
 
   const getMonthName = (monthNumber) => {
@@ -150,6 +156,7 @@ const PaymentStatistics = ({ apartmentId, refreshKey = 0 }) => {
     return <ErrorAlert message={error} onClose={() => setError(null)} />;
   }
 
+  // Only show statistics if a valid apartment is selected
   if (!apartmentId) {
     return (
       <div className="bg-white shadow-md rounded-lg p-6 text-center">

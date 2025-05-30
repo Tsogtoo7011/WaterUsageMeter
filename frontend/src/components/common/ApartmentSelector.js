@@ -14,7 +14,7 @@ const ApartmentSelector = ({ apartments, selectedApartment, onChange }) => {
 
   const handleChange = (e) => {
     const selectedId = e.target.value;
-    onChange(selectedId);
+    onChange(selectedId); 
   };
 
   return (
@@ -27,14 +27,14 @@ const ApartmentSelector = ({ apartments, selectedApartment, onChange }) => {
           <select
             id="apartment-select"
             className="w-full pl-10 pr-3 py-2 border border-[#2D6B9F] text-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] bg-white text-sm shadow-sm transition-all"
-            value={selectedApartment || ''}
+            value={selectedApartment !== null && selectedApartment !== undefined ? String(selectedApartment) : ''}
             onChange={handleChange}
             required
           >
             <option value="" disabled>-- Байр сонгох --</option>
             {apartments.map((apartment) => {
-              const aptId = apartment.ApartmentId || apartment.id || apartment._id;
-              let display = apartment.displayName || apartment.ApartmentName;
+              const aptId = apartment.id || apartment.ApartmentId || apartment._id;
+              let display = apartment.displayName || apartment.ApartmentName || apartment.name;
               if (!display) {
                 display = [
                   apartment.City,
@@ -49,7 +49,7 @@ const ApartmentSelector = ({ apartments, selectedApartment, onChange }) => {
                 if (!display) display = `Apartment #${aptId || ''}`;
               }
               return (
-                <option key={aptId} value={aptId}>
+                <option key={aptId} value={String(aptId)}>
                   {display}
                 </option>
               );

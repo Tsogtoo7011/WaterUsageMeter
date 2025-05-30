@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, X, Trash2, Pencil } from 'lucide-react'; 
+import { Eye, X, Trash2, Pencil, Edit } from 'lucide-react'; 
 import api from '../../utils/api';
 
 export default function AdminReportTable({
@@ -398,10 +398,10 @@ export default function AdminReportTable({
                         {activeTab !== 'apartments' && (
                           <button
                             onClick={e => { e.stopPropagation(); handleEditClick(item, activeTab); }}
-                            className="text-[#2D6B9F]/90 hover:text-[#2D6B9F] w-8 h-8 flex items-center justify-center"
+                            className="text-green-600 hover:text-green-900 w-8 h-8 flex items-center justify-center"
                             title="Засах"
                           >
-                            <Pencil size={16} />
+                            <Edit size={16} className="mr-0.5" />
                           </button>
                         )}
                         {activeTab === 'payments' && (
@@ -418,7 +418,7 @@ export default function AdminReportTable({
                             <Trash2 size={16} />
                           </button>
                         )}
-                        {/* Delete button for water meters */}
+                        {/* Delete button */}
                         {activeTab === 'waterMeters' && (
                           <button
                             onClick={e => {

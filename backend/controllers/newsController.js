@@ -66,7 +66,6 @@ exports.createNews = async (req, res) => {
     const coverImageType = path.extname(req.file.originalname).substring(1);
     const coverImageData = req.file.buffer;
 
-    // Insert news first
     const newsQuery = `
       INSERT INTO News (UserAdminId, Title, NewsDescription, CoverImageType, CoverImageData)
       VALUES (?, ?, ?, ?, ?)

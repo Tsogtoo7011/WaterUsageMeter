@@ -76,7 +76,6 @@ exports.createServiceRequest = async (req, res) => {
       VALUES (?, ?, '', ?, 'Хүлээгдэж буй')
     `;
     await connection.query(insertServiceQuery, [userId, description, apartmentId || null]);
-    // Fetch the generated ServiceId (latest for this user/desc)
     const [serviceRows] = await connection.query(
       `SELECT ServiceId FROM Service WHERE UserAdminId = ? AND Description = ? ORDER BY RequestDate DESC LIMIT 1`,
       [userId, description]
@@ -87,7 +86,7 @@ exports.createServiceRequest = async (req, res) => {
       return res.status(500).json({ message: 'Failed to retrieve created service ID' });
     }
     const serviceId = serviceRows[0].ServiceId;
-    await connection.query(
+    const [paymentResult] = await connection.query(
       `INSERT INTO ServicePayment (ApartmentId, UserAdminId, ServiceId, Amount, PayDate, Status, PaidDate)
        VALUES (?, ?, ?, 0, CURDATE(), 'Төлөгдөөгүй', NULL)`,
       [
@@ -96,6 +95,24 @@ exports.createServiceRequest = async (req, res) => {
         serviceId
       ]
     );
+    const [paymentRows] = await connection.query(
+      `SELECT Amount, PayDate FROM ServicePayment WHERE ServiceId = ? ORDER BY ServicePaymentId DESC LIMIT 1`,
+      [serviceId]
+    );
+    if (paymentRows.length > 0) {
+      const amount = paymentRows[0].Amount;
+      const payDate = paymentRows[0].PayDate;
+      await connection.query(
+        `INSERT INTO Notification (UserId, Type, ServiceId, Title, Message, CreatedAt, IsRead)
+         VALUES (?, 'servicepayment', ?, ?, ?, NOW(), 0)`,
+        [
+          userId,
+          serviceId,
+          'Үйлчилгээний төлбөр үүссэн',
+          `Төлөх дүн: ${amount}₮, Төлөх огноо: ${payDate}`
+        ]
+      );
+    }
     await connection.commit();
     res.status(201).json({
       message: 'Service request created successfully',
@@ -134,6 +151,7 @@ exports.updateServiceResponse = async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ message: 'Service not found' });
     }
+    const oldRespond = checkResults[0].Respond;
     if (status === 'Хүлээгдэж буй') {
       respond = '';
     }
@@ -152,6 +170,9 @@ exports.updateServiceResponse = async (req, res) => {
     );
     let paymentUpdated = false;
     let setServiceDate = false;
+    let notifyPayment = false;
+    let notifyAmount = 0;
+    let notifyPayDate = null;
     if (amount !== undefined) {
       if (amount === null || amount === undefined || isNaN(Number(amount))) {
         amount = 0;
@@ -166,6 +187,9 @@ exports.updateServiceResponse = async (req, res) => {
         `;
         await connection.query(updatePaymentQuery, [amount, serviceId]);
         paymentUpdated = true;
+        notifyPayment = true;
+        notifyAmount = amount;
+        notifyPayDate = paymentResults[0].PayDate;
       } else if (amount && amount > 0) {
         await connection.query(
           `INSERT INTO ServicePayment (ApartmentId, UserAdminId, ServiceId, Amount, PayDate, Status)
@@ -178,6 +202,9 @@ exports.updateServiceResponse = async (req, res) => {
           ]
         );
         paymentUpdated = true;
+        notifyPayment = true;
+        notifyAmount = amount;
+        notifyPayDate = new Date().toISOString().slice(0, 10);
       }
     }
     if (status === 'Дууссан') {
@@ -203,6 +230,7 @@ exports.updateServiceResponse = async (req, res) => {
           'UPDATE ServicePayment SET PayDate = ? WHERE ServiceId = ?',
           [payDay, serviceId]
         );
+        notifyPayDate = payDay.toISOString().slice(0, 10);
       }
     }
     if (status === 'Төлөвлөгдсөн') {
@@ -210,8 +238,45 @@ exports.updateServiceResponse = async (req, res) => {
         'UPDATE ServicePayment SET PaidDate = NULL, PayDate = CURDATE() WHERE ServiceId = ?',
         [serviceId]
       );
+      notifyPayDate = new Date().toISOString().slice(0, 10);
     }
     await connection.commit();
+    // Send notification for payment amount/payday if updated
+    if (notifyPayment && notifyAmount !== undefined && notifyPayDate !== null) {
+      // Get userId for this service
+      const userId = checkResults[0].UserAdminId;
+      await db.query(
+        `INSERT INTO Notification (UserId, Type, ServiceId, Title, Message, CreatedAt, IsRead)
+         VALUES (?, 'servicepayment', ?, ?, ?, NOW(), 0)`,
+        [
+          userId,
+          serviceId,
+          'Үйлчилгээний төлбөр шинэчлэгдсэн',
+          `Төлөх дүн: ${notifyAmount}₮, Төлөх огноо: ${notifyPayDate}`
+        ]
+      );
+    }
+    if (
+      respond !== undefined &&
+      respond !== null &&
+      respond.trim() !== '' &&
+      respond !== oldRespond
+    ) {
+      const [userResults] = await db.query('SELECT UserId FROM UserAdmin');
+      for (const user of userResults) {
+        await db.query(
+          `INSERT INTO Notification (UserId, Type, ServiceId, Title, Message, CreatedAt)
+           VALUES (?, 'service', ?, ?, ?, NOW())`,
+          [
+            user.UserId,
+            serviceId,
+            'Үйлчилгээний хүсэлтийн хариу',
+            `Үйлчилгээний хүсэлтэд шинэ хариу ирлээ`
+          ]
+        );
+      }
+    }
+
     res.status(200).json({ 
       message: 'Service updated successfully',
       paymentUpdated,
@@ -378,7 +443,7 @@ exports.processServicePayment = async (req, res) => {
         [serviceId]
       );
     }
-    // Set PayDate to 20th of next month if not already set
+
     const [paymentRows] = await connection.query(
       'SELECT * FROM ServicePayment WHERE ServiceId = ?',
       [serviceId]
@@ -391,7 +456,7 @@ exports.processServicePayment = async (req, res) => {
         month = 0;
         year += 1;
       }
-      // Set payDay to the last day of next month
+
       const payDayDate = new Date(year, month + 1, 0, 0, 0, 0, 0);
       await connection.query(
         'UPDATE ServicePayment SET PayDate = ? WHERE ServiceId = ?',

@@ -229,7 +229,7 @@ async function createWaterUsageDB() {
         ServiceId VARCHAR(20) DEFAULT NULL,
         Title VARCHAR(255) NOT NULL,
         Message TEXT,
-        IsRead TINYINT(1) DEFAULT 0 NOT NULL COMMENT '0 = Unread, 1 = Read',
+        IsRead TINYINT(1) DEFAULT 0 NOT NULL COMMENT '0 = Unread, 1 = Read, 2 = Read',
         CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UpdatedAt TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (UserId) REFERENCES UserAdmin(UserId) ON DELETE CASCADE,
@@ -237,7 +237,7 @@ async function createWaterUsageDB() {
         FOREIGN KEY (WaterPaymentId) REFERENCES WaterPayment(WaterPaymentId) ON DELETE SET NULL,
         FOREIGN KEY (ServicePaymentId) REFERENCES ServicePayment(ServicePaymentId) ON DELETE SET NULL,
         FOREIGN KEY (ServiceId) REFERENCES Service(ServiceId) ON DELETE SET NULL,
-        CONSTRAINT chk_is_read CHECK (IsRead IN (0, 1)),
+        CONSTRAINT chk_is_read CHECK (IsRead IN (0, 1, 2)),
         INDEX idx_user_unread (UserId, IsRead),
         INDEX idx_created_at (CreatedAt)
       );

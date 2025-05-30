@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, X, MessageSquare, Heart, Mail, CheckCircle, AlertCircle, Info, CreditCard, Newspaper, DollarSign, Gift } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 
 const getNotificationColor = (type) => {
   switch (type?.toLowerCase()) {
-    case 'news': return 'text-indigo-600 bg-indigo-50';
-    case 'waterpayment': return 'text-blue-600 bg-blue-50';
-    case 'servicepayment': return 'text-green-600 bg-green-50';
-    case 'service': return 'text-orange-600 bg-orange-50';
-    case 'general': return 'text-gray-600 bg-gray-50';
-    default: return 'text-gray-600 bg-gray-50';
+    case 'news': return 'text-indigo-600';
+    case 'waterpayment': return 'text-[#2D6B9F]';
+    case 'servicepayment': return 'text-green-600';
+    case 'service': return 'text-orange-600';
+    case 'general': return 'text-gray-600';
+    default: return 'text-gray-600';
   }
 };
 
@@ -29,6 +30,7 @@ const Notification = () => {
   const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  const navigate = useNavigate();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -47,7 +49,7 @@ const Notification = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const userId = JSON.parse(localStorage.getItem('user'))?.id; 
+  const userId = JSON.parse(localStorage.getItem('user'))?.UserId; 
 
   useEffect(() => {
     if (!userId) return;
@@ -69,14 +71,28 @@ const Notification = () => {
     setNotifications(prev => prev.map(notification =>
       notification.id === id ? { ...notification, read: true } : notification
     ));
+    api.post('/notifications/mark-as-read', { notificationId: id }).catch(() => {});
   };
 
   const markAllAsRead = () => {
     setNotifications(prev => prev.map(notification => ({ ...notification, read: true })));
+    api.post('/notifications/mark-all-as-read', { userId }).catch(() => {});
   };
 
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(notification => notification.id !== id));
+    api.post('/notifications/remove', { notificationId: id }).catch(() => {});
+  };
+
+  const handleNotificationClick = (notification) => {
+    markAsRead(notification.id);
+    if (
+      notification.type === 'news' &&
+      (notification.newsId || notification.NewsId)
+    ) {
+      navigate(`/news/${notification.newsId || notification.NewsId}`);
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -84,7 +100,7 @@ const Notification = () => {
       <button
         ref={buttonRef}
         type="button"
-        className="relative flex items-center justify-center w-8 h-8 rounded-full text-[#2D6B9F] bg-transparent hover:bg-blue-50/50 transition-colors duration-200"
+        className="relative flex items-center justify-center w-8 h-8 rounded-full text-[#2D6B9F] bg-transparent hover:bg-[#2D6B9F]/10 transition-colors duration-200"
         aria-label="Notifications"
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -98,14 +114,14 @@ const Notification = () => {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50"
+          className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50"
         >
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="font-semibold text-gray-900 text-base">Мэдэгдэл</span>
+            <span className="font-semibold text-[#2D6B9F] text-base">Мэдэгдэл</span>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="text-xs text-[#2D6B9F] hover:text-[#2D6B9F]/80 font-medium"
               >
                 Бүгдийг уншсан болгох
               </button>
@@ -124,9 +140,9 @@ const Notification = () => {
                   <div
                     key={notification.id}
                     className={`relative px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.read ? 'bg-blue-50/30' : ''
+                      !notification.read ? 'bg-[#2D6B9F]/10' : ''
                     }`}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start space-x-3">
                       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${getNotificationColor(notification.type)}`}>
@@ -147,7 +163,7 @@ const Notification = () => {
                           </div>
                           <div className="flex items-center space-x-2 ml-3">
                             {!notification.read && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              <div className="w-2 h-2 bg-[#2D6B9F] rounded-full"></div>
                             )}
                             <button
                               onClick={e => {

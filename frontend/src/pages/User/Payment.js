@@ -7,6 +7,7 @@ import PaymentsList from '../../components/payments/PaymentsList';
 import PaymentStatistics from '../../components/payments/PaymentStatistics';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import NoApartment from '../../components/common/NoApartment';
+import ApartmentSelector from '../../components/common/ApartmentSelector';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -23,16 +24,10 @@ const Payment = () => {
     const fetchApartments = async () => {
       setLoading(true);
       setError(null);
-      
       try {
         const response = await api.get('/payments');
-        
         if (response.data && response.data.hasApartments) {
           setApartments(response.data.apartments || []);
-          
-          if (!selectedApartment && response.data.apartments && response.data.apartments.length > 0) {
-            setSelectedApartment(response.data.apartments[0].id);
-          }
         } else {
           setApartments([]);
         }
@@ -48,9 +43,23 @@ const Payment = () => {
   }, []);
 
   useEffect(() => {
+    if (
+      apartments.length > 0 &&
+      (selectedApartment === null ||
+        !apartments.some(
+          a =>
+            String(a.id || a.ApartmentId || a._id) === String(selectedApartment)
+        ))
+    ) {
+      const firstId = String(apartments[0].id || apartments[0].ApartmentId || apartments[0]._id);
+      setSelectedApartment(firstId);
+    }
+  }, [apartments]); 
+
+  useEffect(() => {
+    if (!selectedApartment) return;
+
     const fetchPayments = async () => {
-      if (!selectedApartment) return;
-      
       setLoading(true);
       setError(null);
       
@@ -59,7 +68,9 @@ const Payment = () => {
         
         if (response.data) {
           const filteredPayments = response.data.payments
-            ? response.data.payments.filter(payment => payment.ApartmentId === selectedApartment)
+            ? response.data.payments.filter(
+                payment => String(payment.ApartmentId) === String(selectedApartment)
+              )
             : [];
           
           setPayments(filteredPayments);
@@ -141,8 +152,13 @@ const Payment = () => {
     }
   };
 
-  const handleApartmentChange = (e) => {
-    setSelectedApartment(Number(e.target.value));
+  // Accept both string and event for apartment change
+  const handleApartmentChange = (apartmentIdOrEvent) => {
+    const newApartmentId =
+      typeof apartmentIdOrEvent === 'string'
+        ? apartmentIdOrEvent
+        : apartmentIdOrEvent.target.value;
+    setSelectedApartment(newApartmentId);
   };
 
   if (loading && apartments.length === 0) {
@@ -166,19 +182,11 @@ const Payment = () => {
           </div>
           <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 w-full md:w-auto">
             {apartments.length > 0 && (
-              <div className="w-full md:w-auto">
-                <select
-                  value={selectedApartment || ''}
-                  onChange={handleApartmentChange}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:border-[#2D6B9F] text-gray-700 text-sm"
-                >
-                  {apartments.map(apt => (
-                    <option key={apt.id} value={apt.id}>
-                      {apt.displayName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <ApartmentSelector
+                apartments={apartments}
+                selectedApartment={selectedApartment}
+                onChange={handleApartmentChange}
+              />
             )}
           </div>
         </div>
