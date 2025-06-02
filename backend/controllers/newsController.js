@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const path = require('path');
 const fs = require('fs');
+const NotificationController = require('./NotificationController'); // Add this
 
 exports.getAllNews = async (req, res) => {
   try {
@@ -84,13 +85,18 @@ exports.createNews = async (req, res) => {
 
     const actualNewsId = newsIdResults[0].NewsId;
 
-    const [userResults] = await connection.query('SELECT UserId FROM UserAdmin');
+    const [userResults] = await connection.query('SELECT UserId, Email FROM UserAdmin');
     
     for (const user of userResults) {
-      await connection.query(
-        `INSERT INTO Notification (UserId, Type, NewsId, Title, Message, CreatedAt)
-         VALUES (?, 'news', ?, ?, ?, NOW())`,
-        [user.UserId, actualNewsId, 'Шинэ мэдээ', title]
+      if (!user.Email) {
+        continue;
+      }
+      await NotificationController.createNotification(
+        user.UserId,
+        'News',
+        'Шинэ мэдээ',
+        title,
+        { NewsId: actualNewsId, NewsDescription: description }
       );
     }
 

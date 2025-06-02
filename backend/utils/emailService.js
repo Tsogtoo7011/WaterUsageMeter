@@ -27,9 +27,7 @@ const sendEmail = async (options) => {
 
   try {
     await transporter.verify();
-    console.log('SMTP connection verified');
   } catch (error) {
-    console.error('SMTP connection failed:', error);
     throw new Error('SMTP connection failed');
   }
 
@@ -58,15 +56,9 @@ const sendEmail = async (options) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const info = await transporter.sendMail(mailOptions);
-      console.log(`Email sent to ${options.to} (attempt ${attempt})`, {
-        messageId: info.messageId,
-        accepted: info.accepted,
-        rejected: info.rejected
-      });
       return info;
     } catch (error) {
       lastError = error;
-      console.error(`Attempt ${attempt} failed:`, error);
       if (attempt < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
       }

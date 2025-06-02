@@ -18,6 +18,7 @@ const MeterCounter = () => {
   const [apartments, setApartments] = useState([]);
   const [selectedApartmentId, setSelectedApartmentId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
   const itemsPerPage = 6;
 
   const MONGOLIAN_MONTHS = [
@@ -208,7 +209,12 @@ const MeterCounter = () => {
             />
           ) : !hasReadings && selectedApartmentId ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
-              <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-white border border-[#2D6B9F]/30 rounded-lg shadow">
+              <div className="flex flex-col items-center justify-center w-full max-w-3xl p-8 mb-6 text-center bg-white border border-[#2D6B9F]/30 rounded-lg shadow relative">
+                {submitting && (
+                  <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-10">
+                    <LoadingSpinner />
+                  </div>
+                )}
                 <div className="mb-4 text-[#2D6B9F]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -219,6 +225,10 @@ const MeterCounter = () => {
                 <a 
                   href={`/user/metercounter/details?apartmentId=${selectedApartmentId}&month=${getCurrentYearMonth()}`}
                   className="px-6 py-3 text-white transition-all bg-[#2D6B9F]/90 rounded-md hover:bg-[#2D6B9F] focus:outline-none focus:ring-2 focus:ring-[#2D6B9F] focus:ring-offset-2"
+                  onClick={e => {
+                    setSubmitting(true);
+                    // let navigation proceed, spinner will show briefly
+                  }}
                 >
                   Заалт өгөх
                 </a>

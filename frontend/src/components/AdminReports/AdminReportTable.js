@@ -366,10 +366,26 @@ export default function AdminReportTable({
                     if (value !== undefined && value !== null) {
                       if (typeof value === 'boolean') {
                         displayValue = value ? 'Тийм' : 'Үгүй';
-                      } else if (col.key.toLowerCase().includes('date') && typeof value === 'string') {
+                      } else if (
+                        col.key.toLowerCase().includes('date') ||
+                        col.key.toLowerCase().includes('огноо') ||
+                        col.key.toLowerCase().includes('createdat') ||
+                        col.key.toLowerCase().includes('updatedat') ||
+                        (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value))
+                      ) {
                         try {
                           const date = new Date(value);
-                          displayValue = date.toLocaleDateString('mn-MN');
+                          if (!isNaN(date)) {
+                            displayValue = date.toLocaleString('mn-MN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+                          } else {
+                            displayValue = value;
+                          }
                         } catch (e) {
                           displayValue = value;
                         }
@@ -625,11 +641,23 @@ export default function AdminReportTable({
                         displayValue = '-';
                       } else if (typeof value === 'boolean') {
                         displayValue = value ? 'Тийм' : 'Үгүй';
-                      } else if (key.toLowerCase().includes('date')) {
+                      } else if (
+                        key.toLowerCase().includes('date') ||
+                        key.toLowerCase().includes('огноо') ||
+                        key.toLowerCase().includes('createdat') ||
+                        key.toLowerCase().includes('updatedat') ||
+                        (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value))
+                      ) {
                         try {
                           const date = new Date(value);
                           if (!isNaN(date)) {
-                            displayValue = date.toLocaleString('mn-MN');
+                            displayValue = date.toLocaleString('mn-MN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
                           }
                         } catch (e) {}
                       } else if (typeof value === 'object') {

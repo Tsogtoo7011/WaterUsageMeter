@@ -46,20 +46,20 @@ function App() {
     };
   }, [checkAuth]);
 
-  const PrivateRoute = useCallback(({ children }) => localStorage.getItem('token') ? children : <Navigate to="/" replace />, []);
+  const PrivateRoute = useCallback(({ children }) => isAuthenticated ? children : <Navigate to="/" replace />, [isAuthenticated]);
   const checkIsAdmin = useCallback(() => JSON.parse(localStorage.getItem('user'))?.AdminRight === 1, []);
-  const AdminRoute = useCallback(({ children }) => !localStorage.getItem('token') ? <Navigate to="/" replace /> : !checkIsAdmin() ? <Navigate to="/home" replace /> : <SidebarLayout>{children}</SidebarLayout>, [checkIsAdmin]);
-  const UserRoute = useCallback(({ children }) => !localStorage.getItem('token') ? <Navigate to="/" replace /> : <SidebarLayout>{children}</SidebarLayout>, []);
-  const SharedLayout = useCallback(({ children }) => !localStorage.getItem('token') ? <Navigate to="/" replace /> : <SidebarLayout>{children}</SidebarLayout>, []);
+  const AdminRoute = useCallback(({ children }) => !isAuthenticated ? <Navigate to="/" replace /> : !checkIsAdmin() ? <Navigate to="/home" replace /> : <SidebarLayout>{children}</SidebarLayout>, [isAuthenticated, checkIsAdmin]);
+  const UserRoute = useCallback(({ children }) => !isAuthenticated ? <Navigate to="/" replace /> : <SidebarLayout>{children}</SidebarLayout>, [isAuthenticated]);
+  const SharedLayout = useCallback(({ children }) => !isAuthenticated ? <Navigate to="/" replace /> : <SidebarLayout>{children}</SidebarLayout>, [isAuthenticated]);
 
   if (isLoading) return <div className="w-full h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div></div>;
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={localStorage.getItem('token') ? <Navigate to="/home" replace /> : <SignIn />} />
-        <Route path="/signup" element={localStorage.getItem('token') ? <Navigate to="/home" replace /> : <SignUp />} />
-        <Route path="/ForgetPassword" element={localStorage.getItem('token') ? <Navigate to="/home" replace /> : <ForgetPassword />} />
+        <Route path="/" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignIn />} />
+        <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />} />
+        <Route path="/ForgetPassword" element={isAuthenticated ? <Navigate to="/home" replace /> : <ForgetPassword />} />
         
         <Route path="/home" element={<SharedLayout><Home /></SharedLayout>} />
         <Route path="/settings" element={<SharedLayout><Settings /></SharedLayout>} />

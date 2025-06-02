@@ -21,6 +21,7 @@ const News = () => {
   const [user, setUser] = useState(null);
   const [editingNews, setEditingNews] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,7 +30,7 @@ const News = () => {
   const mode = queryParams.get('mode');
   const editId = params.id || null;
 
-  const newsPerPage = 8;
+  const newsPerPage = 6;
 
   useEffect(() => {
     fetchCsrfToken();
@@ -149,6 +150,7 @@ const News = () => {
       fetchCsrfToken();
       return;
     }
+    setSubmitting(true);
     try {
       const formPayload = new FormData();
       formPayload.append('title', formData.title);
@@ -173,6 +175,8 @@ const News = () => {
       }
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to save news';
       alert(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -235,9 +239,9 @@ const News = () => {
 
   const API_URL = api.defaults.baseURL;
 
-  const truncateText = (text) => {
+  const truncateText = (text, max = 40) => {
     if (!text) return '';
-    return text.length > 10 ? text.slice(0, 10) + '...' : text;
+    return text.length > max ? text.slice(0, max) + '...' : text;
   };
 
   if (loading) {
@@ -320,7 +324,12 @@ const News = () => {
         <div className="max-w-7xl mx-auto py-6 px-0 sm:px-0 lg:px-0">
           {/* Edit form (inline) */}
           {(mode === 'edit' && editingNews) ? (
-            <form onSubmit={handleSubmit} className="space-y-6 bg-white border border-gray-200 rounded-lg shadow-md p-6 mb-8 max-w-2xl mx-auto">
+            <form onSubmit={handleSubmit} className="space-y-6 bg-white border border-gray-200 rounded-lg shadow-md p-6 mb-8 max-w-2xl mx-auto relative">
+              {submitting && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-10">
+                  <LoadingSpinner />
+                </div>
+              )}
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-[#2D6B9F]">
                   Мэдээ засах
@@ -402,7 +411,12 @@ const News = () => {
           {/* Create modal */}
           {showCreateModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
-              <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110]">
+              <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200 z-[110] relative">
+                {submitting && (
+                  <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-20">
+                    <LoadingSpinner />
+                  </div>
+                )}
                 <div className="p-4 sm:p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-[#2D6B9F]">
@@ -424,6 +438,7 @@ const News = () => {
                         fetchCsrfToken();
                         return;
                       }
+                      setSubmitting(true);
                       try {
                         const formPayload = new FormData();
                         formPayload.append('title', formData.title);
@@ -443,6 +458,8 @@ const News = () => {
                         }
                         const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to save news';
                         alert(errorMessage);
+                      } finally {
+                        setSubmitting(false);
                       }
                     }}
                     className="space-y-6"
@@ -514,30 +531,29 @@ const News = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentNews.length > 0 ? currentNews.map((item) => (
               <div
                 key={item.NewsId}
-                className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group flex flex-col p-3"
-                style={{ minWidth: 0, maxWidth: 400, margin: "0 auto" }}
+                className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group flex flex-col"
               >
-                <div className="relative h-40 overflow-hidden rounded-t-lg">
+                <div className="relative h-48 overflow-hidden rounded-t-lg">
                   <img
                     src={`${API_URL}/news/${item.NewsId}/image`}
                     alt={item.Title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/400x160?text=No+Image';
+                      e.target.src = 'https://via.placeholder.com/400x200?text=No+Image';
                     }}
                   />
                   {isUserAdmin() && (
-                    <div className="absolute top-1 right-1 flex gap-1">
+                    <div className="absolute top-2 right-2 flex gap-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEditClick(item);
                         }}
-                        className="bg-white p-1 rounded-full shadow hover:bg-blue-50 border border-gray-200"
+                        className="bg-white p-2 rounded-full shadow hover:bg-blue-50 border border-gray-200"
                         title="Засах"
                       >
                         <Edit size={16} className="text-[#2D6B9F]" />
@@ -547,7 +563,7 @@ const News = () => {
                           e.stopPropagation();
                           handleDelete(item.NewsId);
                         }}
-                        className="bg-white p-1 rounded-full shadow hover:bg-red-50 border border-gray-200"
+                        className="bg-white p-2 rounded-full shadow hover:bg-red-50 border border-gray-200"
                         title="Устгах"
                       >
                         <Trash2 size={16} className="text-red-500" />
@@ -555,23 +571,21 @@ const News = () => {
                     </div>
                   )}
                 </div>
-                <div className="p-3 flex flex-col flex-1">
+                <div className="p-4 flex flex-col flex-1">
                   <h2
                     className="text-lg font-semibold text-[#2D6B9F] mb-2"
                     title={item.Title}
-                    style={{ wordBreak: "break-word" }}
                   >
-                    {truncateText(item.Title)}
+                    {truncateText(item.Title, 60)}
                   </h2>
                   <p
-                    className="text-sm text-gray-600 mb-2"
+                    className="text-gray-600 mb-3"
                     title={item.NewsDescription}
-                    style={{ wordBreak: "break-word" }}
                   >
-                    {truncateText(item.NewsDescription)}
+                    {truncateText(item.NewsDescription, 120)}
                   </p>
                   <div className="flex justify-between items-center mt-auto">
-                    <span className="text-xs text-gray-400">By {item.Username}</span>
+                    <span className="text-xs text-gray-500">By {item.Username}</span>
                     <button
                       onClick={() => navigate(`/news/${item.NewsId}`)}
                       className="text-[#2D6B9F]/90 hover:text-[#2D6B9F] font-medium text-xs rounded px-2 py-1 transition"

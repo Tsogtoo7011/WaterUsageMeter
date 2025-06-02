@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { handleError } = require('../utils/errorHandler');
+const NotificationController = require('./NotificationController');
 
 async function getUserApartments(userId) {
   const [apartments] = await pool.execute(
@@ -139,7 +140,6 @@ exports.getUserPayments = async (req, res) => {
       waterQueryParams
     );
 
-    // Service payments
     const serviceWhereClause = apartmentId && apartmentIds.includes(apartmentId)
       ? 'sp.ApartmentId = ?'
       : `sp.ApartmentId IN (${apartmentIds.map(() => '?').join(',')})`;
@@ -169,7 +169,6 @@ exports.getUserPayments = async (req, res) => {
       serviceQueryParams
     );
 
-    // Format water payments
     const formattedWaterPayments = waterPayments.map(payment => {
       const calculatedStatus = determinePaymentStatus(payment);
       const payDate = new Date(payment.PayDate);
@@ -203,7 +202,6 @@ exports.getUserPayments = async (req, res) => {
       };
     });
 
-    // Format service payments
     const formattedServicePayments = servicePayments.map(payment => {
       const calculatedStatus = determinePaymentStatus(payment);
       const payDate = new Date(payment.PayDate);
@@ -212,8 +210,8 @@ exports.getUserPayments = async (req, res) => {
 
       return {
         ...payment,
-        payDate: payment.PayDate, // ensure camelCase
-        paidDate: payment.PaidDate, // ensure camelCase
+        payDate: payment.PayDate,
+        paidDate: payment.PaidDate,
         paymentType: 'service',
         dueDate: dueDate.toISOString(),
         status: calculatedStatus,
@@ -233,7 +231,6 @@ exports.getUserPayments = async (req, res) => {
       (a, b) => new Date(b.payDate) - new Date(a.payDate)
     );
 
-    // Summary
     let totalAmount = 0, paidAmount = 0, pendingAmount = 0, overdueAmount = 0;
     allPayments.forEach(payment => {
       totalAmount += Number(payment.amount);
@@ -242,7 +239,6 @@ exports.getUserPayments = async (req, res) => {
       else if (payment.status === 'pending') pendingAmount += Number(payment.amount);
     });
 
-    // Apartments
     const [apartmentObjects] = await pool.execute(
       `SELECT a.ApartmentId, a.ApartmentName, a.BlockNumber, a.UnitNumber 
        FROM Apartment a
@@ -345,8 +341,6 @@ exports.getPaymentById = async (req, res) => {
         }
       });
     }
-
-    // Try service payment
     const [servicePayments] = await pool.execute(
       `SELECT 
         sp.ServicePaymentId as id,
@@ -379,8 +373,8 @@ exports.getPaymentById = async (req, res) => {
         success: true,
         payment: {
           ...payment,
-          payDate: payment.PayDate, // <-- add this
-          paidDate: payment.PaidDate, // <-- add this
+          payDate: payment.PayDate, 
+          paidDate: payment.PaidDate,
           paymentType: 'service',
           dueDate: dueDate.toISOString(),
           status: calculatedStatus,
@@ -461,7 +455,7 @@ exports.generateMonthlyPayment = async (req, res) => {
             amount: payment.TotalAmount,
             status: payment.Status,
             payDate: payment.PayDate,
-            paidDate: payment.PaidDate, // will be null/blank until paid
+            paidDate: payment.PaidDate, 
             dueDate: dueDate.toISOString()
           },
           exists: true
@@ -481,7 +475,7 @@ exports.generateMonthlyPayment = async (req, res) => {
     const dirtyWaterCost = (waterUsage.cold + waterUsage.hot) * tariff.DirtyWaterTariff;
     const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
-    // --- Use transaction for payment and notification ---
+  
     connection = await pool.getConnection();
     await connection.beginTransaction();
     try {
@@ -503,15 +497,12 @@ exports.generateMonthlyPayment = async (req, res) => {
         ]
       );
 
-      // Notification with amount and pay day
-      await connection.execute(
-        `INSERT INTO Notification (UserId, Type, Title, Message, CreatedAt, IsRead)
-         VALUES (?, 'waterpayment', ?, ?, NOW(), 0)`,
-        [
-          userId,
-          'Усны төлбөр үүссэн',
-          `Төлөх дүн: ${totalAmount}₮, Төлөх огноо: ${payDate}`
-        ]
+      await NotificationController.createNotification(
+        userId,
+        'WaterPayment',
+        'Усны төлбөр үүссэн',
+        `Төлөх дүн: ${totalAmount}₮, Төлөх огноо: ${payDate}`,
+        { WaterPaymentId: result.insertId }
       );
 
       await connection.commit();
@@ -599,15 +590,12 @@ exports.processPayment = async (req, res) => {
         );
         const [userResults] = await pool.query('SELECT UserId FROM UserAdmin');
         for (const user of userResults) {
-          await connection.execute(
-            `INSERT INTO Notification (UserId, Type, WaterPaymentId, Title, Message, CreatedAt)
-             VALUES (?, 'waterpayment', ?, ?, ?, NOW())`,
-            [
-              user.UserId,
-              paymentId,
-              'Усны төлбөр төлөгдсөн',
-              `Усны төлбөр амжилттай төлөгдлөө`
-            ]
+          await NotificationController.createNotification(
+            user.UserId,
+            'WaterPayment',
+            'Усны төлбөр төлөгдсөн',
+            'Усны төлбөр амжилттай төлөгдлөө',
+            { WaterPaymentId: paymentId }
           );
         }
         await connection.commit();
@@ -624,7 +612,6 @@ exports.processPayment = async (req, res) => {
       }
     }
 
-    // Try service payment
     const [servicePayments] = await pool.execute(
       `SELECT sp.ServicePaymentId as id, sp.Status
        FROM ServicePayment sp
@@ -649,20 +636,6 @@ exports.processPayment = async (req, res) => {
            WHERE ServicePaymentId = ?`,
           [paymentId]
         );
-        // Insert notification for all users
-        const [userResults] = await pool.query('SELECT UserId FROM UserAdmin');
-        for (const user of userResults) {
-          await connection.execute(
-            `INSERT INTO Notification (UserId, Type, ServicePaymentId, Title, Message, CreatedAt)
-             VALUES (?, 'servicepayment', ?, ?, ?, NOW())`,
-            [
-              user.UserId,
-              paymentId,
-              'Үйлчилгээний төлбөр төлөгдсөн',
-              `Үйлчилгээний төлбөр амжилттай төлөгдлөө`
-            ]
-          );
-        }
         await connection.commit();
         return res.status(200).json({
           success: true,
@@ -906,7 +879,6 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
   const dirtyWaterCost = (usage.cold + usage.hot) * tariff.DirtyWaterTariff;
   const totalAmount = coldWaterCost + hotWaterCost + dirtyWaterCost;
 
-  // --- Use transaction for payment and notification (batch/cron) ---
   let connection;
   try {
     connection = await pool.getConnection();
@@ -930,18 +902,19 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
       ]
     );
 
-    // Notification with amount and pay day
-    await connection.execute(
-      `INSERT INTO Notification (UserId, Type, Title, Message, CreatedAt, IsRead)
-       VALUES (?, 'waterpayment', ?, ?, NOW(), 0)`,
-      [
-        userId,
-        'Усны төлбөр үүссэн',
-        `Төлөх дүн: ${totalAmount}₮, Төлөх огноо: ${payDate}`
-      ]
+    await NotificationController.createNotification(
+      userId,
+      'WaterPayment',
+      'Усны төлбөр үүссэн',
+      `Төлөх дүн: ${totalAmount}₮, Төлөх огноо: ${payDate}`,
+      { WaterPaymentId: result.insertId }
     );
 
     await connection.commit();
+
+    const payDateObj = new Date(payDate);
+    const dueDate = new Date(payDateObj);
+    dueDate.setDate(dueDate.getDate() + 30);
 
     return {
       id: result.insertId,
@@ -949,7 +922,7 @@ exports.generateMonthlyPaymentForApartment = async function(apartmentId, userId,
       amount: totalAmount,
       status: 'Төлөгдөөгүй',
       payDate: payDate,
-      paidDate: null, // explicitly blank until paid
+      paidDate: null,
       dueDate: dueDate.toISOString(),
       tariffId: tariff.TariffId,
       exists: false

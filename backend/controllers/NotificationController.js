@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const sendEmail = require('../utils/emailService');
 
 const formatDate = (date) => {
   if (!date) return '';
@@ -159,4 +160,42 @@ exports.markAsRemoved = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Failed to remove notification' });
   }
+};
+
+async function sendNotificationEmail(userId, title, message) {
+  const [[user]] = await db.query('SELECT Email, Firstname FROM UserAdmin WHERE UserId = ?', [userId]);
+  if (!user || !user.Email) {
+    return;
+  }
+  try {
+    await sendEmail({
+      to: user.Email,
+      subject: title,
+      html: `<p>Сайн байна уу, ${user.Firstname || ''}?</p><p>${message}</p>`
+    });
+  } catch (err) {
+  }
+}
+
+exports.createNotification = async (userId, type, title, message, extra = {}) => {
+  const [result] = await db.query(
+    `INSERT INTO Notification (UserId, Type, Title, Message, NewsId, WaterPaymentId, ServicePaymentId, ServiceId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      userId,
+      type,
+      title,
+      message,
+      extra.NewsId || null,
+      extra.WaterPaymentId || null,
+      extra.ServicePaymentId || null,
+      extra.ServiceId || null
+    ]
+  );
+  if (type && type.toLowerCase() === 'news' && extra.NewsDescription) {
+    await sendNotificationEmail(userId, title, extra.NewsDescription);
+  } else {
+    await sendNotificationEmail(userId, title, message);
+  }
+  return result;
 };
